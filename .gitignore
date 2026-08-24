@@ -1,0 +1,41 @@
+# DirScribe outputs
+project_overview.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Packaging
+build/
+dist/
+*.whl
+
+# Editors / IDEs
+.vscode/
+.idea/
+.vs/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
