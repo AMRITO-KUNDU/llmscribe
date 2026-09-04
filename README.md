@@ -1,16 +1,19 @@
 # LLMScribe
 
-LLMScribe is an open-source Python tool that exports an entire software project into a single readable text file. It generates a directory tree followed by the full contents of every supported source file, making it ideal for AI coding assistants, code reviews, documentation, debugging, and sharing codebases.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/AMRITO-KUNDU/llmscribe)
 
-It ships with three interfaces so you can use whichever fits your workflow: a graphical desktop app, an interactive terminal menu, and a scriptable CLI.
+**Export an entire project folder into a single, LLM-ready text file** — directory tree plus full contents of every supported source file.
+
+Ideal for feeding codebases to AI coding assistants, code reviews, documentation, debugging, and sharing projects without the noise of build artifacts and dependencies.
 
 ---
 
 ## Table of Contents
 
 - [Features](#features)
-- [Project Structure](#project-structure)
-- [Requirements](#requirements)
+- [Quick Start](#quick-start)
 - [Installation](#installation)
 - [Usage](#usage)
   - [CLI](#cli)
@@ -20,98 +23,62 @@ It ships with three interfaces so you can use whichever fits your workflow: a gr
 - [Output Format](#output-format)
 - [What Gets Included](#what-gets-included)
 - [What Gets Ignored](#what-gets-ignored)
+- [Project Structure](#project-structure)
 - [Core API Reference](#core-api-reference)
+- [Requirements](#requirements)
+- [Contributing](#contributing)
 - [License](#license)
 
 ---
 
 ## Features
 
-- **Directory tree** — generates a visual `├──` tree of your project structure.
-- **Tree-only mode** — export only the project directory tree without reading or including file contents, via the `--tree-only` CLI flag or the "Tree only" checkbox in the GUI.
-- **Full file content extraction** — reads every supported text file and appends its complete, untruncated contents below the tree.
-- **Smart filtering** — skips build outputs, dependency folders, IDE files, and OS noise out of the box.
-- **`.gitignore` aware** — loads and respects the project's own `.gitignore` automatically.
-- **Three interfaces** — GUI desktop app, interactive terminal menu, and a fully scriptable CLI.
-- **Embeddable core** — the `llmscribe.core` package can be imported directly into other Python projects.
-- **Cross-platform** — runs on Windows, macOS, and Linux anywhere Python 3.10+ is available.
-- **Installable like any real CLI** — `pip install llmscribe` gives you the `llmscribe`, `llmscribe-gui`, and `llmscribe-cui` commands, usable from any terminal.
+| Feature | Description |
+|---------|-------------|
+| **Directory tree** | Visual `├──` tree of your project structure |
+| **Tree-only mode** | Export just the structure with `--tree-only` or the GUI checkbox |
+| **Full file contents** | Complete, untruncated contents of every supported text file |
+| **Smart filtering** | Skips build outputs, dependencies, IDE files, and OS noise by default |
+| **`.gitignore` aware** | Automatically loads and respects the project's own `.gitignore` |
+| **Three interfaces** | Desktop GUI, interactive terminal menu, and scriptable CLI |
+| **Embeddable core** | Import `llmscribe.core` into other Python projects |
+| **Zero dependencies** | Pure standard library (Tkinter only needed for GUI) |
+| **Cross-platform** | Windows, macOS, and Linux |
 
 ---
 
-## Project Structure
+## Quick Start
 
-```
-LLMScribe/
-├── src/
-│   └── llmscribe/             # Installable package (import as `llmscribe.*`)
-│       ├── __init__.py        # Package version
-│       ├── core/               # All scanning and writing logic
-│       │   ├── __init__.py     # Public API surface
-│       │   ├── file_reader.py  # Extension allowlist + full file reading
-│       │   ├── tree_builder.py # Directory tree + ignore rule engine
-│       │   └── writer.py       # Orchestrates tree + contents into output
-│       ├── cli/                 # Scriptable command-line interface
-│       │   ├── __init__.py
-│       │   └── main.py
-│       ├── cui/                 # Interactive terminal menu
-│       │   ├── __init__.py
-│       │   └── main.py
-│       └── gui/                 # Tkinter desktop application
-│           ├── __init__.py
-│           ├── __main__.py      # `python -m llmscribe.gui` entrypoint
-│           └── app.py
-├── pyproject.toml
-├── LICENSE
-├── README.md
-└── CONTRIBUTING.md
+```bash
+pip install llmscribe          # or: pip install -e . from source
+llmscribe --path /path/to/project
 ```
 
----
-
-## Requirements
-
-- **Python 3.10** or higher
-- **Tkinter (GUI only)** — required only for `llmscribe-gui`, `llmscribe --gui`, and the GUI picker in the CUI. The core library and non-GUI CLI work without Tkinter. It ships with most Python installers; on Linux it may need to be installed separately:
-
-  ```bash
-  # Debian / Ubuntu
-  sudo apt install python3-tk
-
-  # Fedora
-  sudo dnf install python3-tkinter
-
-  # Arch
-  sudo pacman -S tk
-  ```
-
-No third-party Python packages are required — the standard library is sufficient.
-
-Headless Linux servers can use the CLI and library integration without Tkinter. If GUI mode is requested without it, LLMScribe prints an installation hint.
+This writes `project_overview.txt` in the current directory containing the tree + full file contents.
 
 ---
 
 ## Installation
 
-**From PyPI (once published):**
+### From PyPI
 
 ```bash
 pip install llmscribe
 ```
 
-This installs three console commands anywhere on your system: `llmscribe`, `llmscribe-gui`, and `llmscribe-cui`.
+This installs three commands: `llmscribe`, `llmscribe-gui`, and `llmscribe-cui`.
 
-**From source (development):**
+### From source (development)
 
 ```bash
-git clone https://github.com/AMRITO-KUNDU/LLMScribe.git
-cd LLMScribe
+git clone https://github.com/AMRITO-KUNDU/llmscribe.git
+cd llmscribe
 pip install -e .
 ```
 
-`pip install -e .` (editable install) picks up local code changes immediately without reinstalling — use this while developing.
+Editable install (`-e`) picks up local code changes immediately.
 
-**Publishing to PyPI yourself:**
+### Publishing (maintainers)
 
 ```bash
 pip install build twine
@@ -119,10 +86,7 @@ python -m build
 twine upload dist/*
 ```
 
-For automated releases, configure PyPI Trusted Publishing for the GitHub
-repository and create a tag such as `v1.0.0`. The workflow in
-`.github/workflows/publish.yml` then builds and publishes the wheel and source
-distribution without storing a PyPI token in GitHub secrets.
+For automated releases, configure PyPI Trusted Publishing and push a tag such as `v1.0.0`. The workflow in `.github/workflows/publish.yml` handles the rest.
 
 ---
 
@@ -130,86 +94,66 @@ distribution without storing a PyPI token in GitHub secrets.
 
 ### CLI
 
-The CLI is designed for scripting, automation, and CI pipelines. All options are passed as flags.
-
-**Basic usage:**
+Scriptable interface for automation and CI.
 
 ```bash
-# Scan a project and write to the default output file
+# Basic usage
 llmscribe --path /path/to/project
 
-# Specify a custom output file
+# Custom output file
 llmscribe --path /path/to/project --output ~/exports/my_project.txt
 
-# Export only the directory tree
+# Tree only (no file contents)
 llmscribe --path /path/to/project --tree-only
 
-# Open a GUI folder picker instead of typing a path
+# GUI folder picker
 llmscribe --gui
 
-# Run interactively (prompts for a path, then falls back to the GUI picker)
+# Interactive (prompts for path, falls back to GUI picker)
 llmscribe
 
-# Check the installed version
+# Version
 llmscribe --version
-llmscribe-cui --version
 ```
 
-**All flags:**
-
 | Flag | Default | Description |
-|---|---|---|
-| `--path PATH` | _(none)_ | Path to the project folder to scan. |
-| `--output FILE` | `project_overview.txt` | Where to write the output. Parent directories are created automatically. |
-| `--tree-only` | `false` | Export only the directory tree and skip file contents. |
-| `--gui` | `false` | Open a GUI folder picker dialog instead of reading `--path`. |
-| `--version` | — | Print the installed LLMScribe version and exit. |
-
-**Getting help:**
+|------|---------|-------------|
+| `--path PATH` | — | Project folder to scan |
+| `--output FILE` | `project_overview.txt` | Output path (parent dirs created automatically) |
+| `--tree-only` | `false` | Export only the directory tree |
+| `--gui` | `false` | Open a GUI folder picker |
+| `--version` | — | Print version and exit |
 
 ```bash
 llmscribe --help
 ```
 
----
-
 ### GUI App
 
-The desktop app is the easiest way to use LLMScribe. It provides a two-panel layout: controls on the left, a live preview of the generated output on the right.
-
-**Launch:**
+Desktop app with a two-panel layout: controls on the left, live preview on the right.
 
 ```bash
 llmscribe-gui
 # or
 llmscribe --gui
-# or, without installing console scripts
+# or without console scripts
 python -m llmscribe.gui
 ```
 
-**Workflow:**
+1. Select the project folder (folder icon or type the path).
+2. Adjust the output path if needed (defaults to `<project>/project_overview.txt`).
+3. Optionally enable **Tree only**.
+4. Click **Generate**. Preview updates; use **Copy output** or **Open file**.
 
-1. Click the folder icon next to **Project Folder** and select your project root, or type the path directly.
-2. The **Output File** field auto-populates to `<project>/project_overview.txt`. Change it if needed.
-3. Tick **Tree only (skip file contents)** if you just want the directory structure without reading any file contents.
-4. Click **Generate**. The preview pane fills with the output and the line count appears in the header.
-5. Use **Copy output** to copy the full text to the clipboard, or **Open file** to open the saved file in your system's default text editor.
-
-The GUI runs the scan in a background thread so the window stays responsive on large projects.
-
----
+Scanning runs in a background thread so the UI stays responsive.
 
 ### Terminal Menu (CUI)
 
-The CUI is an interactive numbered menu intended for terminal users and for embedding LLMScribe into other projects or scripts that call it as a subprocess.
-
-**Launch:**
+Interactive numbered menu for terminal users.
 
 ```bash
 llmscribe-cui
 ```
-
-**Menu:**
 
 ```
 LLMScribe CUI
@@ -219,45 +163,31 @@ LLMScribe CUI
 Choose an option [1-3]:
 ```
 
-You can also pass flags to skip the menu entirely:
+You can also pass flags to skip the menu:
 
 ```bash
 llmscribe-cui --path /path/to/project --output summary.txt
-llmscribe-cui --gui --output summary.txt --tree-only
+llmscribe-cui --gui --tree-only
 ```
-
----
 
 ### Python API
 
-Import LLMScribe's core directly into your own Python scripts or tools.
-
-**Generate a summary string:**
-
 ```python
 from pathlib import Path
-from llmscribe.core.writer import build_project_summary
+from llmscribe.core.writer import build_project_summary, run
 
-summary = build_project_summary(
-    Path("/path/to/project"),
-    tree_only=True,
-)
-```
+# Return summary as a string
+summary = build_project_summary(Path("/path/to/project"), tree_only=False)
 
-**Generate and save to a file:**
-
-```python
-from pathlib import Path
-from llmscribe.core.writer import run
-
+# Generate and write to disk
 run(
     project_path=Path("/path/to/project"),
     output_file=Path("summary.txt"),
-    tree_only=True,
+    tree_only=False,
 )
 ```
 
-**Use individual components:**
+Lower-level components:
 
 ```python
 from pathlib import Path
@@ -268,36 +198,21 @@ from llmscribe import __version__
 project = Path("/path/to/project")
 ignore = [*DEFAULT_IGNORE, *load_gitignore(project)]
 
-tree     = generate_tree(project, ignore)
+tree = generate_tree(project, ignore)
 contents = extract_contents(project, ignore)
 
 print(tree)
 print(contents)
-print(f"Using LLMScribe {__version__}")
-```
-
----
-
-### Tree-only Output
-
-When tree-only mode is used (`--tree-only` on the CLI/CUI, or the checkbox in the GUI), only the project directory structure is exported — no files are opened or read.
-
-```text
-my-project/
-├── src/
-│   ├── main.py
-│   └── utils.py
-├── tests/
-└── README.md
+print(f"LLMScribe {__version__}")
 ```
 
 ---
 
 ## Output Format
 
-The output is a plain UTF-8 text file with two sections:
+Plain UTF-8 text with two sections:
 
-```
+```text
 Selected Files Directory Structure:
 
 my-project/
@@ -317,54 +232,74 @@ File Contents:
 --- src/utils.py ---
 <full contents of utils.py>
 
-... (and so on for every included file)
+...
 ```
 
-Files are listed in sorted order, and each file's contents are included in full — nothing is cut off or truncated.
+In tree-only mode only the directory structure is written. Files are processed in sorted order; contents are never truncated.
 
 ---
 
 ## What Gets Included
 
-LLMScribe reads files with the following extensions:
+Files whose extension is in the allowlist below are read in full:
 
 | Category | Extensions |
-|---|---|
+|----------|------------|
 | Python | `.py` |
 | JavaScript / TypeScript | `.js` `.ts` `.jsx` `.tsx` |
-| Systems languages | `.c` `.cpp` `.cc` `.cxx` `.h` `.hpp` `.rs` `.go` `.zig` |
-| JVM languages | `.java` `.scala` `.kt` `.clj` `.cljs` |
-| Other languages | `.rb` `.php` `.swift` `.dart` `.lua` `.pl` `.r` `.hs` `.ml` `.fs` `.vb` `.cs` `.ex` `.exs` `.nim` `.cr` `.d` `.elm` `.v` |
-| Web | `.html` `.htm` `.css` `.scss` `.sass` `.less` `.vue` `.svelte` `.pug` `.ejs` `.hbs` `.mustache` `.twig` `.jsp` `.asp` `.aspx` `.erb` `.haml` |
-| Config & manifests | `.json` `.xml` `.yaml` `.yml` `.toml` `.ini` `.cfg` `.conf` `.properties` `.env` `.dotenv` `.lock` `.sum` `.mod` `.gradle` `.pom` `.gitignore` `.gitattributes` `.editorconfig` `.prettierrc` `.eslintrc` `.babelrc` |
+| Systems | `.c` `.cpp` `.cc` `.cxx` `.h` `.hpp` `.rs` `.go` `.zig` `.v` `.d` `.nim` `.cr` |
+| JVM & others | `.java` `.scala` `.kt` `.clj` `.cljs` `.rb` `.php` `.swift` `.dart` `.lua` `.pl` `.pm` `.r` `.m` `.hs` `.ml` `.fs` `.fsx` `.vb` `.cs` `.ex` `.exs` `.elm` `.pony` `.tcl` `.tk` |
+| Web | `.html` `.htm` `.css` `.scss` `.sass` `.less` `.vue` `.svelte` `.pug` `.ejs` `.hbs` `.handlebars` `.mustache` `.twig` `.jsp` `.asp` `.aspx` `.erb` `.haml` |
+| Config & manifests | `.json` `.xml` `.yaml` `.yml` `.toml` `.ini` `.cfg` `.conf` `.properties` `.env` `.dotenv` `.lock` `.sum` `.mod` `.gradle` `.pom` `.gitignore` `.gitattributes` `.editorconfig` `.prettierrc` `.eslintrc` `.babelrc` `.nimble` |
 | Shell & scripts | `.sh` `.bash` `.zsh` `.fish` `.ps1` `.bat` `.cmd` `.awk` `.sed` |
 | Documentation | `.md` `.rst` `.adoc` `.tex` `.bib` `.txt` |
-| Data (text-based) | `.csv` `.tsv` `.sql` |
+| Data (text) | `.csv` `.tsv` `.sql` |
 | Logs | `.log` |
 
-Binary formats (`.pdf`, `.docx`, `.epub`, `.db`, `.sqlite`, `.parquet`, images, etc.) are intentionally excluded — they cannot be read as text.
+Binary formats (PDF, DOCX, images, databases, etc.) are excluded.
 
 ---
 
 ## What Gets Ignored
 
-The following are skipped automatically regardless of the project being scanned:
+Default ignore patterns (applied together with the project's `.gitignore`):
 
-**Directories:**
-
-| Category | Names |
-|---|---|
+| Category | Patterns |
+|----------|----------|
 | Version control | `.git` `.svn` `.hg` |
 | Dependencies | `node_modules` `vendor` `packages` |
-| Python envs | `venv` `__pycache__` `.eggs` `*.egg-info` |
+| Python | `venv` `__pycache__` `.eggs` `*.egg-info` |
 | Build outputs | `dist` `build` `target` `out` `bin` `obj` |
 | IDEs | `.idea` `.vscode` `.vs` |
 | OS artifacts | `.DS_Store` `Thumbs.db` `desktop.ini` |
-| Logs & temp | `logs` `tmp` `temp` `.tmp` `.cache` |
-| Test coverage | `.coverage` `coverage` `.nyc_output` |
+| Logs & temp | `logs` `tmp` `temp` `.tmp` `.cache` `*.log` |
+| Coverage | `.coverage` `coverage` `.nyc_output` |
 | Secrets | `.env` `.env.*` `secrets` |
 
-**Additionally:** any pattern present in the project's `.gitignore` file is loaded and applied on top of the defaults above.
+Any non-comment patterns from the project's own `.gitignore` are loaded and applied on top of these defaults. Common Git-style globs, anchored rules, and negation (`!`) are supported.
+
+---
+
+## Project Structure
+
+```text
+llmscribe/
+├── src/
+│   └── llmscribe/
+│       ├── __init__.py          # Package version
+│       ├── core/                # Scanning & writing logic
+│       │   ├── file_reader.py   # Extension allowlist + content extraction
+│       │   ├── tree_builder.py  # Directory tree + ignore engine
+│       │   └── writer.py        # Orchestrates tree + contents
+│       ├── cli/                 # Scriptable CLI
+│       ├── cui/                 # Interactive terminal menu
+│       └── gui/                 # Tkinter desktop app
+├── tests/
+├── pyproject.toml
+├── LICENSE
+├── README.md
+└── CONTRIBUTING.md
+```
 
 ---
 
@@ -372,46 +307,63 @@ The following are skipped automatically regardless of the project being scanned:
 
 ### `llmscribe.core.writer`
 
-#### build_project_summary(project_path, tree_only=False) → str
+#### `build_project_summary(project_path: Path, tree_only: bool = False) → str`
 
-Builds and returns the complete summary string for a project.
+Builds and returns the complete summary string.
 
-| Parameter | Type | Description |
-|---|---|---|
-| `project_path` | `Path` | Resolved path to the project root. |
-| `tree_only` | `bool` | Export only the directory tree, skipping file contents. |
+#### `run(project_path: Path, output_file: Path, tree_only: bool = False) → None`
 
-#### run(project_path, output_file, tree_only=False) → None
-
-Generates the summary and writes it to `output_file`. Prints progress and the final line count to stdout. Creates parent directories of `output_file` if they do not exist.
-
----
+Generates the summary and writes it to `output_file`. Creates parent directories as needed. Prints progress and line count.
 
 ### `llmscribe.core.file_reader`
 
-#### `extract_contents(root, ignore_patterns) → str`
-
-Walks `root` recursively, reads every file whose extension is in `TEXT_FILE_EXTENSIONS` and which does not match `ignore_patterns`, and returns all contents concatenated with `--- relative/path ---` headers. Files are read in full.
-
-#### `is_text_file(path) → bool`
-
-Returns `True` if `path.suffix.lower()` is in `TEXT_FILE_EXTENSIONS`.
-
----
+- `extract_contents(root, ignore_patterns) → str` — walks the tree and concatenates supported file contents with `--- path ---` headers.
+- `is_text_file(path) → bool` — checks against the extension allowlist.
+- `TEXT_FILE_EXTENSIONS` — the set of supported suffixes.
 
 ### `llmscribe.core.tree_builder`
 
-#### `generate_tree(root, ignore_patterns) → str`
+- `generate_tree(root, ignore_patterns) → str` — visual directory tree.
+- `load_gitignore(root) → list[str]` — non-comment patterns from `.gitignore`.
+- `should_ignore(path, ignore_patterns, root=None) → bool`
+- `DEFAULT_IGNORE` — built-in ignore set.
+- `IgnoreMatcher` — Git-style matcher used internally.
 
-Returns a multi-line string representing the directory tree rooted at `root`, skipping anything that matches `ignore_patterns`.
+---
 
-#### `load_gitignore(root) → list[str]`
+## Requirements
 
-Parses `root/.gitignore` and returns ordered non-comment, non-empty pattern strings. Common Git-style globs, anchored rules, and negation rules are supported. Returns an empty list if no `.gitignore` exists.
+- **Python 3.10** or higher
+- **Tkinter** — only required for the GUI (`llmscribe-gui`, `llmscribe --gui`, or CUI option 2). The core library and non-GUI CLI work without it.
 
-#### `should_ignore(path, ignore_patterns) → bool`
+On Linux you may need to install the system package:
 
-Returns `True` if `path` matches the supplied ignore rules.
+```bash
+# Debian / Ubuntu
+sudo apt install python3-tk
+
+# Fedora
+sudo dnf install python3-tkinter
+
+# Arch
+sudo pacman -S tk
+```
+
+No third-party Python packages are required.
+
+---
+
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+Please keep the pure-stdlib design and add tests for new behavior.
 
 ---
 
