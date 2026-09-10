@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html, body { margin: 0; background: #888; }
+    .row { display: flex; gap: 16px; padding: 16px; align-items: end; }
+    .cell { display: flex; flex-direction: column; gap: 4px; font: 11px/1.2 sans-serif; color: #111; }
+    img, object, svg { display: block; image-rendering: pixelated; }
+    .s16 { width: 16px; height: 16px; }
+    .s32 { width: 32px; height: 32px; }
+    .s64 { width: 64px; height: 64px; }
+    .checker { background:
+      linear-gradient(45deg, #ccc 25%, transparent 25%),
+      linear-gradient(-45deg, #ccc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #ccc 75%),
+      linear-gradient(-45deg, transparent 75%, #ccc 75%);
+      background-size: 8px 8px;
+      background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <div class="cell"><div class="checker"><img class="s16" src="favicon.svg"></div>16</div>
+    <div class="cell"><div class="checker"><img class="s32" src="favicon.svg"></div>32</div>
+    <div class="cell"><div class="checker"><img class="s64" src="favicon.svg"></div>64</div>
+  </div>
+</body>
+</html>
