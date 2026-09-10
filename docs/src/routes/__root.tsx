@@ -1,6 +1,4 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { AuthProvider } from "@/lib/auth/provider";
-import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
@@ -38,20 +36,17 @@ export const Route = createRootRoute({
         <HeadContent />
       </head>
       <body className="min-h-dvh bg-bg text-fg">
-        <PreviewHostBridge />
-        <AuthProvider>
-          <TooltipProvider delayDuration={200}>
-            <Outlet />
-            <Toaster
-              theme="dark"
-              position="bottom-right"
-              toastOptions={{
-                className:
-                  "!bg-elevated !text-fg !border-border !font-sans !shadow-panel",
-              }}
-            />
-          </TooltipProvider>
-        </AuthProvider>
+        <TooltipProvider delayDuration={200}>
+          <Outlet />
+          <Toaster
+            theme="dark"
+            position="bottom-right"
+            toastOptions={{
+              className:
+                "!bg-elevated !text-fg !border-border !font-sans !shadow-panel",
+            }}
+          />
+        </TooltipProvider>
         <Scripts />
       </body>
     </html>
