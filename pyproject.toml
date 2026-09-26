@@ -32,7 +32,9 @@ classifiers = [
     "Topic :: Software Development :: Documentation",
     "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = [
+    "mcp>=1.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/AMRITO-KUNDU/LLMScribe"
@@ -43,6 +45,7 @@ Issues = "https://github.com/AMRITO-KUNDU/LLMScribe/issues"
 llmscribe = "llmscribe.cli.main:main"
 llmscribe-gui = "llmscribe.gui.app:main"
 llmscribe-cui = "llmscribe.cui.main:main"
+llmscribe-mcp = "llmscribe.mcp.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
