@@ -1,4 +1,4 @@
-import { ArrowDown, Github } from "lucide-react";
+import { ArrowDown, Github, Bot, Monitor } from "lucide-react";
 import { CopyButton } from "@/components/site/copy-button";
 import { GuiMock } from "@/components/site/gui-mock";
 import { Badge } from "@/components/ui/badge";
@@ -12,16 +12,21 @@ export function Hero() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge>v{SITE.version} on PyPI</Badge>
-            <Badge variant="outline">Python {SITE.python}</Badge>
+            <Badge variant="outline" className="gap-1">
+              <Bot className="size-3" /> MCP Server Built-in
+            </Badge>
+            <Badge variant="outline" className="gap-1">
+              <Monitor className="size-3" /> Standalone EXE
+            </Badge>
             <Badge variant="outline">Apache 2.0</Badge>
           </div>
 
           <h1 className="display mt-6 max-w-xl text-4xl text-fg sm:text-5xl lg:text-6xl">
-            Give any project to an AI in one file.
+            Give any project to an AI in seconds.
           </h1>
 
           <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-            {SITE.tagline} No configuration. Windows, macOS, and Linux.
+            {SITE.tagline} Zero configuration. Built for AI agents, terminal power users, and non-technical desktop users.
           </p>
 
           <div className="mt-8 flex max-w-md items-center gap-2 rounded-lg border border-border bg-surface p-1.5 pl-4">
@@ -37,16 +42,17 @@ export function Hero() {
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a href={SITE.github} target="_blank" rel="noreferrer">
-                <Github />
+                <Github className="size-4" />
                 View source
               </a>
             </Button>
           </div>
 
           <p className="mt-6 text-sm text-subtle">
-            Three commands:{" "}
+            Four ways to run:{" "}
+            <code className="font-mono text-muted">llmscribe-mcp</code>,{" "}
+            <code className="font-mono text-muted">LLMScribe-GUI.exe</code>,{" "}
             <code className="font-mono text-muted">llmscribe</code>,{" "}
-            <code className="font-mono text-muted">llmscribe-gui</code>,{" "}
             <code className="font-mono text-muted">llmscribe-cui</code>
           </p>
         </div>

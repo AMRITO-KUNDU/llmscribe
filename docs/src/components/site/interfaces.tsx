@@ -3,6 +3,14 @@
 import { CopyButton } from "@/components/site/copy-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const MCP_CONFIG = `{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}`;
+
 const CLI = `llmscribe --path /path/to/your/project
 
 # Save to a specific place
@@ -20,38 +28,57 @@ const CUI = `LLMScribe CUI
 3) Quit
 Choose an option [1-3]:`;
 
+const EXE_BUILD = `# Build standalone LLMScribe-GUI.exe from source using PyInstaller:
+pip install pyinstaller
+python build_exe.py
+
+# Output binary placed at dist/LLMScribe-GUI.exe`;
+
 export function Interfaces() {
   return (
     <section id="interfaces" className="scroll-mt-20 border-t border-border">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
         <p className="font-mono text-xs tracking-widest text-primary uppercase">
-          Three interfaces
+          Four interfaces
         </p>
         <h2 className="display mt-3 max-w-2xl text-3xl sm:text-4xl">
-          A desktop window, a terminal menu, and a scriptable CLI.
+          An MCP server for agents, a standalone EXE, a desktop GUI, and a CLI.
         </h2>
         <p className="mt-4 max-w-xl text-muted">
-          Install once. Use whichever fits the moment — recommended GUI for most people, CLI when
-          you already know the path, CUI if you prefer a numbered menu.
+          Install once. Use whichever fits the situation — MCP server for AI agents, standalone EXE for non-tech users, recommended Python GUI for desktop users, CLI for terminal power users.
         </p>
 
-        <Tabs defaultValue="gui" className="mt-10">
-          <TabsList className="w-full max-w-md sm:w-auto">
-            <TabsTrigger value="gui" className="flex-1 sm:flex-none">
-              GUI
-            </TabsTrigger>
-            <TabsTrigger value="cli" className="flex-1 sm:flex-none">
-              CLI
-            </TabsTrigger>
-            <TabsTrigger value="cui" className="flex-1 sm:flex-none">
-              CUI
-            </TabsTrigger>
+        <Tabs defaultValue="mcp" className="mt-10">
+          <TabsList className="w-full max-w-2xl sm:w-auto grid grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger value="mcp">MCP Server</TabsTrigger>
+            <TabsTrigger value="exe">Standalone EXE</TabsTrigger>
+            <TabsTrigger value="gui">Desktop GUI</TabsTrigger>
+
+            <TabsTrigger value="cli">CLI / CUI</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="mcp">
+            <InterfaceCard
+              title="llmscribe-mcp (For AI Agents)"
+              blurb="Model Context Protocol (MCP) server providing 7 tools for AI coding tools (Cursor, Claude Desktop, Windsurf, Roo Code, Goose)."
+              command={MCP_CONFIG}
+              extra="Provides project_overview, project_map, project_search, project_list_files, project_get_file, project_get_files, and project_diff."
+            />
+          </TabsContent>
+
+          <TabsContent value="exe">
+            <InterfaceCard
+              title="LLMScribe-GUI.exe (No Python Required)"
+              blurb="Single-file standalone Windows executable for non-technical users. Download from GitHub Releases and double-click to launch immediately."
+              command={EXE_BUILD}
+              extra="Bundles Python, CustomTkinter, and dependencies into a self-contained ~29 MB binary."
+            />
+          </TabsContent>
 
           <TabsContent value="gui">
             <InterfaceCard
               title="llmscribe-gui"
-              blurb="A window appears. Choose a folder, optionally rename the output, tick Tree only if you only want structure, then Generate. When it finishes you can Copy the text or Open the saved file."
+              blurb="Modern CustomTkinter desktop window. Choose a folder, toggle Tree only, and click Generate to preview, copy, or open saved files."
               command="llmscribe-gui"
               extra="Also: llmscribe --gui  ·  python -m llmscribe.gui"
             />
@@ -59,18 +86,10 @@ export function Interfaces() {
 
           <TabsContent value="cli">
             <InterfaceCard
-              title="llmscribe"
-              blurb="Fastest once you know the path. Default output is project_overview.txt in the folder where you ran the command."
+              title="llmscribe & llmscribe-cui"
+              blurb="CLI for fast scriptable export, and CUI for interactive numbered menu choice in the terminal."
               command={CLI}
-              extra="Requires Python 3.10 or newer. Tkinter is not needed for CLI mode."
-            />
-          </TabsContent>
-
-          <TabsContent value="cui">
-            <InterfaceCard
-              title="llmscribe-cui"
-              blurb="A simple numbered menu in the terminal. Type 1 and paste a path, or type 2 to open the same graphical folder picker used by the desktop app."
-              command={CUI}
+              extra="Interactive CUI available via llmscribe-cui"
             />
           </TabsContent>
         </Tabs>

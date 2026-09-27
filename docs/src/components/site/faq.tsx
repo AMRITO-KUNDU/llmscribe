@@ -7,28 +7,28 @@ import {
 
 const ITEMS = [
   {
-    q: "I don’t have a terminal. How do I open one?",
-    a: "Windows: Win + R, type cmd or powershell, press Enter. macOS: Cmd + Space, type Terminal, press Enter. Linux: Ctrl + Alt + T on most distributions. Then run llmscribe-gui for the desktop window.",
+    q: "How do I connect LLMScribe to Cursor or Claude Desktop?",
+    a: "Add LLMScribe to your MCP client config (mcpServers block in Cursor or Claude Desktop) using command 'llmscribe-mcp'. Your AI agent will automatically gain access to all 7 project tools.",
   },
   {
-    q: "The GUI doesn’t open / complains about Tkinter.",
-    a: "On some Linux systems you need the system package first: python3-tk on Ubuntu/Debian, python3-tkinter on Fedora, tk on Arch. Command-line mode (llmscribe --path …) works without Tkinter.",
+    q: "Can non-technical users run the GUI without installing Python?",
+    a: "Yes. Download LLMScribe-GUI.exe from the latest GitHub Release. It is a self-contained ~29 MB binary that runs directly on Windows without requiring Python or pip.",
   },
   {
-    q: "Where does the file get saved?",
-    a: "By default it is saved as project_overview.txt in the folder where you ran the command. Use --output to put it anywhere you like. In the GUI you can change the output path before generating.",
+    q: "What tools are included in the MCP server?",
+    a: "7 tools: project_overview, project_map, project_search, project_list_files, project_get_file, project_get_files (batch file fetch with 50-file limit), and project_diff (git status & diffs).",
   },
   {
-    q: "Which files are included?",
-    a: "Any file with a common source or text extension — .py, .js, .ts, .jsx, .tsx, .java, .go, .rs, .md, .json, .yaml, .toml, .html, .css, .sh, and many more. Binary assets and dependency trees are skipped.",
+    q: "Does it support both Markdown and JSON output formats?",
+    a: "Yes. All MCP tools support format='markdown' (default) and format='json'. In JSON mode, responses return structured tree/files arrays and metadata (file_count, character_count, match_count, etc.).",
   },
   {
     q: "Does it respect .gitignore?",
-    a: "Yes. Anything listed in the project’s own .gitignore is ignored, along with .git, node_modules, venv, __pycache__, dist, build, .idea, .vscode, .DS_Store, and Thumbs.db.",
+    a: "Yes. Anything listed in the project's own .gitignore is ignored automatically, along with .git, node_modules, venv, __pycache__, dist, build, .idea, .vscode, .DS_Store, and Thumbs.db.",
   },
   {
-    q: "Can I export only the folder tree?",
-    a: "Yes. Pass --tree-only on the CLI, or tick Tree only in the GUI. You get the directory structure without file contents — useful when the model only needs layout.",
+    q: "Can I export only the folder tree structure?",
+    a: "Yes. Pass --tree-only on the CLI, tick Tree only in the GUI, or call project_map() via MCP to get the directory layout without file contents.",
   },
 ];
 

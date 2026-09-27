@@ -38,5 +38,9 @@ dist/
 Thumbs.db
 desktop.ini
 
+# Web & Node
+node_modules/
+.vercel/
+
 # Logs
 *.log

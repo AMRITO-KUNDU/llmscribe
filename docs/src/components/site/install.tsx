@@ -5,23 +5,18 @@ const SOURCE = `git clone https://github.com/AMRITO-KUNDU/LLMScribe.git
 cd LLMScribe
 pip install -e .`;
 
-const LINUX_TK = `# Ubuntu / Debian
-sudo apt install python3-tk
-
-# Fedora
-sudo dnf install python3-tkinter
-
-# Arch
-sudo pacman -S tk`;
+const BUILD_EXE = `# Build standalone LLMScribe-GUI.exe:
+pip install pyinstaller
+python build_exe.py`;
 
 export function Install() {
   return (
     <section id="install" className="scroll-mt-20 border-t border-border">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
         <p className="font-mono text-xs tracking-widest text-primary uppercase">Install</p>
-        <h2 className="display mt-3 text-3xl sm:text-4xl">On PyPI. One command.</h2>
+        <h2 className="display mt-3 text-3xl sm:text-4xl">Available on PyPI or Standalone EXE.</h2>
         <p className="mt-4 max-w-xl text-muted">
-          Requires Python {SITE.python}. After install, three commands are on your PATH.
+          Install from PyPI using Python {SITE.python}, or download the pre-compiled LLMScribe-GUI.exe from GitHub Releases.
         </p>
 
         <div className="mt-10 overflow-hidden rounded-xl border border-border bg-surface">
@@ -37,16 +32,17 @@ export function Install() {
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <CodePanel title="From source" code={SOURCE} />
           <CodePanel
-            title="Linux GUI (Tkinter)"
-            code={LINUX_TK}
-            note="Only needed if the desktop window fails to open. The CLI always works without it."
+            title="Build Standalone EXE"
+            code={BUILD_EXE}
+            note="Generates dist/LLMScribe-GUI.exe (PyInstaller executable for non-tech users)."
           />
         </div>
 
-        <dl className="mt-10 grid gap-6 sm:grid-cols-3">
-          <Fact term="llmscribe" def="Command-line tool. Fastest once you know the path." />
-          <Fact term="llmscribe-gui" def="Desktop window. Recommended for most people." />
-          <Fact term="llmscribe-cui" def="Numbered menu in the terminal." />
+        <dl className="mt-10 grid gap-6 sm:grid-cols-4">
+          <Fact term="llmscribe-mcp" def="MCP server for AI agents in Cursor & Claude." />
+          <Fact term="LLMScribe-GUI.exe" def="Standalone desktop app (no Python needed)." />
+          <Fact term="llmscribe" def="Command-line tool for fast path exports." />
+          <Fact term="llmscribe-cui" def="Numbered terminal menu." />
         </dl>
       </div>
     </section>
