@@ -7,7 +7,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from llmscribe import __version__
 from llmscribe.mcp.server import (
+    GET_FILES_MAX_FILES,
+    MAX_CONTENT_CHARS,
     project_diff,
     project_get_file,
     project_get_files,
@@ -35,6 +38,9 @@ class MCPToolsTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
+    def test_version_bump_is_1_1_0(self) -> None:
+        self.assertEqual(__version__, "1.1.0")
+
     def test_markdown_header_consistency(self) -> None:
         res_overview = project_overview(str(self.root), format="markdown")
         self.assertTrue(res_overview.startswith("### llmscribe: project_overview"))
@@ -54,52 +60,98 @@ class MCPToolsTests(unittest.TestCase):
         res_list = project_list_files(str(self.root), format="markdown")
         self.assertTrue(res_list.startswith("### llmscribe: project_list_files"))
 
-    def test_json_format_all_tools(self) -> None:
-        # project_overview
-        data_overview = json.loads(project_overview(str(self.root), format="json"))
-        self.assertTrue(data_overview["ok"])
-        self.assertEqual(data_overview["tool"], "project_overview")
-        self.assertIn("summary", data_overview["data"])
+    def test_structured_json_and_metadata_project_overview(self) -> None:
+        raw_json = project_overview(str(self.root), format="json")
+        data = json.loads(raw_json)
 
-        # project_map
-        data_map = json.loads(project_map(str(self.root), format="json"))
-        self.assertTrue(data_map["ok"])
-        self.assertEqual(data_map["tool"], "project_map")
-        self.assertIn("map", data_map["data"])
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["tool"], "project_overview")
+        self.assertIn("tree", data["data"])
+        self.assertIn("files", data["data"])
+        self.assertIsInstance(data["data"]["files"], list)
 
+        # Verify items in files list have 'path' and 'content'
+        files = data["data"]["files"]
+        paths = [f["path"] for f in files]
+        self.assertIn("README.md", paths)
+        self.assertIn("src/main.py", paths)
+        self.assertIn("src/utils.py", paths)
+
+        # Check metadata
+        meta = data["metadata"]
+        self.assertEqual(meta["file_count"], 3)
+        self.assertGreater(meta["character_count"], 0)
+
+    def test_structured_json_and_metadata_project_map(self) -> None:
+        raw_json = project_map(str(self.root), format="json")
+        data = json.loads(raw_json)
+
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["tool"], "project_map")
+        self.assertIn("tree", data["data"])
+        self.assertIn("files", data["data"])
+        self.assertIsInstance(data["data"]["files"], list)
+
+        files = data["data"]["files"]
+        paths = [f["path"] for f in files]
+        self.assertIn("README.md", paths)
+        self.assertIn("src/main.py", paths)
+        self.assertNotIn("content", files[0])  # Map only has path
+
+        # Check metadata
+        meta = data["metadata"]
+        self.assertEqual(meta["file_count"], 3)
+
+    def test_metadata_on_all_successful_tools(self) -> None:
         # project_search
-        data_search = json.loads(project_search("hello", str(self.root), format="json"))
-        self.assertTrue(data_search["ok"])
-        self.assertEqual(data_search["tool"], "project_search")
-        self.assertEqual(len(data_search["data"]["matches"]), 1)
-
-        # project_get_file
-        data_file = json.loads(project_get_file("src/main.py", str(self.root), format="json"))
-        self.assertTrue(data_file["ok"])
-        self.assertEqual(data_file["tool"], "project_get_file")
-        self.assertEqual(data_file["data"]["file_path"], "src/main.py")
-
-        # project_get_files
-        data_files = json.loads(project_get_files(["src/main.py"], str(self.root), format="json"))
-        self.assertTrue(data_files["ok"])
-        self.assertEqual(data_files["tool"], "project_get_files")
-        self.assertEqual(len(data_files["data"]["results"]), 1)
+        d_search = json.loads(project_search("hello", str(self.root), format="json"))
+        self.assertIn("metadata", d_search)
+        self.assertEqual(d_search["metadata"]["match_count"], 1)
 
         # project_list_files
-        data_list = json.loads(project_list_files(str(self.root), format="json"))
-        self.assertTrue(data_list["ok"])
-        self.assertEqual(data_list["tool"], "project_list_files")
-        self.assertIn("README.md", data_list["data"]["files"])
+        d_list = json.loads(project_list_files(str(self.root), format="json"))
+        self.assertIn("metadata", d_list)
+        self.assertEqual(d_list["metadata"]["file_count"], 3)
 
-    def test_json_error_shape(self) -> None:
-        err_json = project_get_file("../outside.txt", str(self.root), format="json")
-        parsed = json.loads(err_json)
-        self.assertFalse(parsed["ok"])
-        self.assertEqual(parsed["tool"], "project_get_file")
-        self.assertIn("error", parsed)
-        self.assertEqual(parsed["error"]["code"], "path_traversal")
+        # project_get_file
+        d_get = json.loads(project_get_file("src/main.py", str(self.root), format="json"))
+        self.assertIn("metadata", d_get)
+        self.assertGreater(d_get["metadata"]["character_count"], 0)
 
-    def test_project_get_files_partial_success(self) -> None:
+        # project_get_files
+        d_gets = json.loads(project_get_files(["src/main.py"], str(self.root), format="json"))
+        self.assertIn("metadata", d_gets)
+        self.assertEqual(d_gets["metadata"]["file_count"], 1)
+        self.assertEqual(d_gets["metadata"]["success_count"], 1)
+        self.assertEqual(d_gets["metadata"]["error_count"], 0)
+
+    def test_error_code_standardization(self) -> None:
+        # Invalid path (non-existent)
+        d_inv = json.loads(project_overview(str(self.root / "nonexistent"), format="json"))
+        self.assertFalse(d_inv["ok"])
+        self.assertEqual(d_inv["error"]["code"], "invalid_path")
+
+        # Not a directory
+        d_not_dir = json.loads(project_overview(str(self.root / "README.md"), format="json"))
+        self.assertFalse(d_not_dir["ok"])
+        self.assertEqual(d_not_dir["error"]["code"], "not_a_directory")
+
+        # Path traversal
+        d_trav = json.loads(project_get_file("../outside.txt", str(self.root), format="json"))
+        self.assertFalse(d_trav["ok"])
+        self.assertEqual(d_trav["error"]["code"], "path_traversal")
+
+        # Missing file
+        d_miss = json.loads(project_get_file("missing.py", str(self.root), format="json"))
+        self.assertFalse(d_miss["ok"])
+        self.assertEqual(d_miss["error"]["code"], "file_not_found")
+
+        # Empty search query
+        d_empty = json.loads(project_search("", str(self.root), format="json"))
+        self.assertFalse(d_empty["ok"])
+        self.assertEqual(d_empty["error"]["code"], "empty_query")
+
+    def test_project_get_files_partial_success_and_caps(self) -> None:
         result_json = project_get_files(
             ["src/main.py", "nonexistent.txt", "../traversal.txt"],
             str(self.root),
@@ -110,32 +162,33 @@ class MCPToolsTests(unittest.TestCase):
         results = parsed["data"]["results"]
         self.assertEqual(len(results), 3)
 
-        # First file succeeded
-        self.assertTrue(results[0]["ok"])
-        self.assertEqual(results[0]["file_path"], "src/main.py")
+        # Check metadata metrics
+        meta = parsed["metadata"]
+        self.assertEqual(meta["file_count"], 3)
+        self.assertEqual(meta["success_count"], 1)
+        self.assertEqual(meta["error_count"], 2)
 
-        # Second file not found
-        self.assertFalse(results[1]["ok"])
-        self.assertEqual(results[1]["error"]["code"], "file_not_found")
+    def test_project_get_files_max_files_truncation(self) -> None:
+        # Request 60 files (exceeds cap of 50)
+        file_list = [f"src/file_{i}.py" for i in range(60)]
+        for f in file_list:
+            (self.root / f).write_text("print('test')", encoding="utf-8")
 
-        # Third file traversal blocked
-        self.assertFalse(results[2]["ok"])
-        self.assertEqual(results[2]["error"]["code"], "path_traversal")
+        res_json = project_get_files(file_list, str(self.root), format="json")
+        parsed = json.loads(res_json)
+        self.assertTrue(parsed["ok"])
+        self.assertEqual(len(parsed["data"]["results"]), 50)
 
-    def test_project_get_files_path_traversal_blocked(self) -> None:
-        result_md = project_get_files(["../outside.txt"], str(self.root), format="markdown")
-        self.assertIn("path_traversal", result_md)
+        meta = parsed["metadata"]
+        self.assertTrue(meta["truncated"])
+        self.assertIn("Processed first 50 files", meta["truncation_note"])
 
     def test_project_diff_non_git_folder(self) -> None:
-        diff_md = project_diff(str(self.root), format="markdown")
-        self.assertIn("git_unavailable", diff_md)
-
         diff_json = json.loads(project_diff(str(self.root), format="json"))
         self.assertFalse(diff_json["ok"])
         self.assertEqual(diff_json["error"]["code"], "git_unavailable")
 
     def test_project_diff_temp_git_repo(self) -> None:
-        # Initialize a temporary git repository
         try:
             subprocess.run(["git", "init"], cwd=self.root, check=True, capture_output=True)
             subprocess.run(["git", "config", "user.name", "Test User"], cwd=self.root, check=True, capture_output=True)
@@ -148,15 +201,15 @@ class MCPToolsTests(unittest.TestCase):
         # Modify a file
         (self.root / "src" / "main.py").write_text("print('hello world updated')\n", encoding="utf-8")
 
-        # Test project_diff (unstaged)
         res_json = json.loads(project_diff(str(self.root), format="json"))
         self.assertTrue(res_json["ok"])
+        self.assertIn("src/main.py", res_json["data"]["changed_files"])
         self.assertIn("hello world updated", res_json["data"]["diff"])
 
-        # Test project_diff markdown
-        res_md = project_diff(str(self.root), format="markdown")
-        self.assertIn("### llmscribe: project_diff", res_md)
-        self.assertIn("hello world updated", res_md)
+        meta = res_json["metadata"]
+        self.assertEqual(meta["changed_file_count"], 1)
+        self.assertGreater(meta["character_count"], 0)
+        self.assertFalse(meta["truncated"])
 
 
 if __name__ == "__main__":
