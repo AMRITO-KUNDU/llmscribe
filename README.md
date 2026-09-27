@@ -191,9 +191,21 @@ To prevent prompt context blow-ups, LLMScribe enforces deterministic guards:
 
 Human developer interfaces:
 
+* **Standalone Windows Executable**: Download `LLMScribe-GUI.exe` directly from GitHub Releases (no Python required).
 * **CLI**: `llmscribe --path /path/to/project --output summary.txt`
-* **GUI**: `llmscribe-gui`
+* **GUI (from Python)**: `llmscribe-gui`
 * **CUI**: `llmscribe-cui`
+
+### Building the Standalone Executable from Source
+
+To build `LLMScribe-GUI.exe` locally using PyInstaller:
+
+```bash
+pip install pyinstaller
+python build_exe.py
+```
+
+The compiled binary will be placed at `dist/LLMScribe-GUI.exe`.
 
 ---
 

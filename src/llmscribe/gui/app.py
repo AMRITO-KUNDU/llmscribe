@@ -1,15 +1,18 @@
-"""Modern LLMScribe GUI — platform-native dark design language.
+"""Modern LLMScribe GUI — built on customtkinter for real anti-aliased widgets.
 
-Adapts its palette and typography to the host platform:
-  • Windows  -> Fluent-style dark (Segoe UI, light-blue accent)
-  • Linux    -> GNOME/Adwaita-style dark (Cantarell/Ubuntu, blue accent)
-  • macOS    -> San Francisco type, iOS/macOS-style dark palette
-  • other    -> falls back to the Linux/Adwaita palette
+Why customtkinter instead of plain Tkinter/ttk:
+  Plain Tk/ttk has no anti-aliasing and no image-based rendering, so any
+  rounded corner or pill shape has to be hand-drawn on a Canvas and comes
+  out visibly jagged. customtkinter renders every control (buttons,
+  switches, entries, scrollbars) as anti-aliased images and redraws them
+  automatically on resize, so corners are actually smooth and the toggle
+  switch/scrollbar look like real, finished controls rather than an
+  approximation.
 
-Uses ttk (not hand-rolled Canvas widgets) for every interactive control
-so that grid alignment, stretching and hover/disabled states are handled
-by Tk's own layout engine rather than custom code — this keeps buttons,
-entries and scrollbars pixel-aligned with each other at any window size.
+Platform-aware accent color (kept from the previous version): the shapes
+now come from customtkinter itself, but the palette still leans toward a
+Windows-Fluent-ish light blue on Windows and a GNOME/Adwaita-ish blue on
+Linux, so the app doesn't look identical everywhere.
 """
 
 from __future__ import annotations
@@ -21,6 +24,8 @@ import threading
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
+
+import customtkinter as ctk
 
 
 @dataclass(frozen=True)
@@ -62,117 +67,44 @@ def _resolve_theme(available_fonts: set[str]) -> dict:
 
     if system == "Windows":
         colors = dict(
-            BG="#202020", SURFACE="#2c2c2c", SURFACE2="#383838",
+            BG="#202020", SURFACE="#2b2b2b", SURFACE2="#353535",
             SURFACE3="#454545", BORDER="#3f3f3f",
-            ACCENT="#60cdff", ACCENT_HOV="#7fd8ff", ACCENT_PRESS="#3fb8ee",
+            ACCENT="#60cdff", ACCENT_HOV="#7fd8ff",
             TEXT="#ffffff", SUBTEXT="#c5c5c5", MUTED="#8a8a8a",
-            SUCCESS="#6ccb5f", ERROR_C="#ff99a4",
-            ON_ACCENT="#000000",
+            SUCCESS="#6ccb5f", ERROR_C="#ff99a4", ON_ACCENT="#000000",
         )
-        ui_candidates = ["Segoe UI Variable Text", "Segoe UI", "Segoe UI Semibold"]
+        ui_candidates = ["Segoe UI Variable Text", "Segoe UI"]
         title_candidates = ["Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"]
         mono_candidates = ["Cascadia Code", "Cascadia Mono", "Consolas"]
-        icon_candidates = ["Segoe UI Symbol", "Segoe UI"]
     elif system == "Darwin":
         colors = dict(
             BG="#1c1c1e", SURFACE="#242426", SURFACE2="#2e2e30",
             SURFACE3="#3a3a3c", BORDER="#3a3a3c",
-            ACCENT="#0a84ff", ACCENT_HOV="#3395ff", ACCENT_PRESS="#0069d9",
+            ACCENT="#0a84ff", ACCENT_HOV="#3395ff",
             TEXT="#f5f5f7", SUBTEXT="#a1a1a6", MUTED="#8e8e93",
-            SUCCESS="#32d74b", ERROR_C="#ff453a",
-            ON_ACCENT="#ffffff",
+            SUCCESS="#32d74b", ERROR_C="#ff453a", ON_ACCENT="#ffffff",
         )
         ui_candidates = ["SF Pro Text", "Helvetica Neue", "Helvetica"]
         title_candidates = ["SF Pro Display", "Helvetica Neue"]
         mono_candidates = ["SF Mono", "Menlo", "Monaco"]
-        icon_candidates = ["SF Pro Text", "Helvetica Neue"]
     else:  # Linux and everything else -> GNOME / Adwaita-dark
         colors = dict(
-            BG="#1e1e1e", SURFACE="#2d2d2d", SURFACE2="#383838",
-            SURFACE3="#454545", BORDER="#444444",
-            ACCENT="#3584e4", ACCENT_HOV="#4a90e8", ACCENT_PRESS="#2b6dc4",
+            BG="#1e1e1e", SURFACE="#282828", SURFACE2="#333333",
+            SURFACE3="#3f3f3f", BORDER="#444444",
+            ACCENT="#3584e4", ACCENT_HOV="#4a90e8",
             TEXT="#eeeeec", SUBTEXT="#b3b3b0", MUTED="#8a8a87",
-            SUCCESS="#57e389", ERROR_C="#ff7b63",
-            ON_ACCENT="#ffffff",
+            SUCCESS="#57e389", ERROR_C="#ff7b63", ON_ACCENT="#ffffff",
         )
         ui_candidates = ["Cantarell", "Ubuntu", "Noto Sans", "DejaVu Sans"]
         title_candidates = ["Cantarell", "Ubuntu", "Noto Sans"]
         mono_candidates = ["JetBrains Mono", "Ubuntu Mono", "Noto Sans Mono", "DejaVu Sans Mono"]
-        icon_candidates = ["Noto Sans Symbols", "DejaVu Sans"]
 
     ui_font = _first_available_font(ui_candidates, available_fonts)
     title_font = _first_available_font(title_candidates, available_fonts)
     mono_font = _first_available_font(mono_candidates, available_fonts)
-    icon_font = _first_available_font(icon_candidates, available_fonts)
 
-    fonts = dict(
-        UI=(ui_font, 10),
-        LABEL=(ui_font, 9),
-        LABEL_CAPS=(ui_font, 8),
-        TITLE=(title_font, 14, "bold"),
-        MONO=(mono_font, 10),
-        STATUS=(ui_font, 9),
-        BTN=(ui_font, 10, "bold" if system != "Darwin" else "normal"),
-        ICON=(icon_font, 12),
-    )
-
-    return {"system": system, **colors, "fonts": fonts}
-
-
-class ToggleSwitch:
-    """A pill-shaped on/off switch bound to a tk.BooleanVar.
-
-    Both Windows 11 Settings and GNOME Settings use this in place of a
-    checkbox for boolean options — it's fixed-size and self-contained,
-    so it doesn't interact with (or destabilize) the grid layout the
-    way a stretching custom widget would.
-    """
-
-    def __init__(self, parent, theme, variable, on_toggle=None, width=42, height=24):
-        import tkinter as tk
-        self.theme = theme
-        self.var = variable
-        self.on_toggle = on_toggle
-        self.w, self.h = width, height
-        self.r = height / 2
-
-        self.canvas = tk.Canvas(
-            parent, width=width, height=height, bg=parent.cget("bg"),
-            highlightthickness=0, bd=0, cursor="hand2",
-        )
-        self._draw()
-        self.canvas.bind("<Button-1>", self._toggle)
-
-    def _round_pts(self, x1, y1, x2, y2, r):
-        return [
-            x1 + r, y1, x2 - r, y1, x2, y1, x2, y1 + r,
-            x2, y2 - r, x2, y2, x2 - r, y2, x1 + r, y2,
-            x1, y2, x1, y2 - r, x1, y1 + r, x1, y1,
-        ]
-
-    def _draw(self):
-        t = self.theme
-        on = self.var.get()
-        track = t["ACCENT"] if on else t["SURFACE3"]
-        c = self.canvas
-        c.delete("all")
-        pts = self._round_pts(0, 0, self.w, self.h, self.r)
-        c.create_polygon(pts, fill=track, outline=track, smooth=True)
-        knob_x = self.w - self.r if on else self.r
-        pad = 3
-        c.create_oval(
-            knob_x - self.r + pad, pad, knob_x + self.r - pad, self.h - pad,
-            fill="#ffffff", outline="",
-        )
-
-    def _toggle(self, _event=None):
-        self.var.set(not self.var.get())
-        self._draw()
-        if self.on_toggle:
-            self.on_toggle()
-
-    def grid(self, **kw):
-        self.canvas.grid(**kw)
+    return {"system": system, "font_ui": ui_font, "font_title": title_font,
+            "font_mono": mono_font, **colors}
 
 
 # ─────────────────────────────────────────────────────────
@@ -180,287 +112,201 @@ class ToggleSwitch:
 # ─────────────────────────────────────────────────────────
 
 def main() -> None:
-    try:
-        import tkinter as tk
-        from tkinter import filedialog, ttk, font as tkfont
-    except ImportError as exc:
-        raise SystemExit("Tkinter is required to run the GUI.") from exc
-
     from llmscribe.core.writer import build_project_summary
 
-    SIDE_PAD = 24  # single inset used by every row so left/right edges line up
+    ctk.set_appearance_mode("dark")
 
-    class App(tk.Tk):
+    SIDE_PAD = 24
+    RADIUS = 8
+
+    class App(ctk.CTk):
         def __init__(self):
             super().__init__()
-            self.withdraw()  # hide until themed, to avoid a flash of default styling
 
-            available = set(tkfont.families(self))
+            import tkinter.font as tkfont
+            available = set(tkfont.families())
             self.theme = _resolve_theme(available)
             T = self.theme
+
+            self.fonts = {
+                "title": ctk.CTkFont(family=T["font_title"], size=17, weight="bold"),
+                "ui": ctk.CTkFont(family=T["font_ui"], size=13),
+                "ui_bold": ctk.CTkFont(family=T["font_ui"], size=13, weight="bold"),
+                "label": ctk.CTkFont(family=T["font_ui"], size=11),
+                "caps": ctk.CTkFont(family=T["font_ui"], size=10),
+                "mono": ctk.CTkFont(family=T["font_mono"], size=13),
+                "status": ctk.CTkFont(family=T["font_ui"], size=11),
+            }
 
             self.title("LLMScribe")
             self.geometry("1180x720")
             self.minsize(880, 560)
-            self.configure(bg=T["BG"])
+            self.configure(fg_color=T["BG"])
 
             self._queue: queue.Queue[_WorkerResult] = queue.Queue()
             self._running = False
             self._last_summary: str = ""
             self._last_output_file: Path | None = None
 
-            self.project_var = tk.StringVar()
-            self.output_var = tk.StringVar(value=str(Path.cwd() / "project_overview.txt"))
-            self.tree_only_var = tk.BooleanVar(value=False)
+            self.project_var = ctk.StringVar()
+            self.output_var = ctk.StringVar(value=str(Path.cwd() / "project_overview.txt"))
+            self.tree_only_var = ctk.BooleanVar(value=False)
 
-            self._apply_ttk_style()
             self._build_ui()
             self.bind("<Return>", lambda _: self._start_generate())
             self.after(100, self._poll_queue)
 
-            self.deiconify()
-
-        # ── ttk styling (buttons + scrollbars) ─────
-
-        def _apply_ttk_style(self) -> None:
-            T = self.theme
-            style = ttk.Style(self)
-            try:
-                style.theme_use("clam")  # only clam reliably honors custom colors
-            except Exception:
-                pass
-
-            # Flat button base: no dotted focus ring, no relief border —
-            # just padding + label, so height/width are entirely predictable
-            # and match across every button in the sidebar.
-            flat_layout = [(
-                "Button.padding", {
-                    "children": [("Button.label", {"sticky": "nswe"})],
-                    "sticky": "nswe",
-                }
-            )]
-            style.layout("Primary.TButton", flat_layout)  # type: ignore[arg-type]
-            style.layout("Secondary.TButton", flat_layout)  # type: ignore[arg-type]
-            style.layout("Icon.TButton", flat_layout)  # type: ignore[arg-type]
-
-            style.configure(
-                "Primary.TButton", background=T["ACCENT"], foreground=T["ON_ACCENT"],
-                font=T["fonts"]["BTN"], padding=(16, 11), borderwidth=0, relief="flat",
-            )
-            style.map(
-                "Primary.TButton",
-                background=[("disabled", T["SURFACE"]), ("pressed", T["ACCENT_PRESS"]),
-                            ("active", T["ACCENT_HOV"])],
-                foreground=[("disabled", T["MUTED"])],
-            )
-
-            style.configure(
-                "Secondary.TButton", background=T["SURFACE2"], foreground=T["SUBTEXT"],
-                font=T["fonts"]["UI"], padding=(12, 9), borderwidth=0, relief="flat",
-            )
-            style.map(
-                "Secondary.TButton",
-                background=[("disabled", T["SURFACE"]), ("pressed", T["SURFACE2"]),
-                            ("active", T["SURFACE3"])],
-                foreground=[("disabled", T["MUTED"]), ("active", T["TEXT"])],
-            )
-
-            style.configure(
-                "Icon.TButton", background=T["SURFACE2"], foreground=T["SUBTEXT"],
-                font=T["fonts"]["ICON"], padding=(10, 8), borderwidth=0, relief="flat",
-            )
-            style.map(
-                "Icon.TButton",
-                background=[("pressed", T["SURFACE2"]), ("active", T["SURFACE3"])],
-                foreground=[("active", T["TEXT"])],
-            )
-
-            # Flat, arrow-less scrollbars (the GTK/Fluent "overlay-style" look) —
-            # the stock clam scrollbar draws chunky arrow buttons at both ends,
-            # which is what read as "odd" in the dark theme.
-            style.element_create("Flat.Vertical.Scrollbar.trough", "from", "clam")
-            style.element_create("Flat.Vertical.Scrollbar.thumb", "from", "clam")
-            style.layout("Modern.Vertical.TScrollbar", [  # type: ignore[arg-type]
-                ("Vertical.Scrollbar.trough", {"sticky": "ns", "children": [
-                    ("Vertical.Scrollbar.thumb", {"expand": "1", "sticky": "nswe"}),
-                ]}),
-            ])
-            style.layout("Modern.Horizontal.TScrollbar", [  # type: ignore[arg-type]
-                ("Horizontal.Scrollbar.trough", {"sticky": "ew", "children": [
-                    ("Horizontal.Scrollbar.thumb", {"expand": "1", "sticky": "nswe"}),
-                ]}),
-            ])
-            for name in ("Modern.Vertical.TScrollbar", "Modern.Horizontal.TScrollbar"):
-                style.configure(
-                    name, troughcolor=T["BG"], background=T["SURFACE3"],
-                    bordercolor=T["BG"], relief="flat", gripcount=0,
-                    arrowsize=0, width=11,
-                )
-                style.map(name, background=[("active", T["ACCENT"])])
-
-        # ── Widget helpers ──────────────────────────
-
-        def _label(self, parent, text, font=None, color=None, **kw) -> tk.Label:
-            T = self.theme
-            return tk.Label(
-                parent, text=text, font=font or T["fonts"]["LABEL"],
-                fg=color or T["SUBTEXT"], bg=parent.cget("bg"), anchor="w", **kw,
-            )
-
-        def _entry(self, parent, textvariable, **kw) -> tk.Entry:
-            T = self.theme
-            return tk.Entry(
-                parent, textvariable=textvariable, font=T["fonts"]["UI"],
-                bg=T["SURFACE2"], fg=T["TEXT"], insertbackground=T["ACCENT"],
-                relief="flat", bd=0, highlightthickness=1,
-                highlightbackground=T["BORDER"], highlightcolor=T["ACCENT"],
-                **kw,
-            )
-
-        def _divider(self, parent, **grid_kw) -> None:
-            T = self.theme
-            tk.Frame(parent, bg=T["BORDER"], height=1).grid(sticky="ew", **grid_kw)
-
         # ── Layout ──────────────────────────────────
 
         def _build_ui(self) -> None:
-            self.columnconfigure(0, weight=0, minsize=308)
-            self.columnconfigure(1, weight=1)
-            self.rowconfigure(0, weight=1)
+            self.grid_columnconfigure(0, weight=0, minsize=308)
+            self.grid_columnconfigure(1, weight=1)
+            self.grid_rowconfigure(0, weight=1)
             self._build_sidebar()
             self._build_preview()
 
         def _build_sidebar(self) -> None:
-            T = self.theme
-            sidebar = tk.Frame(self, bg=T["SURFACE"], width=308)
+            T, F = self.theme, self.fonts
+            sidebar = ctk.CTkFrame(self, width=308, corner_radius=0, fg_color=T["SURFACE"])
             sidebar.grid(row=0, column=0, sticky="nsew")
             sidebar.grid_propagate(False)
-            sidebar.columnconfigure(0, weight=1)
+            sidebar.grid_columnconfigure(0, weight=1)
 
             # Header
-            header = tk.Frame(sidebar, bg=T["SURFACE"])
+            header = ctk.CTkFrame(sidebar, fg_color="transparent")
             header.grid(row=0, column=0, sticky="ew", padx=SIDE_PAD, pady=(28, 0))
-            tk.Label(header, text="LLMScribe", font=T["fonts"]["TITLE"],
-                     fg=T["TEXT"], bg=T["SURFACE"], anchor="w").pack(side="left")
-            tk.Label(header, text="  v1", font=T["fonts"]["LABEL"],
-                     fg=T["MUTED"], bg=T["SURFACE"], anchor="w").pack(side="left")
+            ctk.CTkLabel(header, text="LLMScribe", font=F["title"], text_color=T["TEXT"],
+                         anchor="w").pack(side="left")
+            ctk.CTkLabel(header, text="  v1", font=F["label"], text_color=T["MUTED"],
+                         anchor="w").pack(side="left")
 
-            self._divider(sidebar, row=1, column=0, padx=SIDE_PAD, pady=(16, 0))
+            ctk.CTkFrame(sidebar, fg_color=T["BORDER"], height=1, corner_radius=0).grid(
+                row=1, column=0, sticky="ew", padx=SIDE_PAD, pady=(16, 0))
 
-            # Form — every row below shares one column layout: a stretchy
-            # column 0 and, where present, a fixed-width column 1. That is
-            # what keeps the entries, icon buttons and toggle lined up on
-            # the same right edge regardless of window width.
-            form = tk.Frame(sidebar, bg=T["SURFACE"])
+            # Form
+            form = ctk.CTkFrame(sidebar, fg_color="transparent")
             form.grid(row=2, column=0, sticky="ew", padx=SIDE_PAD, pady=(20, 0))
-            form.columnconfigure(0, weight=1)
+            form.grid_columnconfigure(0, weight=1)
 
-            self._label(form, "PROJECT FOLDER", font=T["fonts"]["LABEL_CAPS"]).grid(
-                row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
-            row_proj = tk.Frame(form, bg=T["SURFACE"])
+            ctk.CTkLabel(form, text="PROJECT FOLDER", font=F["caps"], text_color=T["SUBTEXT"],
+                        anchor="w").grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+            row_proj = ctk.CTkFrame(form, fg_color="transparent")
             row_proj.grid(row=1, column=0, columnspan=2, sticky="ew")
-            row_proj.columnconfigure(0, weight=1)
-            entry_proj = self._entry(row_proj, self.project_var)
-            entry_proj.grid(row=0, column=0, sticky="ew", ipady=8)
+            row_proj.grid_columnconfigure(0, weight=1)
+            entry_proj = ctk.CTkEntry(
+                row_proj, textvariable=self.project_var, font=F["ui"], height=38,
+                corner_radius=RADIUS, fg_color=T["SURFACE2"], border_color=T["BORDER"],
+                border_width=1, text_color=T["TEXT"],
+            )
+            entry_proj.grid(row=0, column=0, sticky="ew")
             entry_proj.bind("<FocusOut>", lambda _: self._refresh_output_path())
-            ttk.Button(row_proj, text="\U0001F4C2", style="Icon.TButton",
-                       command=self._browse_project).grid(row=0, column=1, sticky="ns", padx=(8, 0))
+            ctk.CTkButton(
+                row_proj, text="\U0001F4C2", width=38, height=38, corner_radius=RADIUS,
+                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
+                font=F["ui"], command=self._browse_project,
+            ).grid(row=0, column=1, sticky="ns", padx=(8, 0))
 
-            self._label(form, "OUTPUT FILE", font=T["fonts"]["LABEL_CAPS"]).grid(
-                row=2, column=0, columnspan=2, sticky="ew", pady=(20, 6))
-            row_out = tk.Frame(form, bg=T["SURFACE"])
+            ctk.CTkLabel(form, text="OUTPUT FILE", font=F["caps"], text_color=T["SUBTEXT"],
+                        anchor="w").grid(row=2, column=0, columnspan=2, sticky="ew", pady=(20, 6))
+            row_out = ctk.CTkFrame(form, fg_color="transparent")
             row_out.grid(row=3, column=0, columnspan=2, sticky="ew")
-            row_out.columnconfigure(0, weight=1)
-            entry_out = self._entry(row_out, self.output_var)
-            entry_out.grid(row=0, column=0, sticky="ew", ipady=8)
-            ttk.Button(row_out, text="\U0001F4BE", style="Icon.TButton",
-                       command=self._browse_output).grid(row=0, column=1, sticky="ns", padx=(8, 0))
+            row_out.grid_columnconfigure(0, weight=1)
+            entry_out = ctk.CTkEntry(
+                row_out, textvariable=self.output_var, font=F["ui"], height=38,
+                corner_radius=RADIUS, fg_color=T["SURFACE2"], border_color=T["BORDER"],
+                border_width=1, text_color=T["TEXT"],
+            )
+            entry_out.grid(row=0, column=0, sticky="ew")
+            ctk.CTkButton(
+                row_out, text="\U0001F4BE", width=38, height=38, corner_radius=RADIUS,
+                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
+                font=F["ui"], command=self._browse_output,
+            ).grid(row=0, column=1, sticky="ns", padx=(8, 0))
 
-            # Tree-only toggle row — same two-column split as the rows above,
-            # so the switch's right edge lines up with the icon buttons'.
-            row_toggle = tk.Frame(form, bg=T["SURFACE"])
+            # Tree-only toggle — a real CTkSwitch: anti-aliased pill + knob
+            row_toggle = ctk.CTkFrame(form, fg_color="transparent")
             row_toggle.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(22, 0))
-            row_toggle.columnconfigure(0, weight=1)
-            self._label(row_toggle, "Tree only (skip file contents)",
-                        font=T["fonts"]["UI"], color=T["TEXT"]).grid(row=0, column=0, sticky="w")
-            self._tree_toggle = ToggleSwitch(row_toggle, T, self.tree_only_var)
-            self._tree_toggle.grid(row=0, column=1, sticky="e")
+            row_toggle.grid_columnconfigure(0, weight=1)
+            ctk.CTkLabel(row_toggle, text="Tree only (skip file contents)", font=F["ui"],
+                        text_color=T["TEXT"], anchor="w").grid(row=0, column=0, sticky="w")
+            ctk.CTkSwitch(
+                row_toggle, text="", variable=self.tree_only_var, onvalue=True, offvalue=False,
+                width=42, height=22, switch_width=42, switch_height=22,
+                progress_color=T["ACCENT"], button_color="#ffffff", button_hover_color="#ffffff",
+                fg_color=T["SURFACE3"],
+            ).grid(row=0, column=1, sticky="e")
 
-            # Generate — full width, native ttk stretching (no manual resize code)
-            self._generate_btn = ttk.Button(
-                form, text="Generate", style="Primary.TButton", command=self._start_generate,
+            # Generate — full width, genuinely stretches via CTk's own resize handling
+            self._generate_btn = ctk.CTkButton(
+                form, text="Generate", font=F["ui_bold"], height=44, corner_radius=RADIUS,
+                fg_color=T["ACCENT"], hover_color=T["ACCENT_HOV"], text_color=T["ON_ACCENT"],
+                command=self._start_generate,
             )
             self._generate_btn.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(24, 0))
 
-            self._divider(sidebar, row=3, column=0, padx=SIDE_PAD, pady=(28, 0))
+            ctk.CTkFrame(sidebar, fg_color=T["BORDER"], height=1, corner_radius=0).grid(
+                row=3, column=0, sticky="ew", padx=SIDE_PAD, pady=(28, 0))
 
-            # Secondary actions — equal-width columns, both buttons stretch together
-            actions = tk.Frame(sidebar, bg=T["SURFACE"])
+            # Secondary actions
+            actions = ctk.CTkFrame(sidebar, fg_color="transparent")
             actions.grid(row=4, column=0, sticky="ew", padx=SIDE_PAD, pady=(14, 0))
-            actions.columnconfigure(0, weight=1, uniform="actions")
-            actions.columnconfigure(1, weight=1, uniform="actions")
-            self._copy_btn = ttk.Button(actions, text="Copy output", style="Secondary.TButton",
-                                         command=self._copy_all)
+            actions.grid_columnconfigure(0, weight=1, uniform="actions")
+            actions.grid_columnconfigure(1, weight=1, uniform="actions")
+            self._copy_btn = ctk.CTkButton(
+                actions, text="Copy output", font=F["ui"], height=34, corner_radius=RADIUS,
+                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
+                command=self._copy_all,
+            )
             self._copy_btn.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-            self._open_btn = ttk.Button(actions, text="Open file", style="Secondary.TButton",
-                                         command=self._open_last_output)
+            self._open_btn = ctk.CTkButton(
+                actions, text="Open file", font=F["ui"], height=34, corner_radius=RADIUS,
+                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
+                command=self._open_last_output,
+            )
             self._open_btn.grid(row=0, column=1, sticky="ew", padx=(5, 0))
 
             # Status
-            self._status_var = tk.StringVar(value="Ready")
-            self._status_lbl = tk.Label(
-                sidebar, textvariable=self._status_var, font=T["fonts"]["STATUS"],
-                fg=T["SUBTEXT"], bg=T["SURFACE"], anchor="w",
+            self._status_lbl = ctk.CTkLabel(
+                sidebar, text="Ready", font=F["status"], text_color=T["SUBTEXT"], anchor="w",
             )
             self._status_lbl.grid(row=5, column=0, sticky="ew", padx=SIDE_PAD, pady=(16, 0))
 
-            tk.Frame(sidebar, bg=T["SURFACE"]).grid(row=6, column=0, sticky="nsew")
-            sidebar.rowconfigure(6, weight=1)
+            sidebar.grid_rowconfigure(6, weight=1)
+            ctk.CTkFrame(sidebar, fg_color="transparent").grid(row=6, column=0, sticky="nsew")
 
-            self._divider(sidebar, row=7, column=0, padx=0)
-            tk.Label(
-                sidebar, text="Scans text files \u00b7 respects .gitignore",
-                font=T["fonts"]["LABEL_CAPS"], fg=T["MUTED"], bg=T["SURFACE"], anchor="w",
+            ctk.CTkFrame(sidebar, fg_color=T["BORDER"], height=1, corner_radius=0).grid(
+                row=7, column=0, sticky="ew")
+            ctk.CTkLabel(
+                sidebar, text="Scans text files \u00b7 respects .gitignore", font=F["caps"],
+                text_color=T["MUTED"], anchor="w",
             ).grid(row=8, column=0, sticky="ew", padx=SIDE_PAD, pady=(10, 18))
 
         def _build_preview(self) -> None:
-            T = self.theme
-            pane = tk.Frame(self, bg=T["BG"])
+            T, F = self.theme, self.fonts
+            pane = ctk.CTkFrame(self, fg_color=T["BG"], corner_radius=0)
             pane.grid(row=0, column=1, sticky="nsew")
-            pane.columnconfigure(0, weight=1)
-            pane.rowconfigure(1, weight=1)
+            pane.grid_columnconfigure(0, weight=1)
+            pane.grid_rowconfigure(1, weight=1)
 
-            bar = tk.Frame(pane, bg=T["SURFACE"])
+            bar = ctk.CTkFrame(pane, fg_color=T["SURFACE"], corner_radius=0, height=40)
             bar.grid(row=0, column=0, sticky="ew")
-            bar.columnconfigure(1, weight=1)
-            tk.Frame(bar, bg=T["BORDER"], width=1).grid(row=0, column=0, sticky="ns")
-            tk.Label(bar, text="Preview", font=T["fonts"]["LABEL"], fg=T["SUBTEXT"],
-                     bg=T["SURFACE"], anchor="w", padx=18, pady=11).grid(row=0, column=1, sticky="w")
-            self._line_var = tk.StringVar(value="")
-            tk.Label(bar, textvariable=self._line_var, font=T["fonts"]["LABEL"],
-                     fg=T["MUTED"], bg=T["SURFACE"], anchor="e", padx=18).grid(row=0, column=2, sticky="e")
+            bar.grid_columnconfigure(0, weight=1)
+            ctk.CTkLabel(bar, text="Preview", font=F["label"], text_color=T["SUBTEXT"],
+                        anchor="w").grid(row=0, column=0, sticky="w", padx=18, pady=10)
+            self._line_lbl = ctk.CTkLabel(bar, text="", font=F["label"], text_color=T["MUTED"],
+                                          anchor="e")
+            self._line_lbl.grid(row=0, column=1, sticky="e", padx=18, pady=10)
 
-            text_frame = tk.Frame(pane, bg=T["BG"])
-            text_frame.grid(row=1, column=0, sticky="nsew")
-            text_frame.columnconfigure(1, weight=1)
-            text_frame.rowconfigure(0, weight=1)
-            tk.Frame(text_frame, bg=T["BORDER"], width=1).grid(row=0, column=0, sticky="ns")
-
-            self.preview = tk.Text(
-                text_frame, wrap="none", bg=T["BG"], fg=T["TEXT"], relief="flat", bd=0,
-                font=T["fonts"]["MONO"], padx=22, pady=20, insertbackground=T["ACCENT"],
-                selectbackground=T["SURFACE2"], selectforeground=T["TEXT"],
-                highlightthickness=0, state="disabled", cursor="arrow",
+            # CTkTextbox ships its own anti-aliased x/y scrollbars that only
+            # appear when content actually overflows — no manual wiring needed.
+            self.preview = ctk.CTkTextbox(
+                pane, wrap="none", corner_radius=0, fg_color=T["BG"], text_color=T["TEXT"],
+                font=F["mono"], border_width=0, border_spacing=20,
+                scrollbar_button_color=T["SURFACE3"], scrollbar_button_hover_color=T["ACCENT"],
+                activate_scrollbars=True,
             )
-            self.preview.grid(row=0, column=1, sticky="nsew")
-
-            scrollbar_v = ttk.Scrollbar(text_frame, orient="vertical", command=self.preview.yview,
-                                        style="Modern.Vertical.TScrollbar")
-            scrollbar_v.grid(row=0, column=2, sticky="ns")
-            scrollbar_h = ttk.Scrollbar(text_frame, orient="horizontal", command=self.preview.xview,
-                                        style="Modern.Horizontal.TScrollbar")
-            scrollbar_h.grid(row=1, column=1, sticky="ew")
-            self.preview.configure(yscrollcommand=scrollbar_v.set, xscrollcommand=scrollbar_h.set)
+            self.preview.grid(row=1, column=0, sticky="nsew")
+            self.preview.configure(state="disabled")
 
             self._set_preview_text(
                 "Select a project folder and press Generate.\n\nThe output will appear here."
@@ -469,6 +315,7 @@ def main() -> None:
         # ── Actions ──────────────────────────────
 
         def _browse_project(self) -> None:
+            from tkinter import filedialog
             folder = filedialog.askdirectory(title="Select Project Folder")
             if not folder:
                 return
@@ -476,6 +323,7 @@ def main() -> None:
             self._refresh_output_path()
 
         def _browse_output(self) -> None:
+            from tkinter import filedialog
             initial = Path(self.output_var.get() or "project_overview.txt")
             path = filedialog.asksaveasfilename(
                 title="Save Output As", defaultextension=".txt",
@@ -494,8 +342,7 @@ def main() -> None:
             self.output_var.set(str(project_path / "project_overview.txt"))
 
         def _set_status(self, msg: str, color: str | None = None) -> None:
-            self._status_var.set(msg)
-            self._status_lbl.configure(fg=color or self.theme["SUBTEXT"])
+            self._status_lbl.configure(text=msg, text_color=color or self.theme["SUBTEXT"])
 
         def _set_running(self, running: bool) -> None:
             self._running = running
@@ -525,7 +372,7 @@ def main() -> None:
 
             self._set_preview_text("Scanning\u2026")
             self._set_status("Scanning project (tree only)\u2026" if tree_only else "Scanning project\u2026")
-            self._line_var.set("")
+            self._line_lbl.configure(text="")
             self._set_running(True)
 
             def worker() -> None:
@@ -554,7 +401,7 @@ def main() -> None:
                 self._last_summary = result.summary
                 self._set_preview_text(result.summary)
                 lines = result.summary.count("\n")
-                self._line_var.set(f"{lines:,} lines")
+                self._line_lbl.configure(text=f"{lines:,} lines")
                 self._set_status(f"\u2713  Saved to {result.output_file.name}", self.theme["SUCCESS"])
             else:
                 self._set_status(result.message, self.theme["ERROR_C"])
