@@ -15,6 +15,17 @@ except ImportError:
 
 from llmscribe.core.file_reader import is_text_file
 from llmscribe.core.tree_builder import DEFAULT_IGNORE, IgnoreMatcher, generate_tree, load_gitignore
+from llmscribe.github import (
+    GitHubError,
+    github_project_diff,
+    github_project_get_file,
+    github_project_get_files,
+    github_project_list_files,
+    github_project_map,
+    github_project_overview,
+    github_project_search,
+    parse_github_repo,
+)
 
 mcp = MCPServer("llmscribe")
 
@@ -94,11 +105,43 @@ def _parse_porcelain_path(line: str) -> str:
     return path_part.strip('"')
 
 
+def _validate_routing(path: Optional[str], repo: Optional[str]) -> Optional[tuple[str, str]]:
+    """Validate path vs repo parameters.
+
+    Returns:
+        None if local routing, or (owner, repo_name) if github routing.
+    Raises:
+        ProjectRootError if both path and repo are specified.
+    """
+    has_path = bool(path and path.strip())
+    has_repo = bool(repo and repo.strip())
+
+    if has_path and has_repo:
+        raise ProjectRootError("invalid_argument", "Cannot specify both 'path' and 'repo'.")
+
+    if has_repo:
+        try:
+            return parse_github_repo(repo)  # type: ignore
+        except GitHubError as exc:
+            raise ProjectRootError(exc.code, exc.message)
+
+    return None
+
+
 @mcp.tool()
-def project_overview(path: Optional[str] = None, format: str = "markdown") -> str:
+def project_overview(
+    path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
+    format: str = "markdown",
+) -> str:
     """Return full directory tree and all text file contents for a project."""
     tool_name = "project_overview"
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_overview(gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
         ignore_patterns = [*DEFAULT_IGNORE, *load_gitignore(root)]
         matcher = IgnoreMatcher(root, ignore_patterns)
@@ -173,10 +216,19 @@ def project_overview(path: Optional[str] = None, format: str = "markdown") -> st
 
 
 @mcp.tool()
-def project_map(path: Optional[str] = None, format: str = "markdown") -> str:
+def project_map(
+    path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
+    format: str = "markdown",
+) -> str:
     """Return directory tree structure without file contents."""
     tool_name = "project_map"
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_map(gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
         ignore_patterns = [*DEFAULT_IGNORE, *load_gitignore(root)]
         matcher = IgnoreMatcher(root, ignore_patterns)
@@ -212,7 +264,13 @@ def project_map(path: Optional[str] = None, format: str = "markdown") -> str:
 
 
 @mcp.tool()
-def project_search(query: str, path: Optional[str] = None, format: str = "markdown") -> str:
+def project_search(
+    query: str,
+    path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
+    format: str = "markdown",
+) -> str:
     """Search for a keyword query in filenames and file contents."""
     tool_name = "project_search"
     if not query:
@@ -221,6 +279,10 @@ def project_search(query: str, path: Optional[str] = None, format: str = "markdo
         return _md_error(tool_name, "empty_query", "Query string cannot be empty.")
 
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_search(query, gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
         ignore_patterns = [*DEFAULT_IGNORE, *load_gitignore(root)]
         matcher = IgnoreMatcher(root, ignore_patterns)
@@ -288,7 +350,13 @@ def project_search(query: str, path: Optional[str] = None, format: str = "markdo
 
 
 @mcp.tool()
-def project_get_file(file_path: str, path: Optional[str] = None, format: str = "markdown") -> str:
+def project_get_file(
+    file_path: str,
+    path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
+    format: str = "markdown",
+) -> str:
     """Return full content of a specific file, with path traversal prevention."""
     tool_name = "project_get_file"
     if not file_path or not file_path.strip():
@@ -297,6 +365,10 @@ def project_get_file(file_path: str, path: Optional[str] = None, format: str = "
         return _md_error(tool_name, "invalid_argument", "file_path must be provided.")
 
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_get_file(file_path, gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
         target_path = (root / file_path).resolve()
 
@@ -351,7 +423,13 @@ def project_get_file(file_path: str, path: Optional[str] = None, format: str = "
 
 
 @mcp.tool()
-def project_get_files(file_paths: list[str], path: Optional[str] = None, format: str = "markdown") -> str:
+def project_get_files(
+    file_paths: list[str],
+    path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
+    format: str = "markdown",
+) -> str:
     """Return full content of multiple files in one call, handling partial success and path traversal."""
     tool_name = "project_get_files"
     if not file_paths:
@@ -360,6 +438,10 @@ def project_get_files(file_paths: list[str], path: Optional[str] = None, format:
         return _md_error(tool_name, "invalid_argument", "file_paths list cannot be empty.")
 
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_get_files(file_paths, gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
 
         truncated_batch = False
@@ -501,10 +583,20 @@ def project_get_files(file_paths: list[str], path: Optional[str] = None, format:
 
 
 @mcp.tool()
-def project_list_files(path: Optional[str] = None, extension: Optional[str] = None, format: str = "markdown") -> str:
+def project_list_files(
+    path: Optional[str] = None,
+    extension: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
+    format: str = "markdown",
+) -> str:
     """List all supported text files in the project, optionally filtered by extension."""
     tool_name = "project_list_files"
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_list_files(extension, gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
         ignore_patterns = [*DEFAULT_IGNORE, *load_gitignore(root)]
         matcher = IgnoreMatcher(root, ignore_patterns)
@@ -555,11 +647,17 @@ def project_diff(
     path: Optional[str] = None,
     staged: bool = False,
     commit: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
     """Return git status and diff for a project, requiring a git repository."""
     tool_name = "project_diff"
     try:
+        gh_target = _validate_routing(path, repo)
+        if gh_target:
+            return github_project_diff(commit, staged, gh_target[0], gh_target[1], ref, format)
+
         root = _resolve_project_root(path)
 
         # Check if git is available and root is inside a git work tree

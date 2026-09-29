@@ -38,8 +38,8 @@ class MCPToolsTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_version_bump_is_1_1_0(self) -> None:
-        self.assertEqual(__version__, "1.1.0")
+    def test_version_bump_is_1_2_0(self) -> None:
+        self.assertEqual(__version__, "1.2.0")
 
     def test_markdown_header_consistency(self) -> None:
         res_overview = project_overview(str(self.root), format="markdown")
