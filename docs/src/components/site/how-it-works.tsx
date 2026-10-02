@@ -12,7 +12,7 @@ const STEPS = [
   {
     n: "03",
     title: "Paste it into an AI chat",
-    body: "The .txt is ready for ChatGPT, Claude, Grok, Cursor, or anything else that can read a project as text. Copy, open, or save it wherever you like.",
+    body: "The .txt is ready for ChatGPT, Claude, Cursor, or anything else that can read a project as text. Copy, open, or save it wherever you like.",
   },
 ];
 
@@ -37,8 +37,8 @@ export function HowItWorks() {
 
         <blockquote className="mt-14 max-w-2xl">
           <p className="display text-2xl italic text-fg sm:text-3xl">
-            Made for people who just want to give their whole project to an AI without fighting
-            with copy-paste.
+            Made for people who just want to give their whole project to an AI without fighting with
+            copy-paste.
           </p>
         </blockquote>
       </div>

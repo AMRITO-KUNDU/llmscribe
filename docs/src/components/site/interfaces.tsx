@@ -23,8 +23,6 @@ llmscribe diff
 llmscribe search "auth" --json
 llmscribe map --json`;
 
-
-
 const EXE_BUILD = `# Build standalone LLMScribe-GUI.exe from source using PyInstaller:
 pip install pyinstaller
 python build_exe.py
@@ -35,14 +33,13 @@ export function Interfaces() {
   return (
     <section id="interfaces" className="scroll-mt-20 border-t border-border">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
-        <p className="font-mono text-xs tracking-widest text-primary uppercase">
-          Four interfaces
-        </p>
+        <p className="font-mono text-xs tracking-widest text-primary uppercase">Four interfaces</p>
         <h2 className="display mt-3 max-w-2xl text-3xl sm:text-4xl">
           An MCP server for agents, a standalone EXE, a desktop GUI, and a CLI.
         </h2>
         <p className="mt-4 max-w-xl text-muted">
-          Install once. Use whichever fits the situation — MCP server for AI agents, standalone EXE for non-tech users, CLI for terminal power users, and desktop GUI.
+          Install once. Use whichever fits the situation — MCP server for AI agents, standalone EXE
+          for non-tech users, CLI for terminal power users, and desktop GUI.
         </p>
 
         <Tabs defaultValue="mcp" className="mt-10">

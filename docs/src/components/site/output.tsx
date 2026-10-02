@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CopyButton } from "@/components/site/copy-button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SAMPLE_FULL, SAMPLE_JSON } from "@/lib/site";
 
 export function Output() {
@@ -21,14 +21,12 @@ export function Output() {
               Clean Markdown for humans, structured JSON for agents.
             </h2>
             <p className="mt-3 max-w-xl text-muted">
-              Choose Markdown mode for pasting into chat prompts, or JSON mode for programmatic agent parsing with metadata.
+              Choose Markdown mode for pasting into chat prompts, or JSON mode for programmatic
+              agent parsing with metadata.
             </p>
           </div>
 
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as "markdown" | "json")}
-          >
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "markdown" | "json")}>
             <TabsList>
               <TabsTrigger value="markdown">Markdown Export</TabsTrigger>
               <TabsTrigger value="json">Structured JSON Envelope</TabsTrigger>

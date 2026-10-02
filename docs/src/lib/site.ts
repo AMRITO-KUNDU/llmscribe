@@ -108,7 +108,7 @@ export const SAMPLE_JSON = `{
     "files": [
       {
         "path": "src/main.py",
-        "content": "def hello():\n    print(\"Hello world\")\n"
+        "content": "def hello():\n    print("Hello world")\n"
       },
       {
         "path": "README.md",

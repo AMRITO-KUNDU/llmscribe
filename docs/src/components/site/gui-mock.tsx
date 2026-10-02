@@ -142,10 +142,7 @@ export function GuiMock() {
           </div>
 
           <p
-            className={cn(
-              "font-mono text-xs",
-              status === "done" ? "text-primary" : "text-subtle",
-            )}
+            className={cn("font-mono text-xs", status === "done" ? "text-primary" : "text-subtle")}
           >
             {status === "idle" && "Ready"}
             {status === "scanning" && "Walking project…"}

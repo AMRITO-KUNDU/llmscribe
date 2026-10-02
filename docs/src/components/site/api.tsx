@@ -7,12 +7,8 @@ export function Api() {
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
           <div>
-            <p className="font-mono text-xs tracking-widest text-primary uppercase">
-              Python API
-            </p>
-            <h2 className="display mt-3 text-3xl sm:text-4xl">
-              Use the core from your own code.
-            </h2>
+            <p className="font-mono text-xs tracking-widest text-primary uppercase">Python API</p>
+            <h2 className="display mt-3 text-3xl sm:text-4xl">Use the core from your own code.</h2>
             <p className="mt-4 text-muted">
               The same writer the CLI uses is importable. Write a file, or keep the summary as a
               string and send it wherever you need context.

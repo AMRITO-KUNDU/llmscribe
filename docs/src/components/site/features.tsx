@@ -1,11 +1,4 @@
-import {
-  AppWindow,
-  FileCode2,
-  FolderX,
-  Bot,
-  GitBranch,
-  ShieldCheck,
-} from "lucide-react";
+import { AppWindow, FileCode2, FolderX, Bot, GitBranch, ShieldCheck } from "lucide-react";
 import { EXTENSIONS, IGNORED } from "@/lib/site";
 
 const FEATURES = [

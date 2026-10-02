@@ -11,8 +11,7 @@ export function FinalCta() {
           Stop copying files one at a time.
         </h2>
         <p className="mx-auto mt-4 max-w-lg text-muted">
-          Install LLMScribe, point it at a project, paste the result into the model you already
-          use.
+          Install LLMScribe, point it at a project, paste the result into the model you already use.
         </p>
         <div className="mx-auto mt-8 flex max-w-md items-center gap-2 rounded-lg border border-border bg-surface p-1.5 pl-4 text-left">
           <code className="min-w-0 flex-1 truncate font-mono text-sm text-primary">
@@ -90,7 +89,12 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a className="hover:text-fg" href={SITE.licenseUrl} target="_blank" rel="noreferrer">
+                <a
+                  className="hover:text-fg"
+                  href={SITE.licenseUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   License
                 </a>
               </li>

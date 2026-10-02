@@ -26,7 +26,8 @@ export function Hero() {
           </h1>
 
           <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-            {SITE.tagline} Zero configuration. Built for AI agents, terminal power users, and non-technical desktop users.
+            {SITE.tagline} Zero configuration. Built for AI agents, terminal power users, and
+            non-technical desktop users.
           </p>
 
           <div className="mt-8 flex max-w-md items-center gap-2 rounded-lg border border-border bg-surface p-1.5 pl-4">
@@ -49,8 +50,7 @@ export function Hero() {
           </div>
 
           <p className="mt-6 text-sm text-subtle">
-            Four ways to run:{" "}
-            <code className="font-mono text-muted">llmscribe-mcp</code>,{" "}
+            Four ways to run: <code className="font-mono text-muted">llmscribe-mcp</code>,{" "}
             <code className="font-mono text-muted">LLMScribe-GUI.exe</code>,{" "}
             <code className="font-mono text-muted">llmscribe</code>,{" "}
             <code className="font-mono text-muted">llmscribe-cui</code>

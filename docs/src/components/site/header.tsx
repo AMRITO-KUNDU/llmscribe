@@ -77,10 +77,7 @@ export function Header() {
       </div>
 
       {open ? (
-        <div
-          id="mobile-nav"
-          className="border-t border-border bg-bg px-5 py-4 md:hidden"
-        >
+        <div id="mobile-nav" className="border-t border-border bg-bg px-5 py-4 md:hidden">
           <nav className="flex flex-col gap-1" aria-label="Mobile">
             {NAV.map((item) => (
               <a

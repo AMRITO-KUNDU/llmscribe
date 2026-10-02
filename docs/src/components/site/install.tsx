@@ -16,7 +16,8 @@ export function Install() {
         <p className="font-mono text-xs tracking-widest text-primary uppercase">Install</p>
         <h2 className="display mt-3 text-3xl sm:text-4xl">Available on PyPI or Standalone EXE.</h2>
         <p className="mt-4 max-w-xl text-muted">
-          Install from PyPI using Python {SITE.python}, or download the pre-compiled LLMScribe-GUI.exe from GitHub Releases.
+          Install from PyPI using Python {SITE.python}, or download the pre-compiled
+          LLMScribe-GUI.exe from GitHub Releases.
         </p>
 
         <div className="mt-10 overflow-hidden rounded-xl border border-border bg-surface">
@@ -49,24 +50,14 @@ export function Install() {
   );
 }
 
-function CodePanel({
-  title,
-  code,
-  note,
-}: {
-  title: string;
-  code: string;
-  note?: string;
-}) {
+function CodePanel({ title, code, note }: { title: string; code: string; note?: string }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface">
       <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <span className="font-mono text-xs text-muted">{title}</span>
         <CopyButton text={code} />
       </div>
-      <pre className="overflow-x-auto p-5 font-mono text-sm leading-relaxed text-fg/90">
-        {code}
-      </pre>
+      <pre className="overflow-x-auto p-5 font-mono text-sm leading-relaxed text-fg/90">{code}</pre>
       {note ? <p className="border-t border-border px-5 py-3 text-xs text-subtle">{note}</p> : null}
     </div>
   );
