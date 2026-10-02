@@ -90,6 +90,22 @@ LLMScribe MCP provides exactly 7 tools:
 
 ---
 
+## Architecture
+
+LLMScribe uses a shared core architecture:
+
+```
+                    LLMScribe Core
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+         MCP            CLI            GUI
+```
+
+Both the MCP server and CLI share the same underlying core functions, ensuring consistent behavior and output across all interfaces.
+
+---
+
 ## Agent Workflow
 
 Recommended workflow sequence for AI agents:
@@ -112,7 +128,29 @@ project_map → search → read/read_many
 
 ## CLI Usage
 
-The CLI provides the same core capabilities as MCP:
+LLMScribe CLI exposes the same core capabilities as the MCP server with a clean command-oriented interface.
+
+```
+LLMScribe — code context for AI agents
+
+Usage:
+  llmscribe <command> [options]
+
+Commands:
+  map              Show project structure
+  overview         Generate project overview
+  search           Search project code
+  read             Read a file or line range
+  read-many        Read multiple files
+  dependencies     Show file dependencies
+  diff             Show project changes
+
+Other:
+  version          Show version
+  help             Show help
+```
+
+### Command Examples:
 
 ```bash
 # Show project structure
@@ -218,7 +256,14 @@ pip install llmscribe
 
 ## Version
 
-Current version: 1.2.0
+**LLMScribe v1.2.0**
+
+This release includes:
+- Final MCP toolset with exactly 7 tools
+- Modern command-oriented CLI
+- Improved search with structured output
+- New dependency analysis with provider abstraction
+- Machine-readable JSON output for all commands
 
 ## License
 
