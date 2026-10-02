@@ -11,22 +11,19 @@ const MCP_CONFIG = `{
   }
 }`;
 
-const CLI = `llmscribe --path /path/to/your/project
+const CLI = `llmscribe map
+llmscribe overview
+llmscribe search "authentication"
+llmscribe read src/auth/service.py
+llmscribe read-many src/auth/service.py src/api/login.py
+llmscribe dependencies src/auth/service.py
+llmscribe diff
 
-# Save to a specific place
-llmscribe --path ~/Documents/my-app --output ~/Desktop/my-app.txt
+# JSON output for scripts/AI agents
+llmscribe search "auth" --json
+llmscribe map --json`;
 
-# Only the folder tree (no file contents)
-llmscribe --path ~/Documents/my-app --tree-only
 
-# Open the graphical folder picker
-llmscribe --gui`;
-
-const CUI = `LLMScribe CUI
-1) Enter project folder path
-2) Open GUI folder picker
-3) Quit
-Choose an option [1-3]:`;
 
 const EXE_BUILD = `# Build standalone LLMScribe-GUI.exe from source using PyInstaller:
 pip install pyinstaller
@@ -45,16 +42,14 @@ export function Interfaces() {
           An MCP server for agents, a standalone EXE, a desktop GUI, and a CLI.
         </h2>
         <p className="mt-4 max-w-xl text-muted">
-          Install once. Use whichever fits the situation — MCP server for AI agents, standalone EXE for non-tech users, recommended Python GUI for desktop users, CLI for terminal power users.
+          Install once. Use whichever fits the situation — MCP server for AI agents, standalone EXE for non-tech users, CLI for terminal power users, and desktop GUI.
         </p>
 
         <Tabs defaultValue="mcp" className="mt-10">
-          <TabsList className="w-full max-w-2xl sm:w-auto grid grid-cols-2 sm:grid-cols-4">
+          <TabsList className="w-full max-w-2xl sm:w-auto grid grid-cols-2 sm:grid-cols-3">
             <TabsTrigger value="mcp">MCP Server</TabsTrigger>
             <TabsTrigger value="exe">Standalone EXE</TabsTrigger>
-            <TabsTrigger value="gui">Desktop GUI</TabsTrigger>
-
-            <TabsTrigger value="cli">CLI / CUI</TabsTrigger>
+            <TabsTrigger value="cli">CLI</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mcp">
@@ -62,7 +57,7 @@ export function Interfaces() {
               title="llmscribe-mcp (For AI Agents)"
               blurb="Model Context Protocol (MCP) server providing 7 tools for AI coding tools (Cursor, Claude Desktop, Windsurf, Roo Code, Goose)."
               command={MCP_CONFIG}
-              extra="Provides project_overview, project_map, project_search, project_list_files, project_get_file, project_get_files, and project_diff."
+              extra="Provides project_map, project_overview, search, read, read_many, project_dependencies, and project_diff."
             />
           </TabsContent>
 
@@ -86,10 +81,10 @@ export function Interfaces() {
 
           <TabsContent value="cli">
             <InterfaceCard
-              title="llmscribe & llmscribe-cui"
-              blurb="CLI for fast scriptable export, and CUI for interactive numbered menu choice in the terminal."
+              title="llmscribe"
+              blurb="Modern command-line interface with 7 core commands matching MCP capabilities."
               command={CLI}
-              extra="Interactive CUI available via llmscribe-cui"
+              extra="All commands support --json for machine-readable output"
             />
           </TabsContent>
         </Tabs>

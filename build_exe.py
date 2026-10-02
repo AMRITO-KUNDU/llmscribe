@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent.resolve()
 ENTRY_POINT = ROOT_DIR / "src" / "llmscribe" / "gui" / "app.py"
+ICON_PATH = ROOT_DIR / "docs" / "public" / "favicon.ico"
 
 
 def build() -> None:
@@ -21,6 +22,8 @@ def build() -> None:
         "--windowed",
         "--name",
         "LLMScribe-GUI",
+        "--icon",
+        str(ICON_PATH) if ICON_PATH.exists() else "NONE",
         "--paths",
         str(ROOT_DIR / "src"),
         "--collect-all",

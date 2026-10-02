@@ -1,9 +1,9 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "1.1.0",
-  tagline: "Turn any project folder into clean, structured context for AI agents & developers.",
+  version: "1.2.0",
+  tagline: "Code context infrastructure for AI agents.",
   description:
-    "LLMScribe provides a lightweight Model Context Protocol (MCP) server for AI coding agents (Cursor, Claude, Windsurf, Roo Code, Goose), a standalone Windows GUI, a Python CLI, and a terminal menu.",
+    "LLMScribe provides a lightweight Model Context Protocol (MCP) server for AI coding agents (Cursor, Claude, Windsurf, Roo Code, Goose), a desktop GUI, and a modern command-line interface. Turn any project into clean, deterministic, structured context.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/LLMScribe",
   pypi: "https://pypi.org/project/llmscribe/",
@@ -16,7 +16,7 @@ export const SITE = {
 
 export const NAV = [
   { href: "#mcp", label: "For AI Agents" },
-  { href: "#interfaces", label: "4 Interfaces" },
+  { href: "#interfaces", label: "3 Interfaces" },
   { href: "#tools", label: "MCP Tools" },
   { href: "#output", label: "Output & JSON" },
   { href: "#install", label: "Install" },
@@ -123,12 +123,16 @@ export const SAMPLE_JSON = `{
 }`;
 
 export const PYTHON_API = `from pathlib import Path
+from llmscribe.core import search, project_map, project_overview, analyze_dependencies, get_git_diff, read_file, read_files
 from llmscribe.core.writer import run, build_project_summary
-from llmscribe.mcp import project_overview, project_diff
+from llmscribe.mcp import project_map, project_overview, search, read, read_many, project_dependencies, project_diff
 
 # 1. Direct Python Core Usage
 text = build_project_summary(Path("/path/to/project"))
 
 # 2. Call MCP tools programmatically (JSON mode or Markdown)
-json_overview = project_overview("/path/to/project", format="json")
-diff_markdown = project_diff("/path/to/project", staged=False)`;
+json_overview = project_overview(path="/path/to/project", format="json")
+json_search = search(query="auth", path="/path/to/project", format="json")
+json_read = read(file_path="src/main.py", path="/path/to/project", format="json")
+json_deps = project_dependencies(file_path="src/main.py", path="/path/to/project", format="json")
+diff_markdown = project_diff(path="/path/to/project", staged=False)`;

@@ -1,24 +1,14 @@
-"""Modern LLMScribe GUI — built on customtkinter for real anti-aliased widgets.
+"""LLMScribe GUI — sage-on-charcoal design with a unified top bar.
 
-Why customtkinter instead of plain Tkinter/ttk:
-  Plain Tk/ttk has no anti-aliasing and no image-based rendering, so any
-  rounded corner or pill shape has to be hand-drawn on a Canvas and comes
-  out visibly jagged. customtkinter renders every control (buttons,
-  switches, entries, scrollbars) as anti-aliased images and redraws them
-  automatically on resize, so corners are actually smooth and the toggle
-  switch/scrollbar look like real, finished controls rather than an
-  approximation.
+Layout: one full-width top bar spans sidebar + preview so the two panes read
+as a single surface, with a monospace UI and a serif wordmark.
 
-Platform-aware accent color (kept from the previous version): the shapes
-now come from customtkinter itself, but the palette still leans toward a
-Windows-Fluent-ish light blue on Windows and a GNOME/Adwaita-ish blue on
-Linux, so the app doesn't look identical everywhere.
+Requires:  pip install customtkinter pillow
 """
 
 from __future__ import annotations
 
 import os
-import platform
 import queue
 import threading
 import webbrowser
@@ -26,6 +16,29 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import customtkinter as ctk
+
+APP_VERSION = "v1.2.0"
+
+# ── Palette ──────────────────────────────────────────────
+BG = "#0f110f"
+TOPBAR = "#151915"
+SIDEBAR = "#131713"
+PANE = "#0f110f"
+FIELD = "#1b201b"
+FIELD_HOV = "#242a24"
+BORDER = "#252b26"
+BORDER_STRONG = "#353c36"
+TEXT = "#d8dcd3"
+SUBTEXT = "#9aa195"
+MUTED = "#6f766c"
+SAGE = "#b9c4ad"
+SAGE_HOV = "#c9d3be"
+SAGE_DIM = "#5b6455"
+ON_SAGE = "#131810"
+ERROR_C = "#e58f84"
+
+SIDEBAR_W = 264
+PAD = 18
 
 
 @dataclass(frozen=True)
@@ -51,279 +64,266 @@ def pick_folder_gui() -> Path | None:
         return None
 
 
-# ─────────────────────────────────────────────────────────
-# Platform-aware design tokens
-# ─────────────────────────────────────────────────────────
+# ── Icons (drawn with PIL, supersampled so edges are smooth) ──
 
-def _first_available_font(candidates: list[str], available: set[str]) -> str:
+def _make_icon(kind: str, color: str, px: int = 18):
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        return None
+
+    S, N = 8, 24
+    big = px * S
+    k = big / N
+    w = max(1, round(1.7 * k))
+    img = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+
+    def P(x, y):
+        return (x * k, y * k)
+
+    if kind == "folder":
+        d.rounded_rectangle([3 * k, 8 * k, 21 * k, 19 * k], radius=2 * k, outline=color, width=w)
+        d.line([P(3, 9), P(3, 6.5), P(4.5, 5), P(9, 5), P(11, 8)], fill=color, width=w, joint="curve")
+    elif kind == "save":
+        d.rounded_rectangle([4 * k, 4 * k, 20 * k, 20 * k], radius=2 * k, outline=color, width=w)
+        d.rectangle([8 * k, 4 * k, 16 * k, 9 * k], outline=color, width=w)
+        d.rounded_rectangle([7 * k, 13 * k, 17 * k, 20 * k], radius=1 * k, outline=color, width=w)
+    elif kind == "copy":
+        d.rounded_rectangle([9 * k, 9 * k, 20 * k, 20 * k], radius=2 * k, outline=color, width=w)
+        d.line([P(9, 15), P(6, 15), P(4, 13), P(4, 6), P(6, 4), P(13, 4), P(15, 6), P(15, 9)],
+               fill=color, width=w, joint="curve")
+
+    img = img.resize((px * 2, px * 2), Image.LANCZOS)
+    return ctk.CTkImage(light_image=img, dark_image=img, size=(px, px))
+
+
+def _first(candidates: list[str], available: set[str], fallback: str) -> str:
     for name in candidates:
         if name in available:
             return name
-    return "TkDefaultFont"
+    return fallback
 
-
-def _resolve_theme(available_fonts: set[str]) -> dict:
-    system = platform.system()  # "Windows" | "Linux" | "Darwin"
-
-    if system == "Windows":
-        colors = dict(
-            BG="#202020", SURFACE="#2b2b2b", SURFACE2="#353535",
-            SURFACE3="#454545", BORDER="#3f3f3f",
-            ACCENT="#60cdff", ACCENT_HOV="#7fd8ff",
-            TEXT="#ffffff", SUBTEXT="#c5c5c5", MUTED="#8a8a8a",
-            SUCCESS="#6ccb5f", ERROR_C="#ff99a4", ON_ACCENT="#000000",
-        )
-        ui_candidates = ["Segoe UI Variable Text", "Segoe UI"]
-        title_candidates = ["Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI"]
-        mono_candidates = ["Cascadia Code", "Cascadia Mono", "Consolas"]
-    elif system == "Darwin":
-        colors = dict(
-            BG="#1c1c1e", SURFACE="#242426", SURFACE2="#2e2e30",
-            SURFACE3="#3a3a3c", BORDER="#3a3a3c",
-            ACCENT="#0a84ff", ACCENT_HOV="#3395ff",
-            TEXT="#f5f5f7", SUBTEXT="#a1a1a6", MUTED="#8e8e93",
-            SUCCESS="#32d74b", ERROR_C="#ff453a", ON_ACCENT="#ffffff",
-        )
-        ui_candidates = ["SF Pro Text", "Helvetica Neue", "Helvetica"]
-        title_candidates = ["SF Pro Display", "Helvetica Neue"]
-        mono_candidates = ["SF Mono", "Menlo", "Monaco"]
-    else:  # Linux and everything else -> GNOME / Adwaita-dark
-        colors = dict(
-            BG="#1e1e1e", SURFACE="#282828", SURFACE2="#333333",
-            SURFACE3="#3f3f3f", BORDER="#444444",
-            ACCENT="#3584e4", ACCENT_HOV="#4a90e8",
-            TEXT="#eeeeec", SUBTEXT="#b3b3b0", MUTED="#8a8a87",
-            SUCCESS="#57e389", ERROR_C="#ff7b63", ON_ACCENT="#ffffff",
-        )
-        ui_candidates = ["Cantarell", "Ubuntu", "Noto Sans", "DejaVu Sans"]
-        title_candidates = ["Cantarell", "Ubuntu", "Noto Sans"]
-        mono_candidates = ["JetBrains Mono", "Ubuntu Mono", "Noto Sans Mono", "DejaVu Sans Mono"]
-
-    ui_font = _first_available_font(ui_candidates, available_fonts)
-    title_font = _first_available_font(title_candidates, available_fonts)
-    mono_font = _first_available_font(mono_candidates, available_fonts)
-
-    return {"system": system, "font_ui": ui_font, "font_title": title_font,
-            "font_mono": mono_font, **colors}
-
-
-# ─────────────────────────────────────────────────────────
-# App
-# ─────────────────────────────────────────────────────────
 
 def main() -> None:
+    import tkinter.font as tkfont
+    from tkinter import filedialog
+
     from llmscribe.core.writer import build_project_summary
 
     ctk.set_appearance_mode("dark")
-
-    SIDE_PAD = 24
-    RADIUS = 8
 
     class App(ctk.CTk):
         def __init__(self):
             super().__init__()
 
-            import tkinter.font as tkfont
-            available = set(tkfont.families())
-            self.theme = _resolve_theme(available)
-            T = self.theme
-
-            self.fonts = {
-                "title": ctk.CTkFont(family=T["font_title"], size=17, weight="bold"),
-                "ui": ctk.CTkFont(family=T["font_ui"], size=13),
-                "ui_bold": ctk.CTkFont(family=T["font_ui"], size=13, weight="bold"),
-                "label": ctk.CTkFont(family=T["font_ui"], size=11),
-                "caps": ctk.CTkFont(family=T["font_ui"], size=10),
-                "mono": ctk.CTkFont(family=T["font_mono"], size=13),
-                "status": ctk.CTkFont(family=T["font_ui"], size=11),
+            fams = set(tkfont.families())
+            mono = _first(
+                ["IBM Plex Mono", "JetBrains Mono", "SF Mono", "Cascadia Mono", "Cascadia Code",
+                 "Menlo", "Consolas", "DejaVu Sans Mono", "Liberation Mono"],
+                fams, "Courier",
+            )
+            serif = _first(
+                ["Iowan Old Style", "Georgia", "Cambria", "Noto Serif", "DejaVu Serif",
+                 "Liberation Serif", "Times New Roman"],
+                fams, "Times",
+            )
+            self.F = {
+                "brand": ctk.CTkFont(family=serif, size=22),
+                "mono": ctk.CTkFont(family=mono, size=13),
+                "mono_s": ctk.CTkFont(family=mono, size=12),
+                "mono_b": ctk.CTkFont(family=mono, size=12, weight="bold"),
+                "caps": ctk.CTkFont(family=mono, size=11),
+                "gen": ctk.CTkFont(family=mono, size=13, weight="bold"),
+                "preview": ctk.CTkFont(family=mono, size=14),
             }
 
             self.title("LLMScribe")
-            self.geometry("1180x720")
+            self.geometry("1180x760")
             self.minsize(880, 560)
-            self.configure(fg_color=T["BG"])
+            self.configure(fg_color=BG)
+            
+            # Set window icon
+            try:
+                icon_path = Path(__file__).parent.parent.parent.parent / "docs" / "public" / "favicon.ico"
+                if icon_path.exists():
+                    self.iconbitmap(str(icon_path))
+            except Exception:
+                pass  # Icon is optional, don't fail if it doesn't work
 
             self._queue: queue.Queue[_WorkerResult] = queue.Queue()
             self._running = False
-            self._last_summary: str = ""
+            self._last_summary = ""
             self._last_output_file: Path | None = None
 
             self.project_var = ctk.StringVar()
-            self.output_var = ctk.StringVar(value=str(Path.cwd() / "project_overview.txt"))
+            self.output_var = ctk.StringVar(value="project_overview.txt")
             self.tree_only_var = ctk.BooleanVar(value=False)
+
+            self.icons = {
+                "folder": _make_icon("folder", SUBTEXT),
+                "save": _make_icon("save", SUBTEXT),
+                "copy": _make_icon("copy", TEXT, 16),
+            }
 
             self._build_ui()
             self.bind("<Return>", lambda _: self._start_generate())
             self.after(100, self._poll_queue)
 
-        # ── Layout ──────────────────────────────────
+        # ── helpers ─────────────────────────────────
+
+        def _hline(self, parent, **grid):
+            ctk.CTkFrame(parent, fg_color=BORDER, height=1, corner_radius=0).grid(sticky="ew", **grid)
+
+        def _field(self, parent, var, icon_key, command, placeholder=""):
+            """Rounded field with the action icon sitting inside it."""
+            box = ctk.CTkFrame(parent, fg_color=FIELD, corner_radius=12, height=44,
+                               border_width=1, border_color=FIELD)
+            box.grid_propagate(False)
+            box.grid_columnconfigure(0, weight=1)
+            entry = ctk.CTkEntry(box, textvariable=var, font=self.F["mono_s"], text_color=TEXT,
+                                 placeholder_text=placeholder, placeholder_text_color=MUTED,
+                                 fg_color="transparent", border_width=0, height=30)
+            entry.grid(row=0, column=0, sticky="ew", padx=(6, 0), pady=6)
+            icon = self.icons.get(icon_key)
+            btn = ctk.CTkButton(box, text="" if icon else "…", image=icon, width=30, height=30,
+                                corner_radius=8, fg_color="transparent", hover_color=FIELD_HOV,
+                                text_color=SUBTEXT, command=command)
+            btn.grid(row=0, column=1, padx=(2, 7), pady=6)
+            entry.bind("<FocusIn>", lambda _: box.configure(border_color=SAGE_DIM))
+            entry.bind("<FocusOut>", lambda _: box.configure(border_color=FIELD))
+            return box, entry
+
+        # ── layout ──────────────────────────────────
 
         def _build_ui(self) -> None:
-            self.grid_columnconfigure(0, weight=0, minsize=308)
+            self.grid_columnconfigure(0, weight=0)
             self.grid_columnconfigure(1, weight=1)
-            self.grid_rowconfigure(0, weight=1)
+            self.grid_rowconfigure(0, weight=0)
+            self.grid_rowconfigure(1, weight=1)
+            self._build_topbar()
             self._build_sidebar()
             self._build_preview()
 
+        def _build_topbar(self) -> None:
+            bar = ctk.CTkFrame(self, fg_color=TOPBAR, corner_radius=0, height=42)
+            bar.grid(row=0, column=0, columnspan=2, sticky="ew")
+            bar.grid_propagate(False)
+            bar.grid_columnconfigure((0, 2), weight=1, uniform="tb")
+            bar.grid_columnconfigure(1, weight=0)
+            bar.grid_rowconfigure(0, weight=1)
+            ctk.CTkLabel(bar, text="LLMScribe", font=self.F["mono_s"], text_color=SUBTEXT
+                         ).grid(row=0, column=1)
+            ctk.CTkLabel(bar, text=APP_VERSION, font=self.F["mono_s"], text_color=MUTED,
+                         anchor="e").grid(row=0, column=2, sticky="e", padx=16)
+            # bottom border of the bar (overlaid on its last pixel row)
+            sep = ctk.CTkFrame(self, fg_color=BORDER, height=1, corner_radius=0)
+            sep.grid(row=0, column=0, columnspan=2, sticky="sew")
+
         def _build_sidebar(self) -> None:
-            T, F = self.theme, self.fonts
-            sidebar = ctk.CTkFrame(self, width=308, corner_radius=0, fg_color=T["SURFACE"])
-            sidebar.grid(row=0, column=0, sticky="nsew")
-            sidebar.grid_propagate(False)
-            sidebar.grid_columnconfigure(0, weight=1)
+            side = ctk.CTkFrame(self, fg_color=SIDEBAR, corner_radius=0, width=SIDEBAR_W)
+            side.grid(row=1, column=0, sticky="nsew")
+            side.grid_propagate(False)
+            side.grid_columnconfigure(0, weight=1)
+            side.grid_columnconfigure(1, weight=0)
+            side.grid_rowconfigure(0, weight=1)
+            ctk.CTkFrame(side, fg_color=BORDER, width=1, corner_radius=0).grid(
+                row=0, column=1, sticky="ns")
 
-            # Header
-            header = ctk.CTkFrame(sidebar, fg_color="transparent")
-            header.grid(row=0, column=0, sticky="ew", padx=SIDE_PAD, pady=(28, 0))
-            ctk.CTkLabel(header, text="LLMScribe", font=F["title"], text_color=T["TEXT"],
-                         anchor="w").pack(side="left")
-            ctk.CTkLabel(header, text="  v1", font=F["label"], text_color=T["MUTED"],
-                         anchor="w").pack(side="left")
+            body = ctk.CTkFrame(side, fg_color="transparent")
+            body.grid(row=0, column=0, sticky="nsew", padx=PAD, pady=(20, 0))
+            body.grid_columnconfigure(0, weight=1)
 
-            ctk.CTkFrame(sidebar, fg_color=T["BORDER"], height=1, corner_radius=0).grid(
-                row=1, column=0, sticky="ew", padx=SIDE_PAD, pady=(16, 0))
+            ctk.CTkLabel(body, text="LLMScribe", font=self.F["brand"], text_color=TEXT,
+                         anchor="w").grid(row=0, column=0, sticky="w")
+            ctk.CTkLabel(body, text=APP_VERSION, font=self.F["mono_s"], text_color=MUTED,
+                         anchor="w").grid(row=1, column=0, sticky="w", pady=(0, 20))
 
-            # Form
-            form = ctk.CTkFrame(sidebar, fg_color="transparent")
-            form.grid(row=2, column=0, sticky="ew", padx=SIDE_PAD, pady=(20, 0))
-            form.grid_columnconfigure(0, weight=1)
+            ctk.CTkLabel(body, text="PROJECT FOLDER", font=self.F["caps"], text_color=SUBTEXT,
+                         anchor="w").grid(row=2, column=0, sticky="w", pady=(0, 8))
+            box, entry = self._field(body, self.project_var, "folder", self._browse_project,
+                                     "Select a folder…")
+            box.grid(row=3, column=0, sticky="ew")
+            entry.bind("<FocusOut>", lambda _: self._refresh_output_path(), add="+")
 
-            ctk.CTkLabel(form, text="PROJECT FOLDER", font=F["caps"], text_color=T["SUBTEXT"],
-                        anchor="w").grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
-            row_proj = ctk.CTkFrame(form, fg_color="transparent")
-            row_proj.grid(row=1, column=0, columnspan=2, sticky="ew")
-            row_proj.grid_columnconfigure(0, weight=1)
-            entry_proj = ctk.CTkEntry(
-                row_proj, textvariable=self.project_var, font=F["ui"], height=38,
-                corner_radius=RADIUS, fg_color=T["SURFACE2"], border_color=T["BORDER"],
-                border_width=1, text_color=T["TEXT"],
-            )
-            entry_proj.grid(row=0, column=0, sticky="ew")
-            entry_proj.bind("<FocusOut>", lambda _: self._refresh_output_path())
-            ctk.CTkButton(
-                row_proj, text="\U0001F4C2", width=38, height=38, corner_radius=RADIUS,
-                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
-                font=F["ui"], command=self._browse_project,
-            ).grid(row=0, column=1, sticky="ns", padx=(8, 0))
+            ctk.CTkLabel(body, text="OUTPUT FILE", font=self.F["caps"], text_color=SUBTEXT,
+                         anchor="w").grid(row=4, column=0, sticky="w", pady=(20, 8))
+            box2, _ = self._field(body, self.output_var, "save", self._browse_output)
+            box2.grid(row=5, column=0, sticky="ew")
 
-            ctk.CTkLabel(form, text="OUTPUT FILE", font=F["caps"], text_color=T["SUBTEXT"],
-                        anchor="w").grid(row=2, column=0, columnspan=2, sticky="ew", pady=(20, 6))
-            row_out = ctk.CTkFrame(form, fg_color="transparent")
-            row_out.grid(row=3, column=0, columnspan=2, sticky="ew")
-            row_out.grid_columnconfigure(0, weight=1)
-            entry_out = ctk.CTkEntry(
-                row_out, textvariable=self.output_var, font=F["ui"], height=38,
-                corner_radius=RADIUS, fg_color=T["SURFACE2"], border_color=T["BORDER"],
-                border_width=1, text_color=T["TEXT"],
-            )
-            entry_out.grid(row=0, column=0, sticky="ew")
-            ctk.CTkButton(
-                row_out, text="\U0001F4BE", width=38, height=38, corner_radius=RADIUS,
-                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
-                font=F["ui"], command=self._browse_output,
-            ).grid(row=0, column=1, sticky="ns", padx=(8, 0))
+            ctk.CTkCheckBox(
+                body, text="Tree only", variable=self.tree_only_var, onvalue=True, offvalue=False,
+                font=self.F["mono_s"], text_color=SUBTEXT, checkbox_width=18, checkbox_height=18,
+                corner_radius=5, border_width=1, border_color=BORDER_STRONG, fg_color=SAGE,
+                hover_color=SAGE_HOV, checkmark_color=ON_SAGE,
+            ).grid(row=6, column=0, sticky="w", pady=(24, 0))
 
-            # Tree-only toggle — a real CTkSwitch: anti-aliased pill + knob
-            row_toggle = ctk.CTkFrame(form, fg_color="transparent")
-            row_toggle.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(22, 0))
-            row_toggle.grid_columnconfigure(0, weight=1)
-            ctk.CTkLabel(row_toggle, text="Tree only (skip file contents)", font=F["ui"],
-                        text_color=T["TEXT"], anchor="w").grid(row=0, column=0, sticky="w")
-            ctk.CTkSwitch(
-                row_toggle, text="", variable=self.tree_only_var, onvalue=True, offvalue=False,
-                width=42, height=22, switch_width=42, switch_height=22,
-                progress_color=T["ACCENT"], button_color="#ffffff", button_hover_color="#ffffff",
-                fg_color=T["SURFACE3"],
-            ).grid(row=0, column=1, sticky="e")
-
-            # Generate — full width, genuinely stretches via CTk's own resize handling
             self._generate_btn = ctk.CTkButton(
-                form, text="Generate", font=F["ui_bold"], height=44, corner_radius=RADIUS,
-                fg_color=T["ACCENT"], hover_color=T["ACCENT_HOV"], text_color=T["ON_ACCENT"],
-                command=self._start_generate,
+                body, text="Generate", font=self.F["gen"], height=48, corner_radius=14,
+                fg_color=SAGE, hover_color=SAGE_HOV, text_color=ON_SAGE,
+                text_color_disabled=ON_SAGE, command=self._start_generate,
             )
-            self._generate_btn.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(24, 0))
+            self._generate_btn.grid(row=7, column=0, sticky="ew", pady=(22, 0))
 
-            ctk.CTkFrame(sidebar, fg_color=T["BORDER"], height=1, corner_radius=0).grid(
-                row=3, column=0, sticky="ew", padx=SIDE_PAD, pady=(28, 0))
+            actions = ctk.CTkFrame(body, fg_color="transparent")
+            actions.grid(row=8, column=0, sticky="ew", pady=(12, 0))
+            actions.grid_columnconfigure((0, 1), weight=1, uniform="act")
+            outline = dict(height=44, corner_radius=12, fg_color="transparent",
+                           border_width=1, border_color=BORDER_STRONG, hover_color=FIELD,
+                           text_color=TEXT, font=self.F["mono_b"])
+            ctk.CTkButton(actions, text=" Copy", image=self.icons.get("copy"), compound="left",
+                          command=self._copy_all, **outline
+                          ).grid(row=0, column=0, sticky="ew", padx=(0, 5))
+            ctk.CTkButton(actions, text="Open file", command=self._open_last_output, **outline
+                          ).grid(row=0, column=1, sticky="ew", padx=(5, 0))
 
-            # Secondary actions
-            actions = ctk.CTkFrame(sidebar, fg_color="transparent")
-            actions.grid(row=4, column=0, sticky="ew", padx=SIDE_PAD, pady=(14, 0))
-            actions.grid_columnconfigure(0, weight=1, uniform="actions")
-            actions.grid_columnconfigure(1, weight=1, uniform="actions")
-            self._copy_btn = ctk.CTkButton(
-                actions, text="Copy output", font=F["ui"], height=34, corner_radius=RADIUS,
-                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
-                command=self._copy_all,
-            )
-            self._copy_btn.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-            self._open_btn = ctk.CTkButton(
-                actions, text="Open file", font=F["ui"], height=34, corner_radius=RADIUS,
-                fg_color=T["SURFACE2"], hover_color=T["SURFACE3"], text_color=T["SUBTEXT"],
-                command=self._open_last_output,
-            )
-            self._open_btn.grid(row=0, column=1, sticky="ew", padx=(5, 0))
-
-            # Status
             self._status_lbl = ctk.CTkLabel(
-                sidebar, text="Ready", font=F["status"], text_color=T["SUBTEXT"], anchor="w",
-            )
-            self._status_lbl.grid(row=5, column=0, sticky="ew", padx=SIDE_PAD, pady=(16, 0))
-
-            sidebar.grid_rowconfigure(6, weight=1)
-            ctk.CTkFrame(sidebar, fg_color="transparent").grid(row=6, column=0, sticky="nsew")
-
-            ctk.CTkFrame(sidebar, fg_color=T["BORDER"], height=1, corner_radius=0).grid(
-                row=7, column=0, sticky="ew")
-            ctk.CTkLabel(
-                sidebar, text="Scans text files \u00b7 respects .gitignore", font=F["caps"],
-                text_color=T["MUTED"], anchor="w",
-            ).grid(row=8, column=0, sticky="ew", padx=SIDE_PAD, pady=(10, 18))
+                body, text="", font=self.F["mono_s"], text_color=SUBTEXT, anchor="w",
+                justify="left", wraplength=SIDEBAR_W - 2 * PAD - 4)
+            self._status_lbl.grid(row=9, column=0, sticky="w", pady=(18, 0))
 
         def _build_preview(self) -> None:
-            T, F = self.theme, self.fonts
-            pane = ctk.CTkFrame(self, fg_color=T["BG"], corner_radius=0)
-            pane.grid(row=0, column=1, sticky="nsew")
+            pane = ctk.CTkFrame(self, fg_color=PANE, corner_radius=0)
+            pane.grid(row=1, column=1, sticky="nsew")
             pane.grid_columnconfigure(0, weight=1)
-            pane.grid_rowconfigure(1, weight=1)
+            pane.grid_rowconfigure(2, weight=1)
 
-            bar = ctk.CTkFrame(pane, fg_color=T["SURFACE"], corner_radius=0, height=40)
-            bar.grid(row=0, column=0, sticky="ew")
-            bar.grid_columnconfigure(0, weight=1)
-            ctk.CTkLabel(bar, text="Preview", font=F["label"], text_color=T["SUBTEXT"],
-                        anchor="w").grid(row=0, column=0, sticky="w", padx=18, pady=10)
-            self._line_lbl = ctk.CTkLabel(bar, text="", font=F["label"], text_color=T["MUTED"],
+            head = ctk.CTkFrame(pane, fg_color="transparent", height=36)
+            head.grid(row=0, column=0, sticky="ew")
+            head.grid_propagate(False)
+            head.grid_columnconfigure(0, weight=1)
+            head.grid_rowconfigure(0, weight=1)
+            ctk.CTkLabel(head, text="Preview", font=self.F["mono_s"], text_color=SUBTEXT,
+                         anchor="w").grid(row=0, column=0, sticky="w", padx=18)
+            self._line_lbl = ctk.CTkLabel(head, text="", font=self.F["mono_s"], text_color=MUTED,
                                           anchor="e")
-            self._line_lbl.grid(row=0, column=1, sticky="e", padx=18, pady=10)
+            self._line_lbl.grid(row=0, column=1, sticky="e", padx=18)
+            self._hline(pane, row=1, column=0)
 
-            # CTkTextbox ships its own anti-aliased x/y scrollbars that only
-            # appear when content actually overflows — no manual wiring needed.
             self.preview = ctk.CTkTextbox(
-                pane, wrap="none", corner_radius=0, fg_color=T["BG"], text_color=T["TEXT"],
-                font=F["mono"], border_width=0, border_spacing=20,
-                scrollbar_button_color=T["SURFACE3"], scrollbar_button_hover_color=T["ACCENT"],
-                activate_scrollbars=True,
+                pane, wrap="none", corner_radius=0, fg_color=PANE, text_color=TEXT,
+                font=self.F["preview"], border_width=0, border_spacing=14,
+                scrollbar_button_color=BORDER_STRONG, scrollbar_button_hover_color=SAGE_DIM,
             )
-            self.preview.grid(row=1, column=0, sticky="nsew")
-            self.preview.configure(state="disabled")
-
+            self.preview.grid(row=2, column=0, sticky="nsew")
+            try:
+                self.preview._textbox.configure(
+                    selectbackground=BORDER_STRONG, selectforeground=TEXT, padx=10, pady=6,
+                    spacing1=2, spacing3=2)
+            except Exception:
+                pass
             self._set_preview_text(
-                "Select a project folder and press Generate.\n\nThe output will appear here."
-            )
+                "Select a project folder and press Generate.\n\nThe output will appear here.")
 
-        # ── Actions ──────────────────────────────
+        # ── actions ─────────────────────────────────
 
         def _browse_project(self) -> None:
-            from tkinter import filedialog
             folder = filedialog.askdirectory(title="Select Project Folder")
-            if not folder:
-                return
-            self.project_var.set(folder)
-            self._refresh_output_path()
+            if folder:
+                self.project_var.set(folder)
+                self._refresh_output_path()
 
         def _browse_output(self) -> None:
-            from tkinter import filedialog
             initial = Path(self.output_var.get() or "project_overview.txt")
             path = filedialog.asksaveasfilename(
                 title="Save Output As", defaultextension=".txt",
@@ -336,42 +336,37 @@ def main() -> None:
 
         def _refresh_output_path(self) -> None:
             text = self.project_var.get().strip()
-            if not text:
-                return
-            project_path = Path(text).expanduser()
-            self.output_var.set(str(project_path / "project_overview.txt"))
+            if text:
+                self.output_var.set(str(Path(text).expanduser() / "project_overview.txt"))
 
-        def _set_status(self, msg: str, color: str | None = None) -> None:
-            self._status_lbl.configure(text=msg, text_color=color or self.theme["SUBTEXT"])
+        def _set_status(self, msg: str, color: str = SUBTEXT) -> None:
+            self._status_lbl.configure(text=msg, text_color=color)
 
         def _set_running(self, running: bool) -> None:
             self._running = running
             if running:
-                self._generate_btn.configure(text="Generating\u2026", state="disabled")
+                self._generate_btn.configure(text="Generating…", state="disabled", fg_color=SAGE_DIM)
             else:
-                self._generate_btn.configure(text="Generate", state="normal")
+                self._generate_btn.configure(text="Generate", state="normal", fg_color=SAGE)
 
         def _start_generate(self) -> None:
             if self._running:
                 return
-
             project_text = self.project_var.get().strip()
             output_text = self.output_var.get().strip()
             tree_only = self.tree_only_var.get()
 
             if not project_text:
-                self._set_status("\u26a0  Choose a project folder first.", self.theme["ERROR_C"])
+                self._set_status("Choose a project folder first.", ERROR_C)
                 return
-
             project_path = Path(project_text).expanduser()
-            if not project_path.exists() or not project_path.is_dir():
-                self._set_status("\u26a0  Project folder path is invalid.", self.theme["ERROR_C"])
+            if not project_path.is_dir():
+                self._set_status("Project folder path is invalid.", ERROR_C)
                 return
-
             output_file = Path(output_text or "project_overview.txt").expanduser()
 
-            self._set_preview_text("Scanning\u2026")
-            self._set_status("Scanning project (tree only)\u2026" if tree_only else "Scanning project\u2026")
+            self._set_preview_text("Scanning…")
+            self._set_status("Scanning project (tree only)…" if tree_only else "Scanning project…")
             self._line_lbl.configure(text="")
             self._set_running(True)
 
@@ -393,19 +388,15 @@ def main() -> None:
             except queue.Empty:
                 self.after(100, self._poll_queue)
                 return
-
             self._set_running(False)
-
             if result.ok and result.output_file and result.summary:
                 self._last_output_file = result.output_file
                 self._last_summary = result.summary
                 self._set_preview_text(result.summary)
-                lines = result.summary.count("\n")
-                self._line_lbl.configure(text=f"{lines:,} lines")
-                self._set_status(f"\u2713  Saved to {result.output_file.name}", self.theme["SUCCESS"])
+                self._line_lbl.configure(text=f"{result.summary.count(chr(10)) + 1:,} lines")
+                self._set_status(f"Saved to\n{result.output_file.name}", TEXT)
             else:
-                self._set_status(result.message, self.theme["ERROR_C"])
-
+                self._set_status(result.message, ERROR_C)
             self.after(100, self._poll_queue)
 
         def _set_preview_text(self, text: str) -> None:
@@ -420,12 +411,11 @@ def main() -> None:
             self.clipboard_clear()
             self.clipboard_append(self._last_summary)
             self.update_idletasks()
-            self._set_status("Copied to clipboard.", self.theme["SUCCESS"])
+            self._set_status("Copied to clipboard.", TEXT)
 
         def _open_last_output(self) -> None:
-            if self._last_output_file is None:
-                return
-            self._open_path(self._last_output_file)
+            if self._last_output_file is not None:
+                self._open_path(self._last_output_file)
 
         def _open_path(self, path: Path) -> None:
             try:
