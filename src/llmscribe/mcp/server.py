@@ -2,9 +2,10 @@
 LLMScribe MCP Server – Clean FastAPI + MCP implementation
 
 Endpoints:
-  GET  /health   → health check
-  GET  /info     → server info
-  /mcp           → MCP Streamable HTTP endpoint (for Cursor, Claude, etc.)
+  GET|HEAD /health   → health check (HEAD for Render / load-balancer probes)
+  GET|HEAD /         → root status
+  GET      /info     → server info
+  /mcp               → MCP Streamable HTTP endpoint (for Cursor, Claude, etc.)
 
 Run modes:
   MCP_TRANSPORT=http  → FastAPI HTTP server (Railway / production)
@@ -21,7 +22,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 logging.basicConfig(
@@ -517,39 +518,51 @@ def create_app() -> FastAPI:
             yield
         logger.info("MCP session manager stopped")
 
+    # redirect_slashes=False prevents /mcp → 307 → /mcp/ which then 404s
+    # on the mounted Streamable HTTP sub-app (breaks MCP clients on Render).
     app = FastAPI(
         title="LLMScribe MCP Server",
         description="Deterministic code-context tools for AI agents",
         version="1.3.0",
         lifespan=lifespan,
+        redirect_slashes=False,
     )
 
-    @app.get("/")
-    async def root():
-        return JSONResponse({
-            "status": "healthy",
-            "server": "LLMScribe MCP Server",
-            "version": "1.3.0",
-            "mcp_backend": _MCP_BACKEND,
-            "endpoints": {
-                "health": "/health",
-                "info": "/info",
-                "mcp": "/mcp",
-            },
-        })
+    _root_body = {
+        "status": "healthy",
+        "server": "LLMScribe MCP Server",
+        "version": "1.3.0",
+        "mcp_backend": _MCP_BACKEND,
+        "endpoints": {
+            "health": "/health",
+            "info": "/info",
+            "mcp": "/mcp",
+        },
+    }
 
-    @app.get("/health")
-    async def health():
-        return JSONResponse({
-            "status": "healthy",
-            "server": "LLMScribe MCP",
-            "version": "1.3.0",
-            "mcp_backend": _MCP_BACKEND,
-            "tools": [
-                "project_map", "project_overview", "search",
-                "read", "read_many", "project_dependencies", "project_diff",
-            ],
-        })
+    _health_body = {
+        "status": "healthy",
+        "server": "LLMScribe MCP",
+        "version": "1.3.0",
+        "mcp_backend": _MCP_BACKEND,
+        "tools": [
+            "project_map", "project_overview", "search",
+            "read", "read_many", "project_dependencies", "project_diff",
+        ],
+    }
+
+    # Accept both GET and HEAD (Render / load-balancers probe with HEAD).
+    @app.api_route("/", methods=["GET", "HEAD"])
+    async def root(request: Request):
+        if request.method == "HEAD":
+            return JSONResponse(content=None, status_code=200)
+        return JSONResponse(_root_body)
+
+    @app.api_route("/health", methods=["GET", "HEAD"])
+    async def health(request: Request):
+        if request.method == "HEAD":
+            return JSONResponse(content=None, status_code=200)
+        return JSONResponse(_health_body)
 
     @app.get("/info")
     async def info():
@@ -562,8 +575,8 @@ def create_app() -> FastAPI:
             "tools": 7,
         })
 
-    # 3. Mount the MCP ASGI app.
-    #    Public URL is /mcp because the sub-app listens at "/".
+    # 3. Mount the MCP ASGI app at /mcp (no trailing-slash redirect).
+    #    Public URL is exactly /mcp because the sub-app listens at "/".
     app.mount("/mcp", mcp_asgi)
     return app
 
