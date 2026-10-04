@@ -422,19 +422,25 @@ project_list_files = project_map
 def create_app() -> FastAPI:
     """Create FastAPI app with MCP mounted at /mcp."""
 
-    # Get the MCP ASGI app
+    # Make the MCP endpoint live at "/" inside the sub-app
+    # so that after mounting at /mcp the public URL is exactly /mcp
     try:
-        mcp_asgi = mcp.streamable_http_app()
+        # Newer FastMCP / mcp versions
+        mcp_asgi = mcp.http_app(path="/")          # type: ignore[call-arg]
     except Exception:
         try:
-            mcp_asgi = mcp.http_app(path="/")
+            # Older style
+            if hasattr(mcp, "settings"):
+                mcp.settings.streamable_http_path = "/"  # type: ignore[attr-defined]
+            mcp_asgi = mcp.streamable_http_app()   # type: ignore[attr-defined]
         except Exception:
-            mcp_asgi = mcp.http_app()
+            mcp_asgi = mcp.http_app()               # type: ignore[call-arg]
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        if hasattr(mcp, "session_manager"):
-            async with mcp.session_manager.run():
+        session_mgr = getattr(mcp, "session_manager", None)
+        if session_mgr is not None:
+            async with session_mgr.run():          # type: ignore[attr-defined]
                 logger.info("MCP session manager started")
                 yield
         else:
@@ -482,7 +488,7 @@ def create_app() -> FastAPI:
             "tools": 7,
         })
 
-    # Mount MCP at /mcp
+    # Now /mcp is the correct MCP endpoint
     app.mount("/mcp", mcp_asgi)
     return app
 
