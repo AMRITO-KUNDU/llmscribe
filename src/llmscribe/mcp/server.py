@@ -1,37 +1,47 @@
-"""MCP server for LLMScribe exposing project structure, search, diff, and file tools for AI agents.
+"""
+LLMScribe MCP Server – Clean FastAPI + MCP implementation
 
-This server provides the following tools:
-- project_map: Show project directory structure
-- project_overview: Generate full project overview with tree and contents
-- search: Search project code for specific patterns
-- read: Read a specific file
-- read_many: Read multiple files
-- project_dependencies: Analyze file dependencies
-- project_diff: Show git diff and status
+Endpoints:
+  GET  /health   → health check
+  GET  /info     → server info
+  /mcp           → MCP Streamable HTTP endpoint (for Cursor, Claude, etc.)
 
-Supports both stdio (local) and HTTP (remote) transport.
-HTTP mode uses MCP streamable-http transport for full protocol compatibility.
+Run modes:
+  MCP_TRANSPORT=http  → FastAPI HTTP server (Railway / production)
+  MCP_TRANSPORT=stdio → classic stdio (local Cursor / Claude Desktop)
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
+import uvicorn
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-7s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("llmscribe.mcp")
+
+# ------------------------------------------------------------------
+# MCP import (works with both official mcp and fastmcp packages)
+# ------------------------------------------------------------------
 try:
-    from mcp.server.mcpserver import MCPServer
+    from fastmcp import FastMCP
 except ImportError:
-    try:
-        from mcp.server.fastmcp import FastMCP as MCPServer
-    except ImportError:
-        from fastmcp import FastMCP as MCPServer
+    from mcp.server.fastmcp import FastMCP  # type: ignore
 
 from llmscribe.core import (
     analyze_dependencies,
     get_git_diff,
-    list_files,
     project_map as core_project_map,
     project_overview as core_project_overview,
     read_file,
@@ -40,24 +50,24 @@ from llmscribe.core import (
 )
 from llmscribe.github.client import parse_github_repo
 from llmscribe.github.provider import (
+    github_project_diff,
     github_project_get_file,
     github_project_get_files,
     github_project_map,
     github_project_overview,
     github_project_search,
-    github_project_diff,
 )
 
-# Create MCP server with all tools
-mcp = MCPServer("llmscribe")
+# ------------------------------------------------------------------
+# Create MCP server
+# ------------------------------------------------------------------
+mcp = FastMCP("llmscribe")
 
 MAX_CONTENT_CHARS = 400_000
 GET_FILES_MAX_FILES = 50
 
 
 class ProjectRootError(Exception):
-    """Exception raised when project root resolution fails."""
-
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
@@ -65,12 +75,10 @@ class ProjectRootError(Exception):
 
 
 def _resolve_project_root(path: Optional[str] = None) -> Path:
-    """Resolve project root directory defaulting to current working directory."""
     if path and path.strip():
         resolved = Path(path).resolve()
     else:
         resolved = Path.cwd().resolve()
-
     if not resolved.exists():
         raise ProjectRootError("invalid_path", f"Directory does not exist: '{resolved}'")
     if not resolved.is_dir():
@@ -79,55 +87,43 @@ def _resolve_project_root(path: Optional[str] = None) -> Path:
 
 
 def _validate_path_repo_mutual_exclusive(path: Optional[str], repo: Optional[str]) -> None:
-    """Validate that path and repo are mutually exclusive."""
     if path and path.strip() and repo and repo.strip():
-        raise ProjectRootError("path_and_repo_mutually_exclusive", "Cannot specify both 'path' and 'repo'. Use one or the other, not both.")
+        raise ProjectRootError(
+            "path_and_repo_mutually_exclusive",
+            "Cannot specify both 'path' and 'repo'.",
+        )
 
 
 def _parse_repo(repo_str: str) -> tuple[str, str]:
-    """Parse repo string into owner and repo, returning tuple."""
     return parse_github_repo(repo_str)
 
 
 def _json_ok(tool: str, path: str, data: Any, metadata: Optional[dict[str, Any]] = None) -> str:
-    """Generate standard successful JSON envelope."""
-    payload: dict[str, Any] = {
-        "ok": True,
-        "tool": tool,
-        "path": path,
-        "data": data,
-    }
+    payload: dict[str, Any] = {"ok": True, "tool": tool, "path": path, "data": data}
     if metadata is not None:
         payload["metadata"] = metadata
     return json.dumps(payload, indent=2)
 
 
 def _json_err(tool: str, code: str, message: str) -> str:
-    """Generate standard error JSON envelope."""
-    return json.dumps({
-        "ok": False,
-        "tool": tool,
-        "error": {
-            "code": code,
-            "message": message,
-        },
-    }, indent=2)
+    return json.dumps({"ok": False, "tool": tool, "error": {"code": code, "message": message}}, indent=2)
 
 
-def _is_json_format(format: str) -> bool:
-    """Return True if format parameter specifies JSON."""
-    return format.strip().lower() == "json"
+def _is_json(fmt: str) -> bool:
+    return fmt.strip().lower() == "json"
 
 
 def _md_header(tool: str, path: str) -> str:
-    """Generate consistent Markdown header."""
     return f"### llmscribe: {tool}\nPath: {path}\n\n"
 
 
 def _md_error(tool: str, code: str, message: str) -> str:
-    """Generate consistent Markdown error string."""
     return f"### llmscribe: {tool}\nError [{code}]: {message}"
 
+
+# ------------------------------------------------------------------
+# Tools
+# ------------------------------------------------------------------
 
 @mcp.tool()
 def project_map(
@@ -136,42 +132,25 @@ def project_map(
     ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return directory tree structure without file contents.
-    
-    Supports both local paths and GitHub repositories.
-    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
-    """
-    tool_name = "project_map"
-    
+    """Return directory tree structure without file contents."""
+    tool = "project_map"
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # GitHub repository mode
-            owner, repo_name = _parse_repo(repo)
-            return github_project_map(owner, repo_name, ref, format)
-        
-        # Local path mode
+            owner, name = _parse_repo(repo)
+            return github_project_map(owner, name, ref, format)
         root = _resolve_project_root(path)
         result = core_project_map(root)
-        
-        if _is_json_format(format):
-            return _json_ok(tool_name, root.as_posix(), result.to_dict(), {
+        if _is_json(format):
+            return _json_ok(tool, root.as_posix(), result.to_dict(), {
                 "file_count": result.file_count,
                 "character_count": result.character_count,
             })
-        
-        summary_md = f"Selected Files Directory Structure:\n\n{result.tree}"
-        return f"{_md_header(tool_name, root.as_posix())}{summary_md}"
-
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+        return f"{_md_header(tool, root.as_posix())}Selected Files Directory Structure:\n\n{result.tree}"
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
 @mcp.tool()
@@ -181,56 +160,30 @@ def project_overview(
     ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return full directory tree and all text file contents for a project.
-    
-    Supports both local paths and GitHub repositories.
-    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
-    """
-    tool_name = "project_overview"
-    
+    """Return full directory tree + file contents."""
+    tool = "project_overview"
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # GitHub repository mode
-            owner, repo_name = _parse_repo(repo)
-            return github_project_overview(owner, repo_name, ref, format)
-        
-        # Local path mode
+            owner, name = _parse_repo(repo)
+            return github_project_overview(owner, name, ref, format)
         root = _resolve_project_root(path)
         result = core_project_overview(root, max_content_chars=MAX_CONTENT_CHARS)
-        
-        if _is_json_format(format):
-            metadata: dict[str, Any] = {
-                "file_count": result.file_count,
-                "character_count": result.character_count,
-            }
+        if _is_json(format):
+            meta = {"file_count": result.file_count, "character_count": result.character_count}
             if result.truncated:
-                metadata["truncated"] = True
-                metadata["truncation_note"] = result.truncation_note
-                metadata["truncation_limit"] = result.truncation_limit
-            
-            return _json_ok(tool_name, root.as_posix(), result.to_dict(), metadata)
-        
-        files_md = "\n\n".join([f"--- {f['path']} ---\n{f['content']}" for f in result.files])
-        summary_md = (
-            f"Selected Files Directory Structure:\n\n"
-            f"{result.tree}\n\n"
-            f"File Contents:\n{files_md}"
-        )
+                meta["truncated"] = True
+                meta["truncation_note"] = result.truncation_note
+            return _json_ok(tool, root.as_posix(), result.to_dict(), meta)
+        files_md = "\n\n".join(f"--- {f['path']} ---\n{f['content']}" for f in result.files)
+        text = f"Selected Files Directory Structure:\n\n{result.tree}\n\nFile Contents:\n{files_md}"
         if result.truncated:
-            summary_md += f"\n\n[{result.truncation_note}]"
-        
-        return f"{_md_header(tool_name, root.as_posix())}{summary_md}"
-
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+            text += f"\n\n[{result.truncation_note}]"
+        return f"{_md_header(tool, root.as_posix())}{text}"
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
 @mcp.tool()
@@ -241,88 +194,45 @@ def search(
     ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Search for a keyword query in filenames and file contents.
-    
-    Supports both local paths and GitHub repositories.
-    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
-    
-    This is the main discovery primitive for AI agents. Results include:
-    - file path
-    - matching line/range  
-    - relevant context
-    - match type (filename, content)
-    - deterministic ordering
-    - sensible result limits (max 1000 matches)
-    """
-    tool_name = "search"
+    """Search filenames and file contents."""
+    tool = "search"
     if not query or not query.strip():
-        if _is_json_format(format):
-            return _json_err(tool_name, "empty_query", "Query string cannot be empty.")
-        return _md_error(tool_name, "empty_query", "Query string cannot be empty.")
-
+        return _json_err(tool, "empty_query", "Query cannot be empty.") if _is_json(format) else _md_error(tool, "empty_query", "Query cannot be empty.")
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # GitHub repository mode
-            owner, repo_name = _parse_repo(repo)
-            return github_project_search(query, owner, repo_name, ref, format)
-        
-        # Local path mode
+            owner, name = _parse_repo(repo)
+            return github_project_search(query, owner, name, ref, format)
         root = _resolve_project_root(path)
         result = search_project(query, root, max_results=1000)
-        
-        if _is_json_format(format):
-            metadata = {
+        if _is_json(format):
+            return _json_ok(tool, root.as_posix(), result.to_dict(), {
                 "query": result.query,
-                "root_path": result.root_path,
                 "file_count": result.file_count,
                 "match_count": result.match_count,
                 "truncated": result.truncated,
-                "truncation_limit": result.truncation_limit,
-            }
-            return _json_ok(tool_name, root.as_posix(), result.to_dict(), metadata)
-        
+            })
         if not result.matches:
-            return f"{_md_header(tool_name, root.as_posix())}No matches found for query: '{result.query}'"
-        
-        # Group matches by file
-        matches_by_file: dict[str, list[Any]] = {}
-        for match in result.matches:
-            if match.file_path not in matches_by_file:
-                matches_by_file[match.file_path] = []
-            matches_by_file[match.file_path].append(match)
-        
-        # Build markdown output
-        md_parts = []
-        for file_path, file_matches in sorted(matches_by_file.items()):
-            match_entry = [f"File: {file_path}"]
-            
-            # Check if we have filename matches
-            filename_matches = [m for m in file_matches if m.match_type == "filename"]
-            if filename_matches and not any(m.match_type == "content" for m in file_matches):
-                match_entry.append("  (Filename match)")
-            
-            # Add content matches
-            content_matches = [m for m in file_matches if m.match_type == "content"]
-            for content_match in content_matches[:10]:  # Limit to first 10 content matches per file
-                match_entry.append(f"  Line {content_match.line_number}: {content_match.line_content}")
-            
-            if len(content_matches) > 10:
-                match_entry.append(f"  ... ({len(content_matches) - 10} more line matches)")
-            
-            md_parts.append("\n".join(match_entry))
-        
-        return f"{_md_header(tool_name, root.as_posix())}Search results for '{result.query}':\n\n" + "\n\n".join(md_parts)
-
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+            return f"{_md_header(tool, root.as_posix())}No matches for '{result.query}'"
+        by_file: dict[str, list] = {}
+        for m in result.matches:
+            by_file.setdefault(m.file_path, []).append(m)
+        parts = []
+        for fp, matches in sorted(by_file.items()):
+            entry = [f"File: {fp}"]
+            content = [m for m in matches if m.match_type == "content"]
+            if any(m.match_type == "filename" for m in matches) and not content:
+                entry.append("  (Filename match)")
+            for m in content[:10]:
+                entry.append(f"  Line {m.line_number}: {m.line_content}")
+            if len(content) > 10:
+                entry.append(f"  ... ({len(content)-10} more)")
+            parts.append("\n".join(entry))
+        return f"{_md_header(tool, root.as_posix())}Search results for '{result.query}':\n\n" + "\n\n".join(parts)
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
 @mcp.tool()
@@ -333,49 +243,26 @@ def read(
     ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return full content of a specific file, with path traversal prevention.
-    
-    Supports both local paths and GitHub repositories.
-    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
-    """
-    tool_name = "read"
+    """Read a single file with path-traversal protection."""
+    tool = "read"
     if not file_path or not file_path.strip():
-        if _is_json_format(format):
-            return _json_err(tool_name, "invalid_argument", "file_path must be provided.")
-        return _md_error(tool_name, "invalid_argument", "file_path must be provided.")
-
+        return _json_err(tool, "invalid_argument", "file_path required.") if _is_json(format) else _md_error(tool, "invalid_argument", "file_path required.")
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # GitHub repository mode
-            owner, repo_name = _parse_repo(repo)
-            return github_project_get_file(file_path, owner, repo_name, ref, format)
-        
-        # Local path mode
+            owner, name = _parse_repo(repo)
+            return github_project_get_file(file_path, owner, name, ref, format)
         root = _resolve_project_root(path)
         result = read_file(file_path, root, max_content_chars=MAX_CONTENT_CHARS)
-        
         if not result.ok:
-            if _is_json_format(format):
-                return _json_err(tool_name, result.error_code, result.error_message)
-            return _md_error(tool_name, result.error_code, result.error_message)
-        
-        if _is_json_format(format):
-            return _json_ok(tool_name, root.as_posix(), result.to_dict(), {
-                "character_count": result.character_count,
-            })
-        
-        return f"{_md_header(tool_name, root.as_posix())}--- {result.file_path} ---\n{result.content}"
-
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+            return _json_err(tool, result.error_code, result.error_message) if _is_json(format) else _md_error(tool, result.error_code, result.error_message)
+        if _is_json(format):
+            return _json_ok(tool, root.as_posix(), result.to_dict(), {"character_count": result.character_count})
+        return f"{_md_header(tool, root.as_posix())}--- {result.file_path} ---\n{result.content}"
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
 @mcp.tool()
@@ -386,63 +273,41 @@ def read_many(
     ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return full content of multiple files in one call, handling partial success and path traversal.
-    
-    Supports both local paths and GitHub repositories.
-    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
-    """
-    tool_name = "read_many"
+    """Read multiple files in one call."""
+    tool = "read_many"
     if not file_paths:
-        if _is_json_format(format):
-            return _json_err(tool_name, "invalid_argument", "file_paths list cannot be empty.")
-        return _md_error(tool_name, "invalid_argument", "file_paths list cannot be empty.")
-
+        return _json_err(tool, "invalid_argument", "file_paths cannot be empty.") if _is_json(format) else _md_error(tool, "invalid_argument", "file_paths cannot be empty.")
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # GitHub repository mode
-            owner, repo_name = _parse_repo(repo)
-            return github_project_get_files(file_paths, owner, repo_name, ref, format)
-        
-        # Local path mode
+            owner, name = _parse_repo(repo)
+            return github_project_get_files(file_paths, owner, name, ref, format)
         root = _resolve_project_root(path)
         result = read_files(file_paths, root, max_files=GET_FILES_MAX_FILES, max_content_chars=MAX_CONTENT_CHARS)
-        
-        if _is_json_format(format):
-            metadata: dict[str, Any] = {
+        if _is_json(format):
+            meta = {
                 "file_count": result.file_count,
                 "success_count": result.success_count,
                 "error_count": result.error_count,
                 "character_count": result.character_count,
             }
             if result.truncated:
-                metadata["truncated"] = True
-                metadata["truncation_note"] = result.truncation_note
-            
-            return _json_ok(tool_name, root.as_posix(), result.to_dict(), metadata)
-        
-        # Build markdown output
-        md_parts = []
-        for file_result in result.results:
-            if file_result.ok:
-                md_parts.append(f"--- {file_result.file_path} ---\n{file_result.content}")
+                meta["truncated"] = True
+            return _json_ok(tool, root.as_posix(), result.to_dict(), meta)
+        parts = []
+        for fr in result.results:
+            if fr.ok:
+                parts.append(f"--- {fr.file_path} ---\n{fr.content}")
             else:
-                md_parts.append(f"--- {file_result.file_path} ---\nError [{file_result.error_code}]: {file_result.error_message}")
-        
-        out_md = f"{_md_header(tool_name, root.as_posix())}" + "\n\n".join(md_parts)
+                parts.append(f"--- {fr.file_path} ---\nError [{fr.error_code}]: {fr.error_message}")
+        out = f"{_md_header(tool, root.as_posix())}" + "\n\n".join(parts)
         if result.truncated:
-            out_md += f"\n\n[{result.truncation_note}]"
-        return out_md
-
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+            out += f"\n\n[{result.truncation_note}]"
+        return out
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
 @mcp.tool()
@@ -453,75 +318,37 @@ def project_dependencies(
     ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Analyze dependencies for a specific file.
-    
-    Supports local paths only for now. GitHub support planned (TODO).
-    
-    Answers the questions:
-    - What files does this file depend on/import?
-    - What files depend on/use this file?
-    - Which dependencies are local?
-    - Which are external or unresolved?
-    
-    Currently uses a basic AST-based analysis, with CodeGraph support planned
-    for the future via a dependency provider abstraction layer.
-    """
-    tool_name = "project_dependencies"
+    """Analyze local file dependencies."""
+    tool = "project_dependencies"
     if not file_path or not file_path.strip():
-        if _is_json_format(format):
-            return _json_err(tool_name, "invalid_argument", "file_path must be provided.")
-        return _md_error(tool_name, "invalid_argument", "file_path must be provided.")
-
+        return _json_err(tool, "invalid_argument", "file_path required.") if _is_json(format) else _md_error(tool, "invalid_argument", "file_path required.")
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # TODO: Add GitHub support for project_dependencies
-            if _is_json_format(format):
-                return _json_err(tool_name, "not_implemented", "GitHub repository support for project_dependencies is not yet implemented.")
-            return _md_error(tool_name, "not_implemented", "GitHub repository support for project_dependencies is not yet implemented.")
-        
-        # Local path mode
+            msg = "GitHub support for project_dependencies not yet implemented."
+            return _json_err(tool, "not_implemented", msg) if _is_json(format) else _md_error(tool, "not_implemented", msg)
         root = _resolve_project_root(path)
         result = analyze_dependencies(file_path, root)
-        
-        if _is_json_format(format):
-            return _json_ok(tool_name, root.as_posix(), result.to_dict(), {
+        if _is_json(format):
+            return _json_ok(tool, root.as_posix(), result.to_dict(), {
                 "file_count": len(result.all_local_files),
                 "external_dep_count": len(result.all_external_deps),
-                "unresolved_count": len(result.all_unresolved),
             })
-        
-        # Build markdown output
-        md_parts = [f"File: {result.target_file}"]
-        
-        file_deps = result.file_dependencies
-        
-        if file_deps.imports:
-            md_parts.append(f"\nImports: {', '.join(file_deps.imports)}")
-        
-        if file_deps.local_dependencies:
-            md_parts.append(f"\nLocal Dependencies: {', '.join(file_deps.local_dependencies)}")
-        
-        if file_deps.external_dependencies:
-            md_parts.append(f"\nExternal Dependencies: {', '.join(file_deps.external_dependencies)}")
-        
-        if file_deps.unresolved_dependencies:
-            md_parts.append(f"\nUnresolved Dependencies: {', '.join(file_deps.unresolved_dependencies)}")
-        
+        md = [f"File: {result.target_file}"]
+        fd = result.file_dependencies
+        if fd.imports:
+            md.append(f"\nImports: {', '.join(fd.imports)}")
+        if fd.local_dependencies:
+            md.append(f"\nLocal Dependencies: {', '.join(fd.local_dependencies)}")
+        if fd.external_dependencies:
+            md.append(f"\nExternal Dependencies: {', '.join(fd.external_dependencies)}")
         if result.all_local_files:
-            md_parts.append(f"\nFiles that depend on this file: {', '.join(result.all_local_files)}")
-        
-        return f"{_md_header(tool_name, root.as_posix())}" + "\n".join(md_parts)
-
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+            md.append(f"\nFiles that depend on this: {', '.join(result.all_local_files)}")
+        return f"{_md_header(tool, root.as_posix())}" + "\n".join(md)
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
 @mcp.tool()
@@ -533,107 +360,130 @@ def project_diff(
     commit: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return git status and diff for a project, requiring a git repository.
-    
-    Supports local paths only for now. GitHub support planned (TODO).
-    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
-    """
-    tool_name = "project_diff"
-    
+    """Show git status and unified diff."""
+    tool = "project_diff"
     try:
         _validate_path_repo_mutual_exclusive(path, repo)
-        
         if repo and repo.strip():
-            # TODO: Add GitHub support for project_diff
-            # For now, use the existing GitHub provider function
-            owner, repo_name = _parse_repo(repo)
-            return github_project_diff(commit, staged, owner, repo_name, ref, format)
-        
-        # Local path mode
+            owner, name = _parse_repo(repo)
+            return github_project_diff(commit, staged, owner, name, ref, format)
         root = _resolve_project_root(path)
         result = get_git_diff(root, staged=staged, commit=commit, max_diff_chars=200_000)
-        
-        if _is_json_format(format):
-            return _json_ok(
-                tool_name,
-                root.as_posix(),
-                {
-                    "staged": result.staged,
-                    "commit": result.commit,
-                    "changed_files": result.changed_files,
-                    "status_lines": result.status_lines,
-                    "diff": result.diff,
-                    "truncated": result.truncated,
-                },
-                {
-                    "changed_file_count": len(result.changed_files),
-                    "character_count": result.character_count,
-                    "truncated": result.truncated,
-                },
-            )
-        
-        md_output = [f"{_md_header(tool_name, root.as_posix())}### Git Status & Diff"]
+        if _is_json(format):
+            return _json_ok(tool, root.as_posix(), {
+                "staged": result.staged,
+                "commit": result.commit,
+                "changed_files": result.changed_files,
+                "diff": result.diff,
+                "truncated": result.truncated,
+            }, {"changed_file_count": len(result.changed_files)})
+        md = [f"{_md_header(tool, root.as_posix())}### Git Status & Diff"]
         if result.changed_files:
-            md_output.append("Changed Files:\n" + "\n".join(f"- {f}" for f in result.changed_files))
+            md.append("Changed Files:\n" + "\n".join(f"- {f}" for f in result.changed_files))
         else:
-            md_output.append("No changed files.")
-
+            md.append("No changed files.")
         if result.diff.strip():
-            md_output.append(f"\nDiff:\n```diff\n{result.diff}\n```")
+            md.append(f"\nDiff:\n```diff\n{result.diff}\n```")
         else:
-            md_output.append("\nDiff is empty.")
+            md.append("\nDiff is empty.")
+        return "\n\n".join(md)
+    except ProjectRootError as e:
+        return _json_err(tool, e.code, e.message) if _is_json(format) else _md_error(tool, e.code, e.message)
+    except RuntimeError as e:
+        code = "git_unavailable" if "git" in str(e).lower() else "internal_error"
+        return _json_err(tool, code, str(e)) if _is_json(format) else _md_error(tool, code, str(e))
+    except Exception as e:
+        return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
-        return "\n\n".join(md_output)
 
-    except ProjectRootError as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, exc.code, exc.message)
-        return _md_error(tool_name, exc.code, exc.message)
-    except RuntimeError as exc:
-        # Handle git-specific errors
-        if "git" in str(exc).lower() or "not a git repository" in str(exc):
-            if _is_json_format(format):
-                return _json_err(tool_name, "git_unavailable", str(exc))
-            return _md_error(tool_name, "git_unavailable", str(exc))
+# ------------------------------------------------------------------
+# FastAPI app + proper MCP mounting
+# ------------------------------------------------------------------
+
+def create_app() -> FastAPI:
+    """Create FastAPI app with MCP mounted at /mcp."""
+
+    # Get the MCP ASGI app
+    try:
+        mcp_asgi = mcp.http_app(path="/")
+    except Exception:
+        try:
+            mcp_asgi = mcp.streamable_http_app()
+        except Exception:
+            mcp_asgi = mcp.http_app()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        if hasattr(mcp, "session_manager"):
+            async with mcp.session_manager.run():
+                logger.info("MCP session manager started")
+                yield
         else:
-            if _is_json_format(format):
-                return _json_err(tool_name, "internal_error", str(exc))
-            return _md_error(tool_name, "internal_error", str(exc))
-    except Exception as exc:
-        if _is_json_format(format):
-            return _json_err(tool_name, "internal_error", str(exc))
-        return _md_error(tool_name, "internal_error", str(exc))
+            yield
+
+    app = FastAPI(
+        title="LLMScribe MCP Server",
+        description="Deterministic code-context tools for AI agents",
+        version="1.2.0",
+        lifespan=lifespan,
+    )
+
+    @app.get("/health")
+    async def health():
+        return JSONResponse({
+            "status": "healthy",
+            "server": "LLMScribe MCP",
+            "version": "1.2.0",
+            "tools": [
+                "project_map", "project_overview", "search",
+                "read", "read_many", "project_dependencies", "project_diff",
+            ],
+        })
+
+    @app.get("/info")
+    async def info():
+        return JSONResponse({
+            "name": "LLMScribe",
+            "description": "Code context infrastructure for AI agents",
+            "version": "1.2.0",
+            "mcp_endpoint": "/mcp",
+            "tools": 7,
+        })
+
+    # Mount MCP at /mcp
+    app.mount("/mcp", mcp_asgi)
+    return app
+
+
+app = create_app()
 
 
 def main() -> None:
-    """Run the LLMScribe MCP server.
-
-    Supports both stdio (local) and HTTP (remote) transport.
-    
-    Environment variables:
-      - MCP_TRANSPORT=http   → use streamable-http transport
-      - PORT                 → port to listen on (default 8000)
-      - HOST                 → host to bind (default 0.0.0.0)
-    
-    For HTTP transport: Uses MCP streamable-http protocol (industry standard)
-    For stdio transport: Uses native stdio mode
-    
-    MCP clients should connect to: http://host:port
-    """
     transport = os.environ.get("MCP_TRANSPORT", "stdio").lower().strip()
 
     if transport == "http":
         host = os.environ.get("HOST", "0.0.0.0")
         port = int(os.environ.get("PORT", "8000"))
-        
-        print(f"Starting LLMScribe MCP server with streamable-http transport")
-        print(f"Listening on: http://{host}:{port}")
-        print("MCP clients should connect to: http://{}:{}".format(host, port))
-        print("Supported tools: project_map, project_overview, search, read, read_many, project_dependencies, project_diff")
-        
-        # Use MCP's built-in streamable-http transport
-        # This is the industry-standard way to expose MCP over HTTP in 2026
-        mcp.run(transport="streamable-http", host=host, port=port)
+
+        logger.info("=" * 50)
+        logger.info("Starting LLMScribe MCP Server")
+        logger.info("Mode      : HTTP (FastAPI + Streamable MCP)")
+        logger.info("Listening : http://%s:%s", host, port)
+        logger.info("Health    : http://%s:%s/health", host, port)
+        logger.info("MCP URL   : http://%s:%s/mcp", host, port)
+        logger.info("=" * 50)
+
+        uvicorn.run(
+            "llmscribe.mcp.server:app",
+            host=host,
+            port=port,
+            log_level="info",
+            access_log=True,
+        )
     else:
-        # Default: stdio for local use (llmscribe-mcp)
+        logger.info("Starting LLMScribe MCP in stdio mode")
         mcp.run()
+
+
+if __name__ == "__main__":
+    main()

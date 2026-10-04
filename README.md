@@ -44,7 +44,7 @@
 # **LLMScribe**
 
 **Give AI agents clean, deterministic, structured context from any local project or GitHub repository.**  
-Open source and available as a [free public MCP endpoint](https://mcp.llmscribe.dev/mcp).
+Open source and available as a [free public MCP endpoint](https://llmscribe-production.up.railway.app/mcp).
 
 _Pst. Hey, you, join our stargazers :)_
 
@@ -99,14 +99,14 @@ No installation required. Works with Claude, Cursor, Claude Desktop, and any MCP
 
 #### Claude / Claude Desktop / claude.ai
 1. Go to **Connectors → Add custom connector**
-2. Paste: `https://mcp.llmscribe.dev/mcp`
+2. Paste: `https://llmscribe-production.up.railway.app/mcp`
 
 #### Cursor
 ```json
 {
   "mcpServers": {
     "llmscribe": {
-      "url": "https://mcp.llmscribe.dev/mcp"
+      "url": "https://llmscribe-production.up.railway.app/mcp"
     }
   }
 }
@@ -286,7 +286,7 @@ railway deploy
 {
   "mcpServers": {
     "llmscribe": {
-      "url": "http://your-server:8000/mcp"
+      "url": "https://llmscribe-production.up.railway.app"
     }
   }
 }
@@ -294,7 +294,20 @@ railway deploy
 
 **Claude Desktop / Claude.ai:**
 1. Go to **Connectors → Add custom connector**
-2. Paste URL: `http://your-server:8000/mcp`
+2. Paste URL: `https://llmscribe-production.up.railway.app`
+
+**General MCP Clients:**
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "url": "http://your-server-url"
+    }
+  }
+}
+```
+
+**Note:** The MCP server serves the protocol at the root URL (`/`) when using `streamable-http` transport.
 
 ---
 
@@ -329,7 +342,7 @@ The AI agent provides the intelligence.**
 ## Resources
 
 - [Website](https://llmscribe.vercel.app)
-- [Free Public MCP](https://mcp.llmscribe.dev/mcp)
+- [Free Public MCP](https://llmscribe-production.up.railway.app/mcp)
 - [PyPI](https://pypi.org/project/llmscribe/)
 - [GitHub Issues](https://github.com/AMRITO-KUNDU/llmscribe/issues)
 - [Contributing Guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md)
