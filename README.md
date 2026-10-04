@@ -1,19 +1,107 @@
-# LLMScribe
+<h3 align="center">
+  <a name="readme-top"></a>
+  <!-- Replace with your actual logo when ready -->
+  <img
+    src="https://raw.githubusercontent.com/AMRITO-KUNDU/llmscribe/main/docs/public/favicon.svg"
+    height="120"
+    alt="LLMScribe"
+  >
+</h3>
 
-Turn any local project into clean, structured context for AI agents.
+<div align="center">
+
+  <a href="https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/AMRITO-KUNDU/llmscribe" alt="License">
+  </a>
+  <a href="https://pypi.org/project/llmscribe/">
+    <img src="https://img.shields.io/pypi/v/llmscribe" alt="PyPI Version">
+  </a>
+  <a href="https://pepy.tech/project/llmscribe">
+    <img src="https://static.pepy.tech/badge/llmscribe" alt="Downloads">
+  </a>
+  <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
+    <img src="https://img.shields.io/github/contributors/AMRITO-KUNDU/llmscribe.svg" alt="GitHub Contributors">
+  </a>
+  <a href="https://llmscribe.vercel.app">
+    <img src="https://img.shields.io/badge/Visit-llmscribe.vercel.app-orange" alt="Visit Website">
+  </a>
+
+</div>
+
+<div>
+  <p align="center">
+    <a href="https://twitter.com/amritokundu719">
+      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" />
+    </a>
+    <a href="https://github.com/AMRITO-KUNDU">
+      <img src="https://img.shields.io/badge/Follow%20on%20GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Follow on GitHub" />
+    </a>
+  </p>
+</div>
 
 ---
 
-## Free Public MCP (Recommended)
+# **LLMScribe**
 
-Use LLMScribe without installing anything. Perfect for Claude, Cursor, and other AI agents.
+**Give AI agents clean, deterministic, structured context from any local project or GitHub repository.**  
+Open source and available as a [free public MCP endpoint](https://mcp.llmscribe.dev/mcp).
 
-### Claude / Claude Desktop / claude.ai
+_Pst. Hey, you, join our stargazers :)_
+
+<a href="https://github.com/AMRITO-KUNDU/llmscribe">
+  <img src="https://img.shields.io/github/stars/AMRITO-KUNDU/llmscribe.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
+</a>
+
+---
+
+## Why LLMScribe?
+
+- **Deterministic by design**: No embeddings, no ranking, no hallucinations — pure structured code context
+- **Agent-first**: Built specifically for Cursor, Claude Desktop, Windsurf, and any MCP client
+- **Local + Remote**: Work with any local folder *or* any public GitHub repository (`repo="owner/repo"`)
+- **Zero config public MCP**: Paste one URL and start using tools immediately
+- **Seven focused tools**: Exactly the primitives agents need — map, search, read, dependencies, diff
+- **Shared core**: Same logic powers the MCP server, CLI, and GUI — consistent results everywhere
+- **Open source**: Apache-2.0 — transparent, self-hostable, and free forever
+
+---
+
+## Feature Overview
+
+**Core Tools**
+
+| Feature                        | Description                                                              |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| [**project_map**](#project_map) | Directory tree without file contents — perfect first step for agents    |
+| [**search**](#search)          | Keyword search across paths *and* file contents                          |
+| [**read / read_many**](#read)  | Safe single or batch file reading with path-traversal protection         |
+| [**project_dependencies**](#project_dependencies) | Local / external / unresolved dependency graph for any file |
+| [**project_diff**](#project_diff) | Git status + unified diffs (staged, unstaged, or specific commits)     |
+| [**project_overview**](#project_overview) | Full tree + contents of all supported files (small/medium repos) |
+
+**More**
+
+| Feature                     | Description                                           |
+| --------------------------- | ----------------------------------------------------- |
+| Free Public MCP             | Use instantly without installing anything             |
+| Self-hosted HTTP / Docker   | FastAPI + FastMCP production server                   |
+| Modern CLI                  | Same capabilities as the MCP tools                    |
+| JSON mode                   | Machine-readable output for every command             |
+| GitHub repo support         | `repo="owner/repo"` works on every tool               |
+
+---
+
+## Quick Start
+
+### Free Public MCP (Recommended)
+
+No installation required. Works with Claude, Cursor, Claude Desktop, and any MCP client.
+
+#### Claude / Claude Desktop / claude.ai
 1. Go to **Connectors → Add custom connector**
-2. Paste this URL:  
-   `https://mcp.llmscribe.dev/mcp`
+2. Paste: `https://mcp.llmscribe.dev/mcp`
 
-### Cursor
+#### Cursor
 ```json
 {
   "mcpServers": {
@@ -24,30 +112,21 @@ Use LLMScribe without installing anything. Perfect for Claude, Cursor, and other
 }
 ```
 
-Then just use tools with `repo="owner/repo"`.
+Then just call tools with `repo="owner/repo"` or a local path.
 
----
-
-## For AI Agents (primary)
-
-LLMScribe provides a deterministic code-context infrastructure layer for AI agents. It is NOT an AI-powered coding/search agent.
-
-### Installation
+### Local Installation
 
 ```bash
 pip install llmscribe
 ```
 
-### Running the MCP Server
+### Running the MCP Server (stdio)
 
 ```bash
 llmscribe-mcp
 ```
 
-### MCP Client Configurations
-
-#### Cursor / Claude Desktop / Standard MCP Clients:
-
+#### Cursor / Claude Desktop config
 ```json
 {
   "mcpServers": {
@@ -58,7 +137,8 @@ llmscribe-mcp
 }
 ```
 
-#### Alternative Module Invocation:
+<details>
+<summary><b>Alternative: Python module</b></summary>
 
 ```json
 {
@@ -70,53 +150,155 @@ llmscribe-mcp
   }
 }
 ```
+</details>
+
+---
+
+## Power Your Agent
+
+### Recommended Agent Workflow
+
+```
+project_map → search → read / read_many
+```
+
+**Example: Understand a new repository**
+1. `project_map()` → get the overall structure
+2. `search("main")` or `search("FastAPI")` → find entry points
+3. `read("src/main.py")` or `read_many([...])` → pull the relevant files
+
+**Example: Analyze dependencies**
+1. `search("import")` or `search("from fastapi")`
+2. `project_dependencies("src/api/main.py")`
+3. `read_many()` on the returned dependency files
+
+### GitHub Repository Support
+
+Every tool accepts a remote GitHub repository:
+
+```python
+project_map(repo="owner/repo")
+search(query="authentication", repo="owner/repo")
+read(file_path="src/main.py", repo="owner/repo")
+```
+
+> `path` and `repo` are mutually exclusive.
 
 ---
 
 ## Tools Reference
 
-LLMScribe MCP provides exactly 7 tools:
+### project_map
+Generate a clean directory tree (no file contents).
 
-### 1. `project_map`
-* **Purpose**: Generates directory tree structure without file contents.
-* **Parameters**: `path` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Exploring repository structure before selecting specific files.
+**When to use**: First step when exploring an unknown codebase.
 
-### 2. `project_overview`
-* **Purpose**: Generates full directory structure and full contents of all supported text files.
-* **Parameters**: `path` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Getting a complete overview of small-to-medium codebases in one call.
+### project_overview
+Full directory structure + contents of all supported text files.
 
-### 3. `search`
-* **Purpose**: Keyword search across file paths and line-by-line file contents. Main discovery primitive for AI agents.
-* **Parameters**: `query` (*str*), `path` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Locating specific symbols, function definitions, or import statements.
+**When to use**: Small-to-medium projects where you want everything in one call.
 
-### 4. `read`
-* **Purpose**: Retrieves full content of a single specific relative file path, with strict path traversal security checks.
-* **Parameters**: `file_path` (*str*), `path` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Reading a specific file into context safely.
+### search
+Keyword search across file paths and line-by-line contents.  
+This is the main discovery primitive for agents.
 
-### 5. `read_many`
-* **Purpose**: Retrieves full contents of multiple relative file paths in a single call, handling partial success if some paths fail.
-* **Parameters**: `file_paths` (*list[str]*), `path` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Batch fetching multiple source files efficiently.
+### read
+Safely retrieve the full content of a single relative file path.  
+Includes strict path-traversal protection.
 
-### 6. `project_dependencies`
-* **Purpose**: Analyze file dependencies - what files this file depends on, what files depend on this file, local vs external vs unresolved.
-* **Parameters**: `file_path` (*str*), `path` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Understanding dependency relationships and import graphs.
+### read_many
+Batch-read multiple files in one call (partial success supported).
 
-### 7. `project_diff`
-* **Purpose**: Inspects Git status and unified diffs for staged, unstaged, or specific commits.
-* **Parameters**: `path` (*Optional[str]*), `staged` (*bool*), `commit` (*Optional[str]*), `format` (*str* = `"markdown"`)
-* **When to use**: Reviewing uncommitted edits or verifying changes.
+### project_dependencies
+Analyze what a file depends on and what depends on it  
+(local vs external vs unresolved).
+
+### project_diff
+Inspect Git status and unified diffs (staged / unstaged / specific commit).
+
+---
+
+## CLI Usage
+
+LLMScribe CLI exposes the exact same capabilities as the MCP server.
+
+```bash
+llmscribe map
+llmscribe overview
+llmscribe search "authentication"
+llmscribe read src/auth/service.py
+llmscribe read-many src/auth/service.py src/api/login.py
+llmscribe dependencies src/auth/service.py
+llmscribe diff
+```
+
+JSON output is available on every command:
+
+```bash
+llmscribe search "auth" --json
+llmscribe map --json
+```
+
+---
+
+## Self-Hosted MCP Server
+
+Deploy your own private or team MCP server.
+
+### Quick Start
+
+```bash
+# Install dependencies
+pip install llmscribe
+
+# Start HTTP server
+MCP_TRANSPORT=http python -m llmscribe.mcp.server
+# → http://0.0.0.0:8000/mcp
+```
+
+### Docker
+
+```bash
+docker build -t llmscribe-mcp .
+docker run -p 8000:8000 llmscribe-mcp
+```
+
+### Railway
+
+```bash
+railway up
+# or
+railway deploy
+```
+
+#### Environment Variables
+
+| Variable        | Description                  | Default  |
+|-----------------|------------------------------|----------|
+| `MCP_TRANSPORT` | `stdio` or `http`            | `stdio`  |
+| `HOST`          | HTTP bind address            | `0.0.0.0`|
+| `PORT`          | HTTP port                    | `8000`   |
+
+#### MCP Client Configuration
+
+**Cursor:**
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "url": "http://your-server:8000/mcp"
+    }
+  }
+}
+```
+
+**Claude Desktop / Claude.ai:**
+1. Go to **Connectors → Add custom connector**
+2. Paste URL: `http://your-server:8000/mcp`
 
 ---
 
 ## Architecture
-
-LLMScribe uses a shared core architecture:
 
 ```
                     LLMScribe Core
@@ -126,177 +308,71 @@ LLMScribe uses a shared core architecture:
          MCP            CLI            GUI
 ```
 
-Both the MCP server and CLI share the same underlying core functions, ensuring consistent behavior and output across all interfaces.
-
----
-
-## Agent Workflow
-
-Recommended workflow sequence for AI agents:
-
-```
-project_map → search → read/read_many
-```
-
-### Example: Understand a New Repository
-1. **`project_map()`**: Get the overall directory tree to understand repository architecture.
-2. **`search("main")`**: Search for key entrypoints or symbol definitions.
-3. **`read("src/main.py")` or `read_many(["src/main.py", "src/utils.py"])`**: Read the relevant source files.
-
-### Example: Analyze Dependencies
-1. **`search("FastAPI")`**: Find files using FastAPI.
-2. **`project_dependencies("src/api/main.py")`**: Analyze dependencies for key files.
-3. **`read_many()`**: Read all dependency files together.
-
----
-
-## CLI Usage
-
-LLMScribe CLI exposes the same core capabilities as the MCP server with a clean command-oriented interface.
-
-```
-LLMScribe — code context for AI agents
-
-Usage:
-  llmscribe <command> [options]
-
-Commands:
-  map              Show project structure
-  overview         Generate project overview
-  search           Search project code
-  read             Read a file or line range
-  read-many        Read multiple files
-  dependencies     Show file dependencies
-  diff             Show project changes
-
-Other:
-  version          Show version
-  help             Show help
-```
-
-### Command Examples:
-
-```bash
-# Show project structure
-llmscribe map
-
-# Generate full project overview  
-llmscribe overview
-
-# Search project code
-llmscribe search "authentication"
-
-# Read specific files
-llmscribe read src/auth/service.py
-llmscribe read-many src/auth/service.py src/api/login.py
-
-# Analyze dependencies
-llmscribe dependencies src/auth/service.py
-
-# Show git changes
-llmscribe diff
-
-# JSON output for scripts/AI agents
-llmscribe search "auth" --json
-llmscribe map --json
-```
-
----
-
-## JSON Mode
-
-All tools support `format="json"` for structured, machine-readable output:
-
-### Example JSON Response (search):
-
-```json
-{
-  "ok": true,
-  "tool": "search", 
-  "path": "/path/to/project",
-  "data": {
-    "query": "authentication",
-    "root_path": "/path/to/project",
-    "matches": [
-      {
-        "file_path": "src/auth/service.py",
-        "line_number": 10,
-        "line_content": "from fastapi.security import OAuth2PasswordBearer",
-        "match_type": "content",
-        "matched_text": "auth"
-      }
-    ],
-    "file_count": 5,
-    "match_count": 12,
-    "truncated": false,
-    "truncation_limit": 1000
-  },
-  "metadata": {
-    "query": "authentication",
-    "file_count": 5,
-    "match_count": 12,
-    "truncated": false
-  }
-}
-```
+All interfaces share the same core functions — consistent behavior and output everywhere.
 
 ---
 
 ## Project Positioning
 
-**LLMScribe provides clean, deterministic, structured code context. The AI agent provides the intelligence.**
+**LLMScribe provides clean, deterministic, structured code context.  
+The AI agent provides the intelligence.**
 
-- ✅ **Deterministic**: No LLM, embeddings, or AI ranking
-- ✅ **Structured**: Consistent JSON output schemas
-- ✅ **Agent-friendly**: Designed specifically for AI agent workflows
-- ❌ **NOT** an AI coding agent
-- ❌ **NOT** a semantic search engine
-- ❌ **NOT** a generic Git client
-
----
-
-## GitHub Repository Support
-
-All tools can inspect remote GitHub repositories directly. Use `repo` parameter instead of `path`.
-
-### Example:
-```python
-# Map a remote repo
-project_map(repo="owner/repo")
-
-# Search code in a remote repo
-search(query="FastAPI", repo="owner/repo")
-```
-
-> **Note**: `path` and `repo` are mutually exclusive.
+- ✅ Deterministic (no LLM, no embeddings, no ranking)
+- ✅ Structured JSON schemas
+- ✅ Designed for agent workflows
+- ❌ Not an AI coding agent
+- ❌ Not a semantic search engine
+- ❌ Not a generic Git client
 
 ---
 
-## Install
+## Resources
 
-```bash
-pip install llmscribe
-```
+- [Website](https://llmscribe.vercel.app)
+- [Free Public MCP](https://mcp.llmscribe.dev/mcp)
+- [PyPI](https://pypi.org/project/llmscribe/)
+- [GitHub Issues](https://github.com/AMRITO-KUNDU/llmscribe/issues)
+- [Contributing Guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md)
 
-## Version
+---
 
-**LLMScribe v1.2.0**
+## Open Source vs Hosted
 
-This release includes:
-- Final MCP toolset with exactly 7 tools
-- Modern command-oriented CLI
-- Improved search with structured output
-- New dependency analysis with provider abstraction
-- Machine-readable JSON output for all commands
+LLMScribe is fully open source under the **Apache-2.0** license.
+
+| Feature                    | Open Source          | Free Public MCP          |
+|---------------------------|----------------------|--------------------------|
+| Local projects            | ✅                   | ✅ (via tools)           |
+| GitHub repositories       | ✅                   | ✅                       |
+| Self-host / Docker        | ✅                   | —                        |
+| Zero-install public endpoint | —                 | ✅                       |
+| Private team deployment   | ✅                   | —                        |
+
+---
+
+## Contributing
+
+We love contributions! Please read the [Contributing Guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md) before submitting a pull request.
+
+### Contributors
+
+<a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
+  <img alt="contributors" src="https://contrib.rocks/image?repo=AMRITO-KUNDU/llmscribe"/>
+</a>
+
+---
 
 ## License
 
-Apache License 2.0
+This project is licensed under the **Apache License 2.0**.
 
-## Repository
+---
 
-[GitHub Repository](https://github.com/AMRITO-KUNDU/LLMScribe)
+**LLMScribe gives AI agents the structured context they need — nothing more, nothing less.**
 
-## Issues & Support
-
-[GitHub Issues](https://github.com/AMRITO-KUNDU/LLMScribe/issues)
+<p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
+  <a href="#readme-top" style="text-decoration: none; color: #007bff; font-weight: bold;">
+    ↑ Back to Top ↑
+  </a>
+</p>
+```
