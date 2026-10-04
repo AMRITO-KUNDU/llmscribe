@@ -13,6 +13,7 @@ This server provides the following tools:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -30,6 +31,15 @@ from llmscribe.core import (
     read_file,
     read_files,
     search_project,
+)
+from llmscribe.github.client import parse_github_repo
+from llmscribe.github.provider import (
+    github_project_get_file,
+    github_project_get_files,
+    github_project_map,
+    github_project_overview,
+    github_project_search,
+    github_project_diff,
 )
 
 mcp = MCPServer("llmscribe")
@@ -61,12 +71,23 @@ def _resolve_project_root(path: Optional[str] = None) -> Path:
     return resolved
 
 
-def _json_ok(tool: str, path: Path, data: Any, metadata: Optional[dict[str, Any]] = None) -> str:
+def _validate_path_repo_mutual_exclusive(path: Optional[str], repo: Optional[str]) -> None:
+    """Validate that path and repo are mutually exclusive."""
+    if path and path.strip() and repo and repo.strip():
+        raise ProjectRootError("path_and_repo_mutually_exclusive", "Cannot specify both 'path' and 'repo'. Use one or the other, not both.")
+
+
+def _parse_repo(repo_str: str) -> tuple[str, str]:
+    """Parse repo string into owner and repo, returning tuple."""
+    return parse_github_repo(repo_str)
+
+
+def _json_ok(tool: str, path: str, data: Any, metadata: Optional[dict[str, Any]] = None) -> str:
     """Generate standard successful JSON envelope."""
     payload: dict[str, Any] = {
         "ok": True,
         "tool": tool,
-        "path": path.as_posix(),
+        "path": path,
         "data": data,
     }
     if metadata is not None:
@@ -91,9 +112,9 @@ def _is_json_format(format: str) -> bool:
     return format.strip().lower() == "json"
 
 
-def _md_header(tool: str, path: Path) -> str:
+def _md_header(tool: str, path: str) -> str:
     """Generate consistent Markdown header."""
-    return f"### llmscribe: {tool}\nPath: {path.as_posix()}\n\n"
+    return f"### llmscribe: {tool}\nPath: {path}\n\n"
 
 
 def _md_error(tool: str, code: str, message: str) -> str:
@@ -104,22 +125,37 @@ def _md_error(tool: str, code: str, message: str) -> str:
 @mcp.tool()
 def project_map(
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return directory tree structure without file contents."""
+    """Return directory tree structure without file contents.
+    
+    Supports both local paths and GitHub repositories.
+    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
+    """
     tool_name = "project_map"
+    
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # GitHub repository mode
+            owner, repo_name = _parse_repo(repo)
+            return github_project_map(owner, repo_name, ref, format)
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = core_project_map(root)
         
         if _is_json_format(format):
-            return _json_ok(tool_name, root, result.to_dict(), {
+            return _json_ok(tool_name, root.as_posix(), result.to_dict(), {
                 "file_count": result.file_count,
                 "character_count": result.character_count,
             })
         
         summary_md = f"Selected Files Directory Structure:\n\n{result.tree}"
-        return f"{_md_header(tool_name, root)}{summary_md}"
+        return f"{_md_header(tool_name, root.as_posix())}{summary_md}"
 
     except ProjectRootError as exc:
         if _is_json_format(format):
@@ -134,11 +170,26 @@ def project_map(
 @mcp.tool()
 def project_overview(
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return full directory tree and all text file contents for a project."""
+    """Return full directory tree and all text file contents for a project.
+    
+    Supports both local paths and GitHub repositories.
+    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
+    """
     tool_name = "project_overview"
+    
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # GitHub repository mode
+            owner, repo_name = _parse_repo(repo)
+            return github_project_overview(owner, repo_name, ref, format)
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = core_project_overview(root, max_content_chars=MAX_CONTENT_CHARS)
         
@@ -152,7 +203,7 @@ def project_overview(
                 metadata["truncation_note"] = result.truncation_note
                 metadata["truncation_limit"] = result.truncation_limit
             
-            return _json_ok(tool_name, root, result.to_dict(), metadata)
+            return _json_ok(tool_name, root.as_posix(), result.to_dict(), metadata)
         
         files_md = "\n\n".join([f"--- {f['path']} ---\n{f['content']}" for f in result.files])
         summary_md = (
@@ -163,7 +214,7 @@ def project_overview(
         if result.truncated:
             summary_md += f"\n\n[{result.truncation_note}]"
         
-        return f"{_md_header(tool_name, root)}{summary_md}"
+        return f"{_md_header(tool_name, root.as_posix())}{summary_md}"
 
     except ProjectRootError as exc:
         if _is_json_format(format):
@@ -179,9 +230,14 @@ def project_overview(
 def search(
     query: str,
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
     """Search for a keyword query in filenames and file contents.
+    
+    Supports both local paths and GitHub repositories.
+    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
     
     This is the main discovery primitive for AI agents. Results include:
     - file path
@@ -198,6 +254,14 @@ def search(
         return _md_error(tool_name, "empty_query", "Query string cannot be empty.")
 
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # GitHub repository mode
+            owner, repo_name = _parse_repo(repo)
+            return github_project_search(query, owner, repo_name, ref, format)
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = search_project(query, root, max_results=1000)
         
@@ -210,10 +274,10 @@ def search(
                 "truncated": result.truncated,
                 "truncation_limit": result.truncation_limit,
             }
-            return _json_ok(tool_name, root, result.to_dict(), metadata)
+            return _json_ok(tool_name, root.as_posix(), result.to_dict(), metadata)
         
         if not result.matches:
-            return f"{_md_header(tool_name, root)}No matches found for query: '{result.query}'"
+            return f"{_md_header(tool_name, root.as_posix())}No matches found for query: '{result.query}'"
         
         # Group matches by file
         matches_by_file: dict[str, list[Any]] = {}
@@ -242,7 +306,7 @@ def search(
             
             md_parts.append("\n".join(match_entry))
         
-        return f"{_md_header(tool_name, root)}Search results for '{result.query}':\n\n" + "\n\n".join(md_parts)
+        return f"{_md_header(tool_name, root.as_posix())}Search results for '{result.query}':\n\n" + "\n\n".join(md_parts)
 
     except ProjectRootError as exc:
         if _is_json_format(format):
@@ -258,9 +322,15 @@ def search(
 def read(
     file_path: str,
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return full content of a specific file, with path traversal prevention."""
+    """Return full content of a specific file, with path traversal prevention.
+    
+    Supports both local paths and GitHub repositories.
+    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
+    """
     tool_name = "read"
     if not file_path or not file_path.strip():
         if _is_json_format(format):
@@ -268,6 +338,14 @@ def read(
         return _md_error(tool_name, "invalid_argument", "file_path must be provided.")
 
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # GitHub repository mode
+            owner, repo_name = _parse_repo(repo)
+            return github_project_get_file(file_path, owner, repo_name, ref, format)
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = read_file(file_path, root, max_content_chars=MAX_CONTENT_CHARS)
         
@@ -277,11 +355,11 @@ def read(
             return _md_error(tool_name, result.error_code, result.error_message)
         
         if _is_json_format(format):
-            return _json_ok(tool_name, root, result.to_dict(), {
+            return _json_ok(tool_name, root.as_posix(), result.to_dict(), {
                 "character_count": result.character_count,
             })
         
-        return f"{_md_header(tool_name, root)}--- {result.file_path} ---\n{result.content}"
+        return f"{_md_header(tool_name, root.as_posix())}--- {result.file_path} ---\n{result.content}"
 
     except ProjectRootError as exc:
         if _is_json_format(format):
@@ -297,9 +375,15 @@ def read(
 def read_many(
     file_paths: list[str],
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return full content of multiple files in one call, handling partial success and path traversal."""
+    """Return full content of multiple files in one call, handling partial success and path traversal.
+    
+    Supports both local paths and GitHub repositories.
+    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
+    """
     tool_name = "read_many"
     if not file_paths:
         if _is_json_format(format):
@@ -307,6 +391,14 @@ def read_many(
         return _md_error(tool_name, "invalid_argument", "file_paths list cannot be empty.")
 
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # GitHub repository mode
+            owner, repo_name = _parse_repo(repo)
+            return github_project_get_files(file_paths, owner, repo_name, ref, format)
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = read_files(file_paths, root, max_files=GET_FILES_MAX_FILES, max_content_chars=MAX_CONTENT_CHARS)
         
@@ -321,7 +413,7 @@ def read_many(
                 metadata["truncated"] = True
                 metadata["truncation_note"] = result.truncation_note
             
-            return _json_ok(tool_name, root, result.to_dict(), metadata)
+            return _json_ok(tool_name, root.as_posix(), result.to_dict(), metadata)
         
         # Build markdown output
         md_parts = []
@@ -331,7 +423,7 @@ def read_many(
             else:
                 md_parts.append(f"--- {file_result.file_path} ---\nError [{file_result.error_code}]: {file_result.error_message}")
         
-        out_md = f"{_md_header(tool_name, root)}" + "\n\n".join(md_parts)
+        out_md = f"{_md_header(tool_name, root.as_posix())}" + "\n\n".join(md_parts)
         if result.truncated:
             out_md += f"\n\n[{result.truncation_note}]"
         return out_md
@@ -350,9 +442,13 @@ def read_many(
 def project_dependencies(
     file_path: str,
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
     """Analyze dependencies for a specific file.
+    
+    Supports local paths only for now. GitHub support planned (TODO).
     
     Answers the questions:
     - What files does this file depend on/import?
@@ -370,11 +466,20 @@ def project_dependencies(
         return _md_error(tool_name, "invalid_argument", "file_path must be provided.")
 
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # TODO: Add GitHub support for project_dependencies
+            if _is_json_format(format):
+                return _json_err(tool_name, "not_implemented", "GitHub repository support for project_dependencies is not yet implemented.")
+            return _md_error(tool_name, "not_implemented", "GitHub repository support for project_dependencies is not yet implemented.")
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = analyze_dependencies(file_path, root)
         
         if _is_json_format(format):
-            return _json_ok(tool_name, root, result.to_dict(), {
+            return _json_ok(tool_name, root.as_posix(), result.to_dict(), {
                 "file_count": len(result.all_local_files),
                 "external_dep_count": len(result.all_external_deps),
                 "unresolved_count": len(result.all_unresolved),
@@ -400,7 +505,7 @@ def project_dependencies(
         if result.all_local_files:
             md_parts.append(f"\nFiles that depend on this file: {', '.join(result.all_local_files)}")
         
-        return f"{_md_header(tool_name, root)}" + "\n".join(md_parts)
+        return f"{_md_header(tool_name, root.as_posix())}" + "\n".join(md_parts)
 
     except ProjectRootError as exc:
         if _is_json_format(format):
@@ -415,20 +520,36 @@ def project_dependencies(
 @mcp.tool()
 def project_diff(
     path: Optional[str] = None,
+    repo: Optional[str] = None,
+    ref: Optional[str] = None,
     staged: bool = False,
     commit: Optional[str] = None,
     format: str = "markdown",
 ) -> str:
-    """Return git status and diff for a project, requiring a git repository."""
+    """Return git status and diff for a project, requiring a git repository.
+    
+    Supports local paths only for now. GitHub support planned (TODO).
+    Use 'path' for local directories, 'repo' for GitHub repositories (owner/repo or URL).
+    """
     tool_name = "project_diff"
+    
     try:
+        _validate_path_repo_mutual_exclusive(path, repo)
+        
+        if repo and repo.strip():
+            # TODO: Add GitHub support for project_diff
+            # For now, use the existing GitHub provider function
+            owner, repo_name = _parse_repo(repo)
+            return github_project_diff(commit, staged, owner, repo_name, ref, format)
+        
+        # Local path mode
         root = _resolve_project_root(path)
         result = get_git_diff(root, staged=staged, commit=commit, max_diff_chars=200_000)
         
         if _is_json_format(format):
             return _json_ok(
                 tool_name,
-                root,
+                root.as_posix(),
                 {
                     "staged": result.staged,
                     "commit": result.commit,
@@ -444,7 +565,7 @@ def project_diff(
                 },
             )
         
-        md_output = [f"{_md_header(tool_name, root)}### Git Status & Diff"]
+        md_output = [f"{_md_header(tool_name, root.as_posix())}### Git Status & Diff"]
         if result.changed_files:
             md_output.append("Changed Files:\n" + "\n".join(f"- {f}" for f in result.changed_files))
         else:
@@ -478,5 +599,18 @@ def project_diff(
 
 
 def main() -> None:
-    """Run the LLMScribe MCP server."""
-    mcp.run()
+    """Run the LLMScribe MCP server.
+    
+    Supports both stdio and HTTP transport via environment variables.
+    Default: stdio (for local llmscribe-mcp compatibility)
+    Set MCP_TRANSPORT=http to use HTTP transport.
+    """
+    # Check for transport preference
+    transport = os.environ.get("MCP_TRANSPORT", "stdio").lower().strip()
+    
+    if transport == "http":
+        # Use HTTP transport
+        mcp.run(transport="http")
+    else:
+        # Default to stdio transport
+        mcp.run()
