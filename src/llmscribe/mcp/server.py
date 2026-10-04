@@ -453,6 +453,59 @@ project_list_files = project_map
 # installed class actually offers.
 # ------------------------------------------------------------------
 
+def _build_transport_security() -> Optional[Any]:
+    """
+    Build TransportSecuritySettings so production hosts are allowed.
+
+    Without this, the MCP SDK rejects every non-localhost request with
+    HTTP 421 "Invalid Host header" (DNS-rebinding protection).
+
+    Env:
+      MCP_ALLOWED_HOSTS   comma-separated Host values (e.g. llmscribe.onrender.com,llmscribe.onrender.com:*)
+      MCP_ALLOWED_ORIGINS comma-separated Origin values (default *)
+    """
+    try:
+        from mcp.server.transport_security import TransportSecuritySettings
+    except ImportError:
+        logger.warning("mcp.server.transport_security not available; skipping host allowlist")
+        return None
+
+    raw_hosts = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
+    if raw_hosts:
+        allowed_hosts = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+    else:
+        # Sensible defaults for local + common PaaS hostnames
+        allowed_hosts = [
+            "localhost",
+            "localhost:*",
+            "127.0.0.1",
+            "127.0.0.1:*",
+            "[::1]",
+            "[::1]:*",
+            "llmscribe.onrender.com",
+            "llmscribe.onrender.com:*",
+        ]
+        # Also accept whatever Render/Railway inject
+        for env_key in ("RENDER_EXTERNAL_HOSTNAME", "RAILWAY_PUBLIC_DOMAIN", "HOST"):
+            val = os.environ.get(env_key, "").strip()
+            if val and val not in allowed_hosts:
+                allowed_hosts.append(val)
+                allowed_hosts.append(f"{val}:*")
+
+    raw_origins = os.environ.get("MCP_ALLOWED_ORIGINS", "*").strip()
+    if raw_origins == "*":
+        allowed_origins = ["*"]
+    else:
+        allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+
+    logger.info("MCP transport_security allowed_hosts=%s", allowed_hosts)
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+        allowed_origins=allowed_origins,
+    )
+
+
 def _build_mcp_asgi_app() -> Any:
     """
     Return the ASGI app for the mounted MCP server, adapting to whichever
@@ -460,18 +513,36 @@ def _build_mcp_asgi_app() -> Any:
 
     Official SDK        → mcp.streamable_http_app()
     Standalone fastmcp  → mcp.http_app()   (streamable_http_app is deprecated)
+
+    Always try to pass:
+      streamable_http_path="/"   → public URL is /mcp (not /mcp/mcp)
+      transport_security=...     → allow production Host headers (avoid 421)
     """
+    security = _build_transport_security()
+    kwargs: dict[str, Any] = {"streamable_http_path": "/"}
+    if security is not None:
+        kwargs["transport_security"] = security
+
+    def _call_with_fallback(fn: Any, label: str) -> Any:
+        # Try full kwargs, then without security, then bare.
+        for attempt in (kwargs, {"streamable_http_path": "/"}, {}):
+            try:
+                result = fn(**attempt) if attempt else fn()
+                logger.info("Using %s (kwargs=%s)", label, list(attempt.keys()) or "none")
+                return result
+            except TypeError:
+                continue
+        return fn()
+
     # --- standalone fastmcp v2.3.2+ ---
     http_app = getattr(mcp, "http_app", None)
     if callable(http_app):
-        logger.info("Using mcp.http_app() (standalone fastmcp)")
-        return http_app()
+        return _call_with_fallback(http_app, "mcp.http_app() (standalone fastmcp)")
 
     # --- official SDK: streamable HTTP transport ---
     streamable = getattr(mcp, "streamable_http_app", None)
     if callable(streamable):
-        logger.info("Using mcp.streamable_http_app() (official SDK)")
-        return streamable()
+        return _call_with_fallback(streamable, "mcp.streamable_http_app() (official SDK)")
 
     # --- legacy SSE fallback ---
     sse = getattr(mcp, "sse_app", None)
