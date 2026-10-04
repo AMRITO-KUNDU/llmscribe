@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Any, Optional
 
@@ -32,18 +32,38 @@ logging.basicConfig(
 logger = logging.getLogger("llmscribe.mcp")
 
 # ------------------------------------------------------------------
-# MCP import (works with both official mcp and fastmcp packages)
+# MCP import — prefer the official SDK, fall back to standalone fastmcp.
+#
+# Official SDK (py.sdk.modelcontextprotocol.io):
+#   from mcp.server import MCPServer          # canonical name
+#   from mcp.server.fastmcp import FastMCP    # older alias, same class
+#   ASGI method:  mcp.streamable_http_app()
+#
+# Standalone fastmcp (PrefectHQ/fastmcp):
+#   from fastmcp import FastMCP
+#   ASGI method:  mcp.http_app()              # streamable_http_app() is deprecated
 # ------------------------------------------------------------------
+_MCP_BACKEND: str
+
 try:
-    from mcp.server.mcpserver import MCPServer as FastMCP
+    from mcp.server import MCPServer as MCPServerClass  # type: ignore
+    _MCP_BACKEND = "mcp.server (official SDK, MCPServer)"
 except ImportError:
     try:
-        from fastmcp import FastMCP
+        from mcp.server.fastmcp import FastMCP as MCPServerClass  # type: ignore
+        _MCP_BACKEND = "mcp.server.fastmcp (official SDK, FastMCP)"
     except ImportError:
         try:
-            from mcp.server.fastmcp import FastMCP  # type: ignore
-        except ImportError:
-            from mcp.server import FastMCP  # type: ignore
+            from fastmcp import FastMCP as MCPServerClass  # type: ignore
+            _MCP_BACKEND = "fastmcp (standalone)"
+        except ImportError as exc:
+            raise ImportError(
+                "No MCP server library found. Install one of:\n"
+                "  pip install mcp        # official SDK\n"
+                "  pip install fastmcp    # standalone\n"
+            ) from exc
+
+logger.info("Using MCP backend: %s", _MCP_BACKEND)
 
 from llmscribe.core import (
     analyze_dependencies,
@@ -67,7 +87,16 @@ from llmscribe.github.provider import (
 # ------------------------------------------------------------------
 # Create MCP server
 # ------------------------------------------------------------------
-mcp = FastMCP("llmscribe")
+# ``streamable_http_path="/"`` makes the MCP endpoint live at the root of
+# whatever path the app is mounted at.  Mounting at ``/mcp`` then gives a
+# public URL of exactly ``/mcp`` (not ``/mcp/mcp``).  See official docs:
+# https://py.sdk.modelcontextprotocol.io/run/asgi/
+try:
+    mcp = MCPServerClass("llmscribe", streamable_http_path="/")
+except TypeError:
+    # Standalone fastmcp may not accept ``streamable_http_path`` here;
+    # we set it below on the returned app instead.
+    mcp = MCPServerClass("llmscribe")
 
 MAX_CONTENT_CHARS = 400_000
 GET_FILES_MAX_FILES = 50
@@ -128,7 +157,7 @@ def _md_error(tool: str, code: str, message: str) -> str:
 
 
 # ------------------------------------------------------------------
-# Tools
+# Tools (unchanged)
 # ------------------------------------------------------------------
 
 @mcp.tool()
@@ -416,40 +445,82 @@ project_list_files = project_map
 
 
 # ------------------------------------------------------------------
-# FastAPI app + proper MCP mounting
+# ASGI app construction
+#
+# Feature-detection is used instead of a blind try/except chain so that a
+# missing method is never re-called, and the error message names what the
+# installed class actually offers.
 # ------------------------------------------------------------------
+
+def _build_mcp_asgi_app() -> Any:
+    """
+    Return the ASGI app for the mounted MCP server, adapting to whichever
+    MCP library was imported at module load.
+
+    Official SDK        → mcp.streamable_http_app()
+    Standalone fastmcp  → mcp.http_app()   (streamable_http_app is deprecated)
+    """
+    # --- standalone fastmcp v2.3.2+ ---
+    http_app = getattr(mcp, "http_app", None)
+    if callable(http_app):
+        logger.info("Using mcp.http_app() (standalone fastmcp)")
+        return http_app()
+
+    # --- official SDK: streamable HTTP transport ---
+    streamable = getattr(mcp, "streamable_http_app", None)
+    if callable(streamable):
+        logger.info("Using mcp.streamable_http_app() (official SDK)")
+        return streamable()
+
+    # --- legacy SSE fallback ---
+    sse = getattr(mcp, "sse_app", None)
+    if callable(sse):
+        logger.info("Using mcp.sse_app() (legacy SSE transport)")
+        return sse()
+
+    raise RuntimeError(
+        "The installed MCP server class exposes no ASGI app method. "
+        "Expected one of: http_app, streamable_http_app, sse_app. "
+        f"Got: {type(mcp).__module__}.{type(mcp).__name__}"
+    )
+
 
 def create_app() -> FastAPI:
     """Create FastAPI app with MCP mounted at /mcp."""
 
-    # Make the MCP endpoint live at "/" inside the sub-app
-    # so that after mounting at /mcp the public URL is exactly /mcp
-    try:
-        # Newer FastMCP / mcp versions
-        mcp_asgi = mcp.http_app(path="/")          # type: ignore[call-arg]
-    except Exception:
-        try:
-            # Older style
-            if hasattr(mcp, "settings"):
-                mcp.settings.streamable_http_path = "/"  # type: ignore[attr-defined]
-            mcp_asgi = mcp.streamable_http_app()   # type: ignore[attr-defined]
-        except Exception:
-            mcp_asgi = mcp.http_app()               # type: ignore[call-arg]
+    # 1. Build the MCP ASGI app.
+    #    ``streamable_http_path="/"`` was already passed to the constructor
+    #    above, so the MCP endpoint lives at the root of the mounted sub-app.
+    mcp_asgi = _build_mcp_asgi_app()
 
+    # 2. Host app lifespan MUST enter mcp.session_manager.run().
+    #
+    #    Starlette/FastAPI never executes the lifespan of a mounted sub-app,
+    #    so the session manager would stay uninitialized and every tool call
+    #    would fail with "Task group is not initialized".
+    #    See: https://py.sdk.modelcontextprotocol.io/run/asgi/
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         session_mgr = getattr(mcp, "session_manager", None)
-        if session_mgr is not None:
-            async with session_mgr.run():          # type: ignore[attr-defined]
-                logger.info("MCP session manager started")
-                yield
-        else:
+        if session_mgr is None:
+            logger.warning(
+                "mcp.session_manager not found. Tool calls will fail with "
+                "'Task group is not initialized'. This usually means the "
+                "ASGI app was not built before the lifespan ran."
+            )
             yield
+            return
+
+        async with AsyncExitStack() as stack:
+            await stack.enter_async_context(session_mgr.run())
+            logger.info("MCP session manager started")
+            yield
+        logger.info("MCP session manager stopped")
 
     app = FastAPI(
         title="LLMScribe MCP Server",
         description="Deterministic code-context tools for AI agents",
-        version="1.2.0",
+        version="1.3.0",
         lifespan=lifespan,
     )
 
@@ -458,7 +529,8 @@ def create_app() -> FastAPI:
         return JSONResponse({
             "status": "healthy",
             "server": "LLMScribe MCP Server",
-            "version": "1.2.0",
+            "version": "1.3.0",
+            "mcp_backend": _MCP_BACKEND,
             "endpoints": {
                 "health": "/health",
                 "info": "/info",
@@ -471,7 +543,8 @@ def create_app() -> FastAPI:
         return JSONResponse({
             "status": "healthy",
             "server": "LLMScribe MCP",
-            "version": "1.2.0",
+            "version": "1.3.0",
+            "mcp_backend": _MCP_BACKEND,
             "tools": [
                 "project_map", "project_overview", "search",
                 "read", "read_many", "project_dependencies", "project_diff",
@@ -483,12 +556,14 @@ def create_app() -> FastAPI:
         return JSONResponse({
             "name": "LLMScribe",
             "description": "Code context infrastructure for AI agents",
-            "version": "1.2.0",
+            "version": "1.3.0",
+            "mcp_backend": _MCP_BACKEND,
             "mcp_endpoint": "/mcp",
             "tools": 7,
         })
 
-    # Now /mcp is the correct MCP endpoint
+    # 3. Mount the MCP ASGI app.
+    #    Public URL is /mcp because the sub-app listens at "/".
     app.mount("/mcp", mcp_asgi)
     return app
 
@@ -513,6 +588,7 @@ def main() -> None:
 
         logger.info("=" * 50)
         logger.info("Starting LLMScribe MCP Server")
+        logger.info("Backend   : %s", _MCP_BACKEND)
         logger.info("Mode      : HTTP (FastAPI + Streamable MCP)")
         logger.info("Listening : http://%s:%s", host, port)
         logger.info("Health    : http://%s:%s/health", host, port)
