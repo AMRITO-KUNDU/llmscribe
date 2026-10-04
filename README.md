@@ -4,6 +4,30 @@ Turn any local project into clean, structured context for AI agents.
 
 ---
 
+## Free Public MCP (Recommended)
+
+Use LLMScribe without installing anything. Perfect for Claude, Cursor, and other AI agents.
+
+### Claude / Claude Desktop / claude.ai
+1. Go to **Connectors → Add custom connector**
+2. Paste this URL:  
+   `https://mcp.llmscribe.dev/mcp`
+
+### Cursor
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "url": "https://mcp.llmscribe.dev/mcp"
+    }
+  }
+}
+```
+
+Then just use tools with `repo="owner/repo"`.
+
+---
+
 ## For AI Agents (primary)
 
 LLMScribe provides a deterministic code-context infrastructure layer for AI agents. It is NOT an AI-powered coding/search agent.

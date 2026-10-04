@@ -36,6 +36,16 @@ dependencies = [
     "mcp>=1.0.0",
 ]
 
+[project.optional-dependencies]
+all = [
+    "mcp>=1.0.0",
+]
+http = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "fastmcp>=4.0.0",
+]
+
 [project.urls]
 Homepage = "https://github.com/AMRITO-KUNDU/LLMScribe"
 Repository = "https://github.com/AMRITO-KUNDU/LLMScribe"

@@ -8,6 +8,8 @@ This server provides the following tools:
 - read_many: Read multiple files
 - project_dependencies: Analyze file dependencies
 - project_diff: Show git diff and status
+
+Supports both stdio (local) and HTTP (remote) transport via FastAPI + FastMCP hybrid.
 """
 
 from __future__ import annotations
@@ -20,7 +22,19 @@ from typing import Any, Optional
 try:
     from mcp.server.mcpserver import MCPServer
 except ImportError:
-    from mcp.server.fastmcp import FastMCP as MCPServer
+    try:
+        from mcp.server.fastmcp import FastMCP as MCPServer
+    except ImportError:
+        from fastmcp import FastMCP as MCPServer
+
+# FastAPI imports for HTTP transport
+try:
+    from fastapi import FastAPI, Request, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
+    FASTAPI_AVAILABLE = True
+except ImportError:
+    FASTAPI_AVAILABLE = False
 
 from llmscribe.core import (
     analyze_dependencies,
@@ -42,7 +56,66 @@ from llmscribe.github.provider import (
     github_project_diff,
 )
 
+# Create MCP server
 mcp = MCPServer("llmscribe")
+
+# Create FastAPI app for HTTP transport
+if FASTAPI_AVAILABLE:
+    fastapi_app = FastAPI(
+        title="LLMScribe MCP Server",
+        description="Code context infrastructure for AI agents",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+    )
+    
+    # Configure CORS for web clients
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
+    # Health check endpoint
+    @fastapi_app.get("/health")
+    async def health_check():
+        """Health check endpoint for monitoring and load balancing."""
+        return JSONResponse(content={
+            "status": "healthy",
+            "server": "LLMScribe MCP",
+            "version": "1.0.0",
+            "transport": "http",
+            "tools": [
+                "project_map", "project_overview", "search", 
+                "read", "read_many", "project_dependencies", "project_diff"
+            ]
+        })
+    
+    # Info endpoint
+    @fastapi_app.get("/info")
+    async def server_info():
+        """Server information and capabilities."""
+        return JSONResponse(content={
+            "name": "LLMScribe MCP",
+            "description": "Code context infrastructure for AI agents",
+            "version": "1.0.0",
+            "supported_tools": [
+                {"name": "project_map", "description": "Directory tree structure"},
+                {"name": "project_overview", "description": "Full project overview with tree and contents"},
+                {"name": "search", "description": "Search project code for patterns"},
+                {"name": "read", "description": "Read a specific file"},
+                {"name": "read_many", "description": "Read multiple files"},
+                {"name": "project_dependencies", "description": "Analyze file dependencies"},
+                {"name": "project_diff", "description": "Git diff and status"},
+            ],
+            "supported_transports": ["stdio", "http"],
+            "github_support": True,
+            "local_support": True
+        })
+else:
+    fastapi_app = None
 
 MAX_CONTENT_CHARS = 400_000
 GET_FILES_MAX_FILES = 50
@@ -600,17 +673,52 @@ def project_diff(
 
 def main() -> None:
     """Run the LLMScribe MCP server.
+
+    Supports both stdio (local) and HTTP (remote) transport.
     
-    Supports both stdio and HTTP transport via environment variables.
-    Default: stdio (for local llmscribe-mcp compatibility)
-    Set MCP_TRANSPORT=http to use HTTP transport.
+    Environment variables:
+      - MCP_TRANSPORT=http   → use HTTP transport
+      - PORT                 → port to listen on (default 8000)
+      - HOST                 → host to bind (default 0.0.0.0)
+    
+    For HTTP transport: Uses FastAPI + Uvicorn for production-grade serving
+    For stdio transport: Uses native FastMCP stdio mode
     """
-    # Check for transport preference
     transport = os.environ.get("MCP_TRANSPORT", "stdio").lower().strip()
-    
+
     if transport == "http":
-        # Use HTTP transport
-        mcp.run(transport="http")
+        host = os.environ.get("HOST", "0.0.0.0")
+        port = int(os.environ.get("PORT", "8000"))
+        
+        if FASTAPI_AVAILABLE:
+            # Use FastAPI + Uvicorn for production HTTP serving
+            print(f"Starting LLMScribe MCP server on http://{host}:{port}")
+            print(f"Health check: http://{host}:{port}/health")
+            print(f"API docs: http://{host}:{port}/docs")
+            
+            # Mount MCP server to FastAPI app
+            from fastapi import APIRouter
+            from fastapi.middleware.gzip import GZipMiddleware
+            
+            # Add gzip compression for better performance
+            fastapi_app.add_middleware(GZipMiddleware, minimum_size=1000)
+            
+            # Start FastAPI server with Uvicorn
+            try:
+                import uvicorn
+                uvicorn.run(fastapi_app, host=host, port=port)
+            except ImportError:
+                print("Uvicorn not available. Falling back to MCP streamable-http server.")
+                mcp.run(transport="streamable-http", host=host, port=port)
+        else:
+            # Fallback to MCP's built-in streamable-http server
+            print(f"FastAPI not available. Using MCP streamable-http server on http://{host}:{port}")
+            mcp.run(transport="streamable-http", host=host, port=port)
     else:
-        # Default to stdio transport
+        # Default: stdio for local use (llmscribe-mcp)
         mcp.run()
+
+
+# Export FastAPI app for external use (e.g., mounting in other apps)
+if FASTAPI_AVAILABLE:
+    app = fastapi_app
