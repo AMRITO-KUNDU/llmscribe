@@ -35,9 +35,15 @@ logger = logging.getLogger("llmscribe.mcp")
 # MCP import (works with both official mcp and fastmcp packages)
 # ------------------------------------------------------------------
 try:
-    from fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer as FastMCP
 except ImportError:
-    from mcp.server.fastmcp import FastMCP  # type: ignore
+    try:
+        from fastmcp import FastMCP
+    except ImportError:
+        try:
+            from mcp.server.fastmcp import FastMCP  # type: ignore
+        except ImportError:
+            from mcp.server import FastMCP  # type: ignore
 
 from llmscribe.core import (
     analyze_dependencies,
@@ -89,7 +95,7 @@ def _resolve_project_root(path: Optional[str] = None) -> Path:
 def _validate_path_repo_mutual_exclusive(path: Optional[str], repo: Optional[str]) -> None:
     if path and path.strip() and repo and repo.strip():
         raise ProjectRootError(
-            "path_and_repo_mutually_exclusive",
+            "invalid_argument",
             "Cannot specify both 'path' and 'repo'.",
         )
 
@@ -330,9 +336,11 @@ def project_dependencies(
         root = _resolve_project_root(path)
         result = analyze_dependencies(file_path, root)
         if _is_json(format):
+            unresolved = getattr(result, "all_unresolved_deps", [])
             return _json_ok(tool, root.as_posix(), result.to_dict(), {
                 "file_count": len(result.all_local_files),
                 "external_dep_count": len(result.all_external_deps),
+                "unresolved_count": len(unresolved) if isinstance(unresolved, (list, tuple, set)) else 0,
             })
         md = [f"File: {result.target_file}"]
         fd = result.file_dependencies
@@ -376,7 +384,11 @@ def project_diff(
                 "changed_files": result.changed_files,
                 "diff": result.diff,
                 "truncated": result.truncated,
-            }, {"changed_file_count": len(result.changed_files)})
+            }, {
+                "changed_file_count": len(result.changed_files),
+                "character_count": len(result.diff),
+                "truncated": result.truncated,
+            })
         md = [f"{_md_header(tool, root.as_posix())}### Git Status & Diff"]
         if result.changed_files:
             md.append("Changed Files:\n" + "\n".join(f"- {f}" for f in result.changed_files))
@@ -396,6 +408,13 @@ def project_diff(
         return _json_err(tool, "internal_error", str(e)) if _is_json(format) else _md_error(tool, "internal_error", str(e))
 
 
+# Backward compatibility aliases for older tool import references
+project_get_file = read
+project_get_files = read_many
+project_search = search
+project_list_files = project_map
+
+
 # ------------------------------------------------------------------
 # FastAPI app + proper MCP mounting
 # ------------------------------------------------------------------
@@ -405,10 +424,10 @@ def create_app() -> FastAPI:
 
     # Get the MCP ASGI app
     try:
-        mcp_asgi = mcp.http_app(path="/")
+        mcp_asgi = mcp.streamable_http_app()
     except Exception:
         try:
-            mcp_asgi = mcp.streamable_http_app()
+            mcp_asgi = mcp.http_app(path="/")
         except Exception:
             mcp_asgi = mcp.http_app()
 
@@ -427,6 +446,19 @@ def create_app() -> FastAPI:
         version="1.2.0",
         lifespan=lifespan,
     )
+
+    @app.get("/")
+    async def root():
+        return JSONResponse({
+            "status": "healthy",
+            "server": "LLMScribe MCP Server",
+            "version": "1.2.0",
+            "endpoints": {
+                "health": "/health",
+                "info": "/info",
+                "mcp": "/mcp",
+            },
+        })
 
     @app.get("/health")
     async def health():
@@ -459,9 +491,17 @@ app = create_app()
 
 
 def main() -> None:
-    transport = os.environ.get("MCP_TRANSPORT", "stdio").lower().strip()
+    raw_transport = os.environ.get("MCP_TRANSPORT", "").lower().strip()
 
-    if transport == "http":
+    # Auto-detect cloud environment (Railway, Render, Heroku, Docker)
+    is_cloud_env = bool(
+        raw_transport in ("http", "sse")
+        or os.environ.get("PORT")
+        or os.environ.get("RAILWAY_SERVICE_ID")
+        or os.environ.get("RAILWAY_STATIC_URL")
+    )
+
+    if is_cloud_env:
         host = os.environ.get("HOST", "0.0.0.0")
         port = int(os.environ.get("PORT", "8000"))
 
@@ -474,7 +514,7 @@ def main() -> None:
         logger.info("=" * 50)
 
         uvicorn.run(
-            "llmscribe.mcp.server:app",
+            app,
             host=host,
             port=port,
             log_level="info",

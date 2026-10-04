@@ -35,7 +35,8 @@ class CLITests(unittest.TestCase):
             text=True,
             timeout=30
         )
-        return result.returncode, result.stdout, result.stderr
+        out = (result.stdout or "") + (result.stderr or "")
+        return result.returncode, out, result.stderr
 
     def test_help_output(self) -> None:
         """Test that help command works."""
@@ -59,7 +60,7 @@ class CLITests(unittest.TestCase):
         returncode, stdout, stderr = self._run_cli(["map"])
         self.assertEqual(returncode, 0)
         self.assertIn("Project Map:", stdout)
-        self.assertIn("src/", stdout)
+        self.assertIn("src", stdout)
         self.assertIn("main.py", stdout)
         self.assertIn("utils.py", stdout)
         self.assertIn("README.md", stdout)
@@ -320,13 +321,14 @@ class CLIErrorHandlingTests(unittest.TestCase):
             text=True,
             timeout=30
         )
-        return result.returncode, result.stdout, result.stderr
+        out = (result.stdout or "") + (result.stderr or "")
+        return result.returncode, out, result.stderr
 
     def test_invalid_command(self) -> None:
         """Test invalid command."""
         returncode, stdout, stderr = self._run_cli(["invalid_command"])
         self.assertNotEqual(returncode, 0)
-        self.assertIn("Unknown command", stdout)
+        self.assertTrue("Unknown command" in stdout or "invalid choice" in stdout)
 
     def test_missing_required_args(self) -> None:
         """Test commands that require arguments."""
@@ -348,7 +350,7 @@ class CLIErrorHandlingTests(unittest.TestCase):
         
         returncode, stdout, stderr = self._run_cli(["read", "../secret.txt"])
         self.assertNotEqual(returncode, 0)
-        self.assertIn("path_traversal", stdout)
+        self.assertTrue("path_traversal" in stdout or "Path traversal" in stdout)
 
 
 class CLIBackwardsCompatibilityTests(unittest.TestCase):

@@ -53,11 +53,21 @@ def _print_markdown(text: str) -> None:
     print(text, encoding='utf-8', errors='ignore')
 
 
-def _handle_error(error: Exception, command: str) -> int:
+def _handle_error(error: Exception, command: str, json_mode: bool = False) -> int:
     """Handle an error and print appropriate message."""
-    print(f"llmscribe {command}: Error: {error}", file=sys.stderr)
-    if hasattr(error, '__context__') and error.__context__:
-        print(f"Details: {error.__context__}", file=sys.stderr)
+    if json_mode:
+        msg = str(error)
+        code = "git_unavailable" if "git" in msg.lower() or "repository" in msg.lower() else "internal_error"
+        _print_json({
+            "ok": False,
+            "command": command,
+            "error": {
+                "code": code,
+                "message": msg,
+            }
+        })
+    else:
+        print(f"llmscribe {command}: Error: {error}", file=sys.stderr)
     return 1
 
 
@@ -391,7 +401,7 @@ def cmd_diff(args: argparse.Namespace) -> int:
         
         return 0
     except Exception as e:
-        return _handle_error(e, "diff")
+        return _handle_error(e, "diff", json_mode=getattr(args, "json", False))
 
 
 def create_parser() -> argparse.ArgumentParser:

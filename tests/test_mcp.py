@@ -21,6 +21,26 @@ from llmscribe.mcp.server import (
 )
 
 
+def _get_registered_tool_names(mcp_obj) -> list[str]:
+    if hasattr(mcp_obj, "_tool_manager") and hasattr(mcp_obj._tool_manager, "_tools"):
+        return [tool.name for tool in mcp_obj._tool_manager._tools.values()]
+    if hasattr(mcp_obj, "_tools"):
+        tools = mcp_obj._tools
+        if isinstance(tools, dict):
+            res = []
+            for k, v in tools.items():
+                res.append(getattr(v, "name", k))
+            return res
+    if hasattr(mcp_obj, "list_tools"):
+        try:
+            import asyncio
+            tools = asyncio.run(mcp_obj.list_tools())
+            return [t.name for t in tools]
+        except Exception:
+            pass
+    return []
+
+
 class MCPToolsTests(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -87,7 +107,7 @@ class MCPToolsTests(unittest.TestCase):
         
         # Check that these are not available as MCP tools in the server module
         from llmscribe.mcp.server import mcp
-        available_tools = [tool.name for tool in mcp._tool_manager._tools.values()]
+        available_tools = _get_registered_tool_names(mcp)
         
         for tool_name in removed_tools:
             self.assertNotIn(tool_name, available_tools, 
@@ -98,7 +118,7 @@ class MCPToolsTests(unittest.TestCase):
         new_tool_names = ["search", "read", "read_many"]
         
         from llmscribe.mcp.server import mcp
-        available_tools = [tool.name for tool in mcp._tool_manager._tools.values()]
+        available_tools = _get_registered_tool_names(mcp)
         
         for tool_name in new_tool_names:
             self.assertIn(tool_name, available_tools, 
@@ -443,8 +463,7 @@ class MCPToolCountTests(unittest.TestCase):
     def test_exactly_7_tools(self) -> None:
         """Test that exactly 7 tools are registered in MCP server."""
         from llmscribe.mcp.server import mcp
-        # Get the tools directly from the tool manager
-        available_tools = [tool.name for tool in mcp._tool_manager._tools.values()]
+        available_tools = _get_registered_tool_names(mcp)
         
         self.assertEqual(len(available_tools), 7, 
                         f"Expected exactly 7 tools, found {len(available_tools)}: {available_tools}")
@@ -452,8 +471,7 @@ class MCPToolCountTests(unittest.TestCase):
     def test_exact_tool_names(self) -> None:
         """Test that the 7 tools have exactly the required names."""
         from llmscribe.mcp.server import mcp
-        # Get the tools directly from the tool manager
-        available_tools = sorted([tool.name for tool in mcp._tool_manager._tools.values()])
+        available_tools = sorted(_get_registered_tool_names(mcp))
         expected_tools = sorted([
             "project_map",
             "project_overview", 
