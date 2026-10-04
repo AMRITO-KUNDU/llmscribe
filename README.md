@@ -44,7 +44,7 @@
 # **LLMScribe**
 
 **Give AI agents clean, deterministic, structured context from any local project or GitHub repository.**  
-Open source and available as a [free public MCP endpoint](https://llmscribe-production.up.railway.app/mcp).
+Open source and available as a [free public MCP endpoint](https://https://llmscribe.onrender.com//mcp).
 
 _Pst. Hey, you, join our stargazers :)_
 
@@ -99,14 +99,14 @@ No installation required. Works with Claude, Cursor, Claude Desktop, and any MCP
 
 #### Claude / Claude Desktop / claude.ai
 1. Go to **Connectors → Add custom connector**
-2. Paste: `https://llmscribe-production.up.railway.app/mcp`
+2. Paste: `https://https://llmscribe.onrender.com//mcp`
 
 #### Cursor
 ```json
 {
   "mcpServers": {
     "llmscribe": {
-      "url": "https://llmscribe-production.up.railway.app/mcp"
+      "url": "https://https://llmscribe.onrender.com//mcp"
     }
   }
 }
@@ -286,7 +286,7 @@ railway deploy
 {
   "mcpServers": {
     "llmscribe": {
-      "url": "https://llmscribe-production.up.railway.app"
+      "url": "https://https://llmscribe.onrender.com/"
     }
   }
 }
@@ -294,7 +294,7 @@ railway deploy
 
 **Claude Desktop / Claude.ai:**
 1. Go to **Connectors → Add custom connector**
-2. Paste URL: `https://llmscribe-production.up.railway.app`
+2. Paste URL: `https://https://llmscribe.onrender.com/`
 
 **General MCP Clients:**
 ```json
@@ -342,7 +342,7 @@ The AI agent provides the intelligence.**
 ## Resources
 
 - [Website](https://llmscribe.vercel.app)
-- [Free Public MCP](https://llmscribe-production.up.railway.app/mcp)
+- [Free Public MCP](https://https://llmscribe.onrender.com//mcp)
 - [PyPI](https://pypi.org/project/llmscribe/)
 - [GitHub Issues](https://github.com/AMRITO-KUNDU/llmscribe/issues)
 - [Contributing Guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md)
