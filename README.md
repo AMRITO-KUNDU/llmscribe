@@ -2,13 +2,12 @@
   <a name="readme-top"></a>
   <img
     src="https://raw.githubusercontent.com/AMRITO-KUNDU/llmscribe/main/docs/public/favicon.svg"
-    height="120"
+    height="200"
     alt="LLMScribe"
   >
 </h3>
 
 <div align="center">
-
   <a href="https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/AMRITO-KUNDU/llmscribe" alt="License">
   </a>
@@ -19,38 +18,31 @@
     <img src="https://static.pepy.tech/badge/llmscribe" alt="Downloads">
   </a>
   <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
-    <img src="https://img.shields.io/github/contributors/AMRITO-KUNDU/llmscribe.svg" alt="Contributors">
+    <img src="https://img.shields.io/github/contributors/AMRITO-KUNDU/llmscribe.svg" alt="GitHub Contributors">
   </a>
   <a href="https://llmscribe.vercel.app">
-    <img src="https://img.shields.io/badge/Visit-llmscribe.vercel.app-orange" alt="Website">
+    <img src="https://img.shields.io/badge/Visit-llmscribe.vercel.app-orange" alt="Visit llmscribe.vercel.app">
   </a>
-
 </div>
 
-<div align="center">
-  <p>
+<div>
+  <p align="center">
     <a href="https://x.com/amritokundu719">
-      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X">
+      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" />
     </a>
     <a href="https://github.com/AMRITO-KUNDU">
-      <img src="https://img.shields.io/badge/Follow%20on%20GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Follow on GitHub">
+      <img src="https://img.shields.io/badge/Follow%20on%20GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Follow on GitHub" />
     </a>
   </p>
 </div>
 
 ---
 
-# LLMScribe
+# **LLMScribe**
 
-**Turn any code repository into clean, structured, deterministic data.**
+**Turn any code repository into clean, structured, deterministic data.** No AI. No embeddings. No hidden ranking. Open source and available as a [free hosted MCP](#mcp).
 
-LLMScribe is an open-source repository extractor and code-context tool for **local projects and public GitHub repositories**.
-
-Search, map, read, inspect dependencies, view changes, and export project data through a simple CLI, GUI, or MCP server.
-
-No AI. No embeddings. No hidden ranking.
-
-Just your repository, structured for humans and machines.
+_Pst. Hey, you, join our stargazers :)_
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe">
   <img src="https://img.shields.io/github/stars/AMRITO-KUNDU/llmscribe.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
@@ -60,63 +52,160 @@ Just your repository, structured for humans and machines.
 
 ## Why LLMScribe?
 
-Code repositories contain a huge amount of information, but the default ways of exploring them are designed mainly for humans.
-
-LLMScribe turns that repository into a **clean, queryable data layer**.
-
-- **Deterministic** — Same input, predictable output. No LLM, embeddings, or AI ranking.
-- **Repository-first** — Works with local projects and public GitHub repositories.
-- **Structured output** — Machine-readable JSON for every operation.
-- **Fast discovery** — Map a project, search it, then retrieve exactly what you need.
-- **Dependency-aware** — Understand local, external, and unresolved dependencies.
-- **Git-aware** — Inspect status and unified diffs.
-- **Multiple interfaces** — CLI, MCP, GUI, and programmatic core.
-- **Agent-ready** — Give coding agents structured repository data instead of raw terminal output.
-- **Open source** — Apache-2.0, self-hostable, and free forever.
+- **Deterministic**: Same input, predictable output. No LLM, embeddings, or AI ranking
+- **Repository-first**: Works with local projects and public GitHub repositories, no cloning required
+- **Structured output**: Machine-readable JSON for every operation
+- **Fast discovery**: Map a project, search it, then retrieve exactly what you need
+- **Dependency-aware**: Understand local, external, and unresolved dependencies
+- **Git-aware**: Inspect status and unified diffs
+- **Agent ready**: Connect LLMScribe to any AI agent or MCP client with a single config block
+- **Multiple interfaces**: CLI, MCP, GUI, and a programmatic core, all sharing the same engine
+- **Open source**: Apache-2.0, self-hostable, and free forever
 
 > **LLMScribe doesn't try to be the intelligence. It provides the data that intelligence needs.**
 
 ---
 
-## What Can LLMScribe Do?
+## Feature Overview
 
-| Capability | What it does |
-|---|---|
-| **Project Map** | Generate a clean directory tree without dumping file contents |
-| **Search** | Search file paths and file contents |
-| **Read** | Retrieve a specific file safely |
-| **Read Many** | Retrieve multiple relevant files in one operation |
-| **Dependencies** | Inspect what a file depends on and what depends on it |
-| **Project Diff** | Inspect Git status and unified changes |
-| **Project Overview** | Export the complete structure and supported file contents |
-| **GitHub Repositories** | Run the same operations against public GitHub repositories |
-| **JSON Output** | Get machine-readable results from every CLI operation |
+**Core Tools**
+
+| Feature | Description |
+|---------|-------------|
+| [**Map**](#map) | Generate a clean directory tree without dumping file contents |
+| [**Search**](#search) | Search file paths, file names, file contents, and individual lines |
+| [**Read**](#read) | Safely retrieve a specific file |
+
+**More**
+
+| Feature | Description |
+|---------|-------------|
+| [**Read Many**](#read-many) | Retrieve multiple files in a single operation |
+| [**Dependencies**](#dependencies) | See what a file depends on and what depends on it |
+| [**Diff**](#diff) | Inspect Git status and unified diffs |
+| [**Overview**](#overview) | Export the complete structure and supported file contents |
 
 ---
 
-## How It Works
+## Quick Start
 
-LLMScribe follows a simple repository exploration workflow:
+Install LLMScribe from PyPI:
 
-```text
-Repository
-    │
-    ▼
-Project Map
-    │
-    ▼
-Search
-    │
-    ├──► Read
-    │
-    ├──► Read Many
-    │
-    └──► Dependencies
+```bash
+pip install llmscribe
 ```
 
-Instead of throwing an entire repository into a context window, an application or agent can progressively retrieve exactly the information it needs.
+Then point it at any project directory, or at a public GitHub repo. No API key needed.
 
-### Example
+### Map
+
+Generate a clean directory tree without file contents. This is the best first step when exploring an unfamiliar repository.
+
+```python
+project_map()
+
+# or a public GitHub repo, no clone needed
+project_map(repo="owner/repo")
+```
+
+<details>
+<summary><b>CLI / MCP</b></summary>
+
+**CLI**
+```bash
+llmscribe map
+llmscribe map --json
+```
+
+**MCP**
+```text
+project_map
+```
+</details>
+
+Output:
+```text
+src/
+├── api/
+│   ├── routes.py
+│   └── auth.py
+├── models/
+│   └── user.py
+└── main.py
+```
+
+### Search
+
+Search across file paths, file names, file contents, and individual lines. Search is intentionally deterministic: LLMScribe does not try to guess what you meant.
+
+```python
+search(query="authentication")
+
+# or a public GitHub repo
+search(query="authentication", repo="owner/repo")
+```
+
+<details>
+<summary><b>CLI / MCP</b></summary>
+
+**CLI**
+```bash
+llmscribe search "authentication"
+llmscribe search "authentication" --json
+```
+
+**MCP**
+```text
+search
+```
+</details>
+
+Each result includes the file path, line number, matching text, and match type.
+
+Output:
+```json
+[
+  {
+    "file_path": "src/auth/service.py",
+    "line": 12,
+    "text": "def authenticate(user, password):",
+    "match_type": "content"
+  }
+]
+```
+
+### Read
+
+Safely retrieve the contents of a specific file. LLMScribe validates paths and prevents path traversal outside the project.
+
+```python
+read(file_path="src/auth/service.py")
+
+# or a public GitHub repo
+read(file_path="src/main.py", repo="owner/repo")
+```
+
+<details>
+<summary><b>CLI / MCP</b></summary>
+
+**CLI**
+```bash
+llmscribe read src/auth/service.py
+```
+
+**MCP**
+```text
+read
+```
+</details>
+
+> `path` and `repo` are mutually exclusive. Use `path` for a local project and `repo` for a public GitHub repository.
+
+---
+
+## Power Your Agent
+
+Instead of throwing an entire repository into a context window, an agent can progressively retrieve exactly what it needs:
 
 ```text
 1. project_map()
@@ -130,57 +219,11 @@ Instead of throwing an entire repository into a context window, an application o
 5. read_many([...])
 ```
 
-This makes LLMScribe useful for both **human developers and AI-powered development tools**.
+### MCP
 
----
+Connect any MCP-compatible client (Cursor, Claude, Windsurf, and more) to your repository.
 
-# Interfaces
-
-LLMScribe has multiple ways to access the same underlying repository engine.
-
-```text
-                    LLMScribe Core
-                         │
-          ┌──────────────┼──────────────┐
-          ▼              ▼              ▼
-         CLI            MCP            GUI
-          │              │
-          └─────── JSON / Structured ───┘
-```
-
-All interfaces use the same core functionality, so the behavior stays consistent across environments.
-
----
-
-## MCP
-
-LLMScribe includes an MCP server for AI coding tools and other MCP-compatible applications.
-
-The MCP interface exposes focused repository primitives instead of trying to become an AI agent itself.
-
-### Available tools
-
-```text
-project_map
-project_overview
-search
-read
-read_many
-project_dependencies
-project_diff
-```
-
-This works well with tools such as Cursor, Claude, Windsurf, and other MCP clients.
-
-### Free Public MCP
-
-You can use the hosted MCP endpoint without installing LLMScribe:
-
-```text
-https://llmscribe.onrender.com/mcp
-```
-
-For example:
+**Free hosted MCP.** No installation required:
 
 ```json
 {
@@ -192,109 +235,58 @@ For example:
 }
 ```
 
-For clients that support custom remote connectors, simply provide the MCP endpoint.
+For clients that support custom remote connectors, simply provide the endpoint: `https://llmscribe.onrender.com/mcp`
 
 > The public endpoint is convenient for experimentation. For private code or production workloads, self-host LLMScribe instead.
 
+**Local MCP.** Runs on your machine, over stdio:
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+<details>
+<summary><b>Alternative: Python module</b></summary>
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "python",
+      "args": ["-m", "llmscribe.mcp"]
+    }
+  }
+}
+```
+</details>
+
+**Available tools**
+
+```text
+project_map
+project_overview
+search
+read
+read_many
+project_dependencies
+project_diff
+```
+
 ---
 
-# GitHub Repository Support
+## More Tools
 
-LLMScribe can work directly with public GitHub repositories.
+### Read Many
 
-The same repository operations can be used without cloning the repository locally.
+Retrieve multiple files in a single operation. Partial success is supported, so one problematic file does not invalidate the entire request.
 
 ```python
-project_map(repo="owner/repo")
-
-search(
-    query="authentication",
-    repo="owner/repo"
-)
-
-read(
-    file_path="src/main.py",
-    repo="owner/repo"
-)
-```
-
-This makes LLMScribe useful for:
-
-- Exploring unfamiliar open-source projects
-- Giving agents structured access to GitHub repositories
-- Building repository analysis tools
-- Extracting project data
-- Creating developer tooling on top of repository data
-
-`path` and `repo` are mutually exclusive.
-
----
-
-# Tools
-
-## `project_map`
-
-Generate a clean directory tree without file contents.
-
-Useful as the first step when exploring an unfamiliar repository.
-
-```text
-src/
-├── api/
-│   ├── routes.py
-│   └── auth.py
-├── models/
-│   └── user.py
-└── main.py
-```
-
----
-
-## `search`
-
-Search across:
-
-- File paths
-- File names
-- File contents
-- Individual lines
-
-Example:
-
-```text
-search("authentication")
-```
-
-Returns structured results containing information such as:
-
-- File path
-- Line number
-- Matching text
-- Match type
-
-Search is intentionally deterministic.
-
-LLMScribe does not try to guess what you meant.
-
----
-
-## `read`
-
-Safely retrieve the contents of a specific file.
-
-```text
-read("src/auth/service.py")
-```
-
-LLMScribe validates paths and prevents path traversal outside the project.
-
----
-
-## `read_many`
-
-Retrieve multiple files in a single operation.
-
-```text
 read_many([
     "src/auth/service.py",
     "src/auth/models.py",
@@ -302,27 +294,23 @@ read_many([
 ])
 ```
 
-Useful when several files are already known to be relevant.
-
-Partial success is supported, so one problematic file does not necessarily invalidate the entire request.
-
----
-
-## `project_dependencies`
-
-Inspect the dependency relationships around a file.
-
-It can identify:
-
-```text
-Local dependencies
-External dependencies
-Unresolved dependencies
-Files that depend on this file
+```bash
+llmscribe read-many src/auth/service.py src/api/login.py
 ```
 
-Example:
+### Dependencies
 
+Inspect the dependency relationships around a file. LLMScribe identifies local dependencies, external dependencies, unresolved dependencies, and the files that depend on this file.
+
+```python
+project_dependencies("src/auth/service.py")
+```
+
+```bash
+llmscribe dependencies src/auth/service.py --json
+```
+
+Output:
 ```text
 src/auth/service.py
 │
@@ -338,142 +326,56 @@ src/auth/service.py
 
 This is particularly useful when determining the potential impact of modifying a file.
 
----
+### Diff
 
-## `project_diff`
-
-Inspect repository changes using Git.
-
-Supports:
-
-- Git status
-- Unstaged changes
-- Staged changes
-- Specific commits
-- Unified diffs
-
-Example:
+Inspect repository changes using Git. Supports Git status, unstaged changes, staged changes, specific commits, and unified diffs.
 
 ```bash
 llmscribe diff
 ```
 
-This allows applications and agents to understand not only the current repository, but also **what changed**.
+This lets applications and agents understand not only the current repository, but also **what changed**.
 
----
+### Overview
 
-## `project_overview`
+Generate a complete project snapshot containing the directory structure, supported text file contents, and structured project information.
 
-Generate a complete project snapshot containing:
+```bash
+llmscribe overview
+```
 
-- Directory structure
-- Supported text file contents
-- Structured project information
-
-This is useful for small and medium-sized projects where retrieving the entire repository at once is practical.
-
-For large repositories, the recommended workflow is:
+Best for small and medium-sized projects. For large repositories, use the recommended workflow instead:
 
 ```text
 map → search → read
 ```
 
-rather than loading everything.
-
 ---
 
-# CLI
+## CLI
 
-Install LLMScribe from PyPI:
-
-```bash
-pip install llmscribe
-```
-
-Then use the CLI:
+Every command can return machine-readable JSON with `--json`, which makes the CLI a building block for scripts, automation, and developer tools.
 
 ```bash
 llmscribe map
-
 llmscribe overview
-
 llmscribe search "authentication"
-
 llmscribe read src/auth/service.py
-
 llmscribe read-many src/auth/service.py src/api/login.py
-
 llmscribe dependencies src/auth/service.py
-
 llmscribe diff
-```
 
-Every command can return machine-readable JSON:
-
-```bash
+# machine-readable output
 llmscribe map --json
-
 llmscribe search "auth" --json
-
 llmscribe dependencies src/auth/service.py --json
 ```
 
-This makes the CLI useful not only interactively, but also as a building block for scripts, automation, and developer tools.
-
 ---
 
-# Local Projects
+## Self-Hosting
 
-LLMScribe can inspect a project directly from your machine.
-
-```bash
-llmscribe map
-```
-
-Or use the MCP server locally:
-
-```bash
-llmscribe-mcp
-```
-
-For Cursor or Claude Desktop:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-Alternative Python module:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "python",
-      "args": ["-m", "llmscribe.mcp"]
-    }
-  }
-}
-```
-
----
-
-# Self-Hosted MCP
-
-LLMScribe can also be deployed as your own HTTP MCP server.
-
-This is useful for:
-
-- Private repositories
-- Teams
-- Internal developer tools
-- Production applications
-- Custom integrations
+Run your own HTTP MCP server for private repositories, teams, internal developer tools, and production applications.
 
 ### Run locally
 
@@ -483,11 +385,7 @@ pip install llmscribe
 MCP_TRANSPORT=http python -m llmscribe.mcp.server
 ```
 
-The server will be available at:
-
-```text
-http://localhost:8000/mcp
-```
+The server will be available at `http://localhost:8000/mcp`.
 
 ### Docker
 
@@ -503,86 +401,19 @@ docker run -p 8000:8000 llmscribe-mcp
 railway up
 ```
 
-or:
-
-```bash
-railway deploy
-```
-
 ### Environment Variables
 
 | Variable | Description | Default |
-|---|---|---|
+|----------|-------------|---------|
 | `MCP_TRANSPORT` | `stdio` or `http` | `stdio` |
 | `HOST` | HTTP bind address | `0.0.0.0` |
 | `PORT` | HTTP port | `8000` |
 
 ---
 
-# Designed for Machines, Useful for Humans
+## Architecture
 
-LLMScribe is designed around a simple idea:
-
-> **Repository data should be easy to retrieve, not difficult to extract.**
-
-Traditional terminal commands are excellent for humans, but applications and AI agents often need:
-
-```text
-structured data
-predictable schemas
-specific files
-specific lines
-dependency relationships
-repository changes
-```
-
-LLMScribe provides those primitives without inserting an AI layer between the repository and the consumer.
-
-That makes it useful as a foundation for:
-
-- AI coding agents
-- MCP applications
-- Developer tools
-- Code search interfaces
-- Repository explorers
-- Documentation systems
-- Code analysis pipelines
-- Automation scripts
-- Local LLM applications
-- Custom developer workflows
-
----
-
-# Project Philosophy
-
-LLMScribe intentionally stays simple.
-
-### We provide
-
-- Repository extraction
-- Deterministic search
-- Structured project data
-- File retrieval
-- Dependency information
-- Git information
-- Multiple interfaces
-
-### We don't provide
-
-- ❌ AI-generated answers
-- ❌ Embedding-based search
-- ❌ Semantic ranking
-- ❌ Autonomous coding
-- ❌ An AI coding agent
-- ❌ A generic Git client
-
-The goal is not to make the repository "smarter."
-
-The goal is to make the repository **accessible to software**.
-
----
-
-# Architecture
+All interfaces share one core engine, so behavior stays consistent everywhere.
 
 ```text
                          Repository
@@ -606,32 +437,53 @@ The goal is to make the repository **accessible to software**.
                    / JSON
 ```
 
-The core extraction and analysis logic is shared across interfaces.
+---
+
+## Philosophy
+
+LLMScribe intentionally stays simple. The goal is not to make the repository "smarter." The goal is to make the repository **accessible to software**.
+
+**We provide**
+
+- Repository extraction
+- Deterministic search
+- Structured project data
+- File retrieval
+- Dependency information
+- Git information
+- Multiple interfaces
+
+**We don't provide**
+
+- ❌ AI-generated answers
+- ❌ Embedding-based search
+- ❌ Semantic ranking
+- ❌ Autonomous coding
+- ❌ An AI coding agent
+- ❌ A generic Git client
 
 ---
 
-# Open Source
+## Use Cases
 
-LLMScribe is open source under the **Apache License 2.0**.
-
-You can:
-
-- Run it locally
-- Inspect the source
-- Modify it
-- Self-host it
-- Build integrations
-- Use it in your own developer tools
-
-The hosted MCP endpoint provides a convenient zero-install option, while the open-source project gives you complete control.
+- AI coding agents
+- MCP applications
+- Developer tools
+- Code search interfaces
+- Repository explorers
+- Documentation systems
+- Code analysis pipelines
+- Automation scripts
+- Local LLM applications
+- Exploring unfamiliar open-source projects
 
 ---
 
-# Roadmap
+## Roadmap
 
 The focus is on making the existing repository primitives better rather than adding unnecessary features.
 
-### Core
+**Core**
 
 - [ ] Faster repository search
 - [ ] Better language-aware search
@@ -640,14 +492,14 @@ The focus is on making the existing repository primitives better rather than add
 - [ ] Better repository metadata
 - [ ] More robust file detection and filtering
 
-### Integrations
+**Integrations**
 
 - [ ] More MCP client compatibility
 - [ ] Better local LLM integrations
 - [ ] More developer-tool integrations
 - [ ] Improved GitHub repository workflows
 
-### Developer Experience
+**Developer Experience**
 
 - [ ] Better documentation
 - [ ] More examples
@@ -657,7 +509,15 @@ The focus is on making the existing repository primitives better rather than add
 
 ---
 
-# Resources
+## Open Source vs Hosted
+
+LLMScribe is open source under the **Apache License 2.0**. Run it locally, inspect the source, modify it, self-host it, and build your own integrations.
+
+The hosted MCP endpoint provides a convenient zero-install option for trying it out, while the open-source project gives you complete control.
+
+---
+
+## Resources
 
 - **Website:** https://llmscribe.vercel.app
 - **GitHub:** https://github.com/AMRITO-KUNDU/llmscribe
@@ -668,11 +528,9 @@ The focus is on making the existing repository primitives better rather than add
 
 ---
 
-# Contributing
+## Contributing
 
-Contributions are welcome.
-
-If you want to improve repository extraction, search, dependency analysis, interfaces, integrations, or documentation, check the contributing guide before opening a pull request.
+Contributions are welcome. If you want to improve repository extraction, search, dependency analysis, interfaces, integrations, or documentation, check the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md) before opening a pull request.
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
   <img alt="Contributors" src="https://contrib.rocks/image?repo=AMRITO-KUNDU/llmscribe"/>
@@ -680,15 +538,11 @@ If you want to improve repository extraction, search, dependency analysis, inter
 
 ---
 
-# License
+## License
 
-LLMScribe is licensed under the **Apache License 2.0**.
-
----
+LLMScribe is licensed under the **Apache License 2.0**. See the [LICENSE](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE) file for details.
 
 <div align="center">
-
-**LLMScribe**
 
 *Repository data, structured.*
 
