@@ -455,14 +455,16 @@ project_list_files = project_map
 
 def _build_transport_security() -> Optional[Any]:
     """
-    Build TransportSecuritySettings so production hosts are allowed.
+    Build TransportSecuritySettings for production.
 
-    Without this, the MCP SDK rejects every non-localhost request with
-    HTTP 421 "Invalid Host header" (DNS-rebinding protection).
+    Without this, the MCP SDK rejects non-localhost requests with:
+      - 421 Invalid Host header
+      - 403 Invalid Origin header
 
     Env:
-      MCP_ALLOWED_HOSTS   comma-separated Host values (e.g. llmscribe.onrender.com,llmscribe.onrender.com:*)
-      MCP_ALLOWED_ORIGINS comma-separated Origin values (default *)
+      MCP_ALLOWED_HOSTS              comma-separated Host values
+      MCP_ALLOWED_ORIGINS            comma-separated Origin values
+      MCP_DISABLE_DNS_REBINDING=1    turn protection off entirely (last resort)
     """
     try:
         from mcp.server.transport_security import TransportSecuritySettings
@@ -470,11 +472,14 @@ def _build_transport_security() -> Optional[Any]:
         logger.warning("mcp.server.transport_security not available; skipping host allowlist")
         return None
 
+    if os.environ.get("MCP_DISABLE_DNS_REBINDING", "").strip().lower() in ("1", "true", "yes"):
+        logger.warning("DNS rebinding protection DISABLED via MCP_DISABLE_DNS_REBINDING")
+        return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
     raw_hosts = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
     if raw_hosts:
         allowed_hosts = [h.strip() for h in raw_hosts.split(",") if h.strip()]
     else:
-        # Sensible defaults for local + common PaaS hostnames
         allowed_hosts = [
             "localhost",
             "localhost:*",
@@ -482,23 +487,48 @@ def _build_transport_security() -> Optional[Any]:
             "127.0.0.1:*",
             "[::1]",
             "[::1]:*",
+            "0.0.0.0",
+            "0.0.0.0:*",
             "llmscribe.onrender.com",
             "llmscribe.onrender.com:*",
         ]
-        # Also accept whatever Render/Railway inject
-        for env_key in ("RENDER_EXTERNAL_HOSTNAME", "RAILWAY_PUBLIC_DOMAIN", "HOST"):
+        for env_key in (
+            "RENDER_EXTERNAL_HOSTNAME",
+            "RAILWAY_PUBLIC_DOMAIN",
+            "RAILWAY_STATIC_URL",
+            "HOST",
+        ):
             val = os.environ.get(env_key, "").strip()
+            # Strip scheme if present (RAILWAY_STATIC_URL is a full URL)
+            if val.startswith("http://") or val.startswith("https://"):
+                val = val.split("://", 1)[1].split("/")[0]
             if val and val not in allowed_hosts:
                 allowed_hosts.append(val)
                 allowed_hosts.append(f"{val}:*")
 
-    raw_origins = os.environ.get("MCP_ALLOWED_ORIGINS", "*").strip()
-    if raw_origins == "*":
-        allowed_origins = ["*"]
-    else:
+    raw_origins = os.environ.get("MCP_ALLOWED_ORIGINS", "").strip()
+    if raw_origins:
         allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    else:
+        # Broad but practical defaults for public MCP + common clients.
+        # "*" is included because some SDK versions honour it; explicit
+        # origins cover those that do not.
+        allowed_origins = [
+            "*",
+            "https://llmscribe.onrender.com",
+            "http://llmscribe.onrender.com",
+            "https://claude.ai",
+            "https://www.claude.ai",
+            "https://cursor.com",
+            "https://www.cursor.com",
+            "http://localhost",
+            "http://localhost:*",
+            "http://127.0.0.1",
+            "http://127.0.0.1:*",
+            "null",  # some clients send Origin: null
+        ]
 
-    logger.info("MCP transport_security allowed_hosts=%s", allowed_hosts)
+    logger.info("MCP transport_security hosts=%s origins=%s", allowed_hosts, allowed_origins)
     return TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=allowed_hosts,
@@ -508,15 +538,10 @@ def _build_transport_security() -> Optional[Any]:
 
 def _build_mcp_asgi_app() -> Any:
     """
-    Return the ASGI app for the mounted MCP server, adapting to whichever
-    MCP library was imported at module load.
+    Return the ASGI app for the mounted MCP server.
 
-    Official SDK        → mcp.streamable_http_app()
-    Standalone fastmcp  → mcp.http_app()   (streamable_http_app is deprecated)
-
-    Always try to pass:
-      streamable_http_path="/"   → public URL is /mcp (not /mcp/mcp)
-      transport_security=...     → allow production Host headers (avoid 421)
+    Forces streamable_http_path="/" so the public URL is /mcp (not /mcp/mcp).
+    Passes transport_security so production Host/Origin headers are accepted.
     """
     security = _build_transport_security()
     kwargs: dict[str, Any] = {"streamable_http_path": "/"}
@@ -524,7 +549,6 @@ def _build_mcp_asgi_app() -> Any:
         kwargs["transport_security"] = security
 
     def _call_with_fallback(fn: Any, label: str) -> Any:
-        # Try full kwargs, then without security, then bare.
         for attempt in (kwargs, {"streamable_http_path": "/"}, {}):
             try:
                 result = fn(**attempt) if attempt else fn()
@@ -534,17 +558,14 @@ def _build_mcp_asgi_app() -> Any:
                 continue
         return fn()
 
-    # --- standalone fastmcp v2.3.2+ ---
     http_app = getattr(mcp, "http_app", None)
     if callable(http_app):
         return _call_with_fallback(http_app, "mcp.http_app() (standalone fastmcp)")
 
-    # --- official SDK: streamable HTTP transport ---
     streamable = getattr(mcp, "streamable_http_app", None)
     if callable(streamable):
         return _call_with_fallback(streamable, "mcp.streamable_http_app() (official SDK)")
 
-    # --- legacy SSE fallback ---
     sse = getattr(mcp, "sse_app", None)
     if callable(sse):
         logger.info("Using mcp.sse_app() (legacy SSE transport)")
@@ -557,20 +578,50 @@ def _build_mcp_asgi_app() -> Any:
     )
 
 
-def create_app() -> FastAPI:
-    """Create FastAPI app with MCP mounted at /mcp."""
+class _McpPathDispatch:
+    """
+    Top-level ASGI dispatcher: route /mcp and /mcp/* to the MCP app,
+    everything else to FastAPI.
 
-    # 1. Build the MCP ASGI app.
-    #    ``streamable_http_path="/"`` was already passed to the constructor
-    #    above, so the MCP endpoint lives at the root of the mounted sub-app.
+    Does not rely on Starlette Mount matching (which 404s on exact /mcp
+    when redirect_slashes=False). Both /mcp and /mcp/ become path "/" for
+    the Streamable HTTP sub-app.
+    """
+
+    def __init__(self, fastapi_app: Any, mcp_app: Any, prefix: str = "/mcp") -> None:
+        self.fastapi_app = fastapi_app
+        self.mcp_app = mcp_app
+        self.prefix = prefix.rstrip("/") or "/mcp"
+
+    async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
+        # Lifespan must reach FastAPI so mcp.session_manager.run() starts.
+        if scope["type"] == "lifespan":
+            await self.fastapi_app(scope, receive, send)
+            return
+
+        if scope["type"] in ("http", "websocket"):
+            path = scope.get("path") or ""
+            prefix = self.prefix
+            if path == prefix or path.startswith(prefix + "/"):
+                rest = path[len(prefix):] or "/"
+                if not rest.startswith("/"):
+                    rest = "/" + rest
+                mcp_scope = dict(scope)
+                mcp_scope["path"] = rest
+                mcp_scope["raw_path"] = rest.encode("utf-8")
+                await self.mcp_app(mcp_scope, receive, send)
+                return
+
+        await self.fastapi_app(scope, receive, send)
+
+
+def create_app() -> Any:
+    """Create ASGI app: FastAPI health routes + MCP at /mcp and /mcp/."""
+
     mcp_asgi = _build_mcp_asgi_app()
 
-    # 2. Host app lifespan MUST enter mcp.session_manager.run().
-    #
-    #    Starlette/FastAPI never executes the lifespan of a mounted sub-app,
-    #    so the session manager would stay uninitialized and every tool call
-    #    would fail with "Task group is not initialized".
-    #    See: https://py.sdk.modelcontextprotocol.io/run/asgi/
+    # Host app lifespan MUST enter mcp.session_manager.run().
+    # See: https://py.sdk.modelcontextprotocol.io/run/asgi/
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         session_mgr = getattr(mcp, "session_manager", None)
@@ -589,9 +640,7 @@ def create_app() -> FastAPI:
             yield
         logger.info("MCP session manager stopped")
 
-    # redirect_slashes=False prevents /mcp → 307 → /mcp/ which then 404s
-    # on the mounted Streamable HTTP sub-app (breaks MCP clients on Render).
-    app = FastAPI(
+    fastapi_app = FastAPI(
         title="LLMScribe MCP Server",
         description="Deterministic code-context tools for AI agents",
         version="1.3.0",
@@ -622,20 +671,19 @@ def create_app() -> FastAPI:
         ],
     }
 
-    # Accept both GET and HEAD (Render / load-balancers probe with HEAD).
-    @app.api_route("/", methods=["GET", "HEAD"])
+    @fastapi_app.api_route("/", methods=["GET", "HEAD"])
     async def root(request: Request):
         if request.method == "HEAD":
             return JSONResponse(content=None, status_code=200)
         return JSONResponse(_root_body)
 
-    @app.api_route("/health", methods=["GET", "HEAD"])
+    @fastapi_app.api_route("/health", methods=["GET", "HEAD"])
     async def health(request: Request):
         if request.method == "HEAD":
             return JSONResponse(content=None, status_code=200)
         return JSONResponse(_health_body)
 
-    @app.get("/info")
+    @fastapi_app.get("/info")
     async def info():
         return JSONResponse({
             "name": "LLMScribe",
@@ -646,10 +694,8 @@ def create_app() -> FastAPI:
             "tools": 7,
         })
 
-    # 3. Mount the MCP ASGI app at /mcp (no trailing-slash redirect).
-    #    Public URL is exactly /mcp because the sub-app listens at "/".
-    app.mount("/mcp", mcp_asgi)
-    return app
+    # Dispatch /mcp and /mcp/* to MCP; all other paths to FastAPI.
+    return _McpPathDispatch(fastapi_app, mcp_asgi, prefix="/mcp")
 
 
 app = create_app()
