@@ -479,36 +479,6 @@ LLMScribe intentionally stays simple. The goal is not to make the repository "sm
 
 ---
 
-## Roadmap
-
-The focus is on making the existing repository primitives better rather than adding unnecessary features.
-
-**Core**
-
-- [ ] Faster repository search
-- [ ] Better language-aware search
-- [ ] Improved large-repository handling
-- [ ] More accurate dependency analysis
-- [ ] Better repository metadata
-- [ ] More robust file detection and filtering
-
-**Integrations**
-
-- [ ] More MCP client compatibility
-- [ ] Better local LLM integrations
-- [ ] More developer-tool integrations
-- [ ] Improved GitHub repository workflows
-
-**Developer Experience**
-
-- [ ] Better documentation
-- [ ] More examples
-- [ ] More language support
-- [ ] Expanded test coverage
-- [ ] Performance benchmarks
-
----
-
 ## Open Source vs Hosted
 
 LLMScribe is open source under the **Apache License 2.0**. Run it locally, inspect the source, modify it, self-host it, and build your own integrations.
