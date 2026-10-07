@@ -25,6 +25,10 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from llmscribe import __version__
+
+CANONICAL_VERSION = __version__
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-7s | %(message)s",
@@ -93,10 +97,9 @@ from llmscribe.github.provider import (
 # public URL of exactly ``/mcp`` (not ``/mcp/mcp``).  See official docs:
 # https://py.sdk.modelcontextprotocol.io/run/asgi/
 try:
-    mcp = MCPServerClass("llmscribe", streamable_http_path="/")
+    mcp = MCPServerClass("llmscribe")
 except TypeError:
-    # Standalone fastmcp may not accept ``streamable_http_path`` here;
-    # we set it below on the returned app instead.
+    # Standalone fastmcp may not accept any constructor args here.
     mcp = MCPServerClass("llmscribe")
 
 MAX_CONTENT_CHARS = 400_000
@@ -643,7 +646,7 @@ def create_app() -> Any:
     fastapi_app = FastAPI(
         title="LLMScribe MCP Server",
         description="Deterministic code-context tools for AI agents",
-        version="1.3.0",
+        version=CANONICAL_VERSION,
         lifespan=lifespan,
         redirect_slashes=False,
     )
@@ -651,7 +654,7 @@ def create_app() -> Any:
     _root_body = {
         "status": "healthy",
         "server": "LLMScribe MCP Server",
-        "version": "1.3.0",
+        "version": CANONICAL_VERSION,
         "mcp_backend": _MCP_BACKEND,
         "endpoints": {
             "health": "/health",
@@ -663,7 +666,7 @@ def create_app() -> Any:
     _health_body = {
         "status": "healthy",
         "server": "LLMScribe MCP",
-        "version": "1.3.0",
+        "version": CANONICAL_VERSION,
         "mcp_backend": _MCP_BACKEND,
         "tools": [
             "project_map", "project_overview", "search",
@@ -688,7 +691,7 @@ def create_app() -> Any:
         return JSONResponse({
             "name": "LLMScribe",
             "description": "Code context infrastructure for AI agents",
-            "version": "1.3.0",
+            "version": CANONICAL_VERSION,
             "mcp_backend": _MCP_BACKEND,
             "mcp_endpoint": "/mcp",
             "tools": 7,

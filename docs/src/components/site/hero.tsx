@@ -50,10 +50,9 @@ export function Hero() {
           </div>
 
           <p className="mt-6 text-sm text-subtle">
-            Four ways to run: <code className="font-mono text-muted">llmscribe-mcp</code>,{" "}
+            Three ways to run: <code className="font-mono text-muted">llmscribe-mcp</code>,{" "}
             <code className="font-mono text-muted">LLMScribe-GUI.exe</code>,{" "}
-            <code className="font-mono text-muted">llmscribe</code>,{" "}
-            <code className="font-mono text-muted">llmscribe-cui</code>
+            <code className="font-mono text-muted">llmscribe</code>
           </p>
         </div>
 

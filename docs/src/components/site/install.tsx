@@ -40,10 +40,10 @@ export function Install() {
         </div>
 
         <dl className="mt-10 grid gap-6 sm:grid-cols-4">
-          <Fact term="llmscribe-mcp" def="MCP server for AI agents in Cursor & Claude." />
-          <Fact term="LLMScribe-GUI.exe" def="Standalone desktop app (no Python needed)." />
-          <Fact term="llmscribe" def="Command-line tool for fast path exports." />
-          <Fact term="llmscribe-cui" def="Numbered terminal menu." />
+          <Fact term="llmscribe-mcp" def="MCP server for Cursor, Claude, and other MCP clients." />
+          <Fact term="LLMScribe-GUI.exe" def="Standalone desktop app for local project exports." />
+          <Fact term="llmscribe" def="CLI for map, overview, search, read, diff, and dependency checks." />
+          <Fact term="pip install llmscribe[gui]" def="Optional GUI extras for desktop support." />
         </dl>
       </div>
     </section>

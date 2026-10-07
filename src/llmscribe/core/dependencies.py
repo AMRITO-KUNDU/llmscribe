@@ -93,22 +93,6 @@ class DependencyProvider:
         raise NotImplementedError
 
 
-class CodeGraphProvider(DependencyProvider):
-    """CodeGraph-based dependency provider (placeholder for future integration)."""
-    
-    def get_dependencies(self, file_path: str, root: Path) -> FileDependencies:
-        """Get dependencies using CodeGraph (not yet implemented)."""
-        # For now, fall back to basic provider
-        basic_provider = BasicDependencyProvider()
-        return basic_provider.get_dependencies(file_path, root)
-    
-    def get_dependents(self, file_path: str, root: Path) -> list[str]:
-        """Get dependents using CodeGraph (not yet implemented)."""
-        # For now, fall back to basic provider
-        basic_provider = BasicDependencyProvider()
-        return basic_provider.get_dependents(file_path, root)
-
-
 class BasicDependencyProvider(DependencyProvider):
     """Basic dependency provider using AST parsing for Python files."""
     

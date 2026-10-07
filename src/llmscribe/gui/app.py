@@ -14,10 +14,12 @@ import threading
 import webbrowser
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import customtkinter as ctk
+from llmscribe import __version__
 
-APP_VERSION = "v1.2.0"
+APP_VERSION = f"v{__version__}"
 
 # ── Palette ──────────────────────────────────────────────
 BG = "#0f110f"
@@ -94,7 +96,8 @@ def _make_icon(kind: str, color: str, px: int = 18):
         d.line([P(9, 15), P(6, 15), P(4, 13), P(4, 6), P(6, 4), P(13, 4), P(15, 6), P(15, 9)],
                fill=color, width=w, joint="curve")
 
-    img = img.resize((px * 2, px * 2), Image.LANCZOS)
+    resample = getattr(Image, "Resampling", Image)
+    img = img.resize((px * 2, px * 2), resample.LANCZOS)
     return ctk.CTkImage(light_image=img, dark_image=img, size=(px, px))
 
 
@@ -268,7 +271,7 @@ def main() -> None:
             actions = ctk.CTkFrame(body, fg_color="transparent")
             actions.grid(row=8, column=0, sticky="ew", pady=(12, 0))
             actions.grid_columnconfigure((0, 1), weight=1, uniform="act")
-            outline = dict(height=44, corner_radius=12, fg_color="transparent",
+            outline: dict[str, Any] = dict(height=44, corner_radius=12, fg_color="transparent",
                            border_width=1, border_color=BORDER_STRONG, hover_color=FIELD,
                            text_color=TEXT, font=self.F["mono_b"])
             ctk.CTkButton(actions, text=" Copy", image=self.icons.get("copy"), compound="left",

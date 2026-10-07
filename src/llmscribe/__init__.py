@@ -1,4 +1,4 @@
-"""LLMScribe — export a project folder into a single LLM-ready text file."""
+"""LLMScribe — deterministic repository extraction and contextual code access."""
 
 from __future__ import annotations
 

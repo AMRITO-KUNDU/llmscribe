@@ -5,7 +5,7 @@ import appCss from "../styles.css?url";
 
 const APP_NAME = "LLMScribe";
 const DESCRIPTION =
-  "Turn any project folder into one clean text file that AI tools can read. Open-source Python CLI, GUI, and CUI — published on PyPI.";
+  "Turn local projects and public GitHub repositories into clean, deterministic, structured context. Open-source Python CLI, MCP server, and GUI — published on PyPI.";
 
 export const Route = createRootRoute({
   head: () => ({

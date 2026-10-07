@@ -8,9 +8,12 @@ import os
 import re
 import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from typing import Any, Optional
+
+from llmscribe import __version__
 
 
 class GitHubError(Exception):
@@ -65,7 +68,7 @@ def parse_github_repo(repo_str: str) -> tuple[str, str]:
 def _get_auth_headers() -> dict[str, str]:
     """Build HTTP headers including GitHub token if set in environment."""
     headers = {
-        "User-Agent": "LLMScribe-MCP/1.2.0",
+        "User-Agent": f"LLMScribe/{__version__}",
         "Accept": "application/vnd.github.v3+json",
     }
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")

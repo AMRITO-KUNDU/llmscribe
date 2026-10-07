@@ -66,14 +66,14 @@ export function GuiMock() {
           <span className="size-2.5 rounded-full bg-border" />
         </span>
         <p className="flex-1 text-center font-mono text-xs text-muted">LLMScribe</p>
-        <span className="font-mono text-xs text-subtle">v1.0.0</span>
+        <span className="font-mono text-xs text-subtle">v{SITE.version}</span>
       </div>
 
       <div className="grid md:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="flex flex-col gap-4 border-b border-border p-4 md:border-r md:border-b-0">
           <div>
             <p className="display text-lg leading-none">LLMScribe</p>
-            <p className="mt-1 font-mono text-xs text-subtle">v1.0.0</p>
+            <p className="mt-1 font-mono text-xs text-subtle">v{SITE.version}</p>
           </div>
 
           <label className="block">

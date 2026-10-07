@@ -1,9 +1,9 @@
 export const SITE = {
   name: "LLMScribe",
   version: "1.2.0",
-  tagline: "Code context infrastructure for AI agents.",
+  tagline: "Deterministic repository extraction and structured code context for developers.",
   description:
-    "LLMScribe provides a lightweight Model Context Protocol (MCP) server for AI coding agents (Cursor, Claude, Windsurf, Roo Code, Goose), a desktop GUI, and a modern command-line interface. Turn any project into clean, deterministic, structured context.",
+    "LLMScribe provides a lightweight Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn local projects or public GitHub repositories into clean, deterministic, structured context.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/LLMScribe",
   pypi: "https://pypi.org/project/llmscribe/",
@@ -86,7 +86,7 @@ def test_hello():
 --- pyproject.toml ---
 [project]
 name = "my-project"
-version = "1.1.0"
+version = "1.2.0"
 requires-python = ">=3.10"
 
 --- README.md ---
@@ -108,7 +108,7 @@ export const SAMPLE_JSON = `{
     "files": [
       {
         "path": "src/main.py",
-        "content": "def hello():\n    print("Hello world")\n"
+        "content": "def hello():\n    print(\\"Hello world\\")\n"
       },
       {
         "path": "README.md",
@@ -123,12 +123,11 @@ export const SAMPLE_JSON = `{
 }`;
 
 export const PYTHON_API = `from pathlib import Path
-from llmscribe.core import search, project_map, project_overview, analyze_dependencies, get_git_diff, read_file, read_files
-from llmscribe.core.writer import run, build_project_summary
-from llmscribe.mcp import project_map, project_overview, search, read, read_many, project_dependencies, project_diff
+from llmscribe.core import project_map, project_overview, search, read_file, read_files, analyze_dependencies, get_git_diff
+from llmscribe.mcp.server import project_map, project_overview, search, read, read_many, project_dependencies, project_diff
 
 # 1. Direct Python Core Usage
-text = build_project_summary(Path("/path/to/project"))
+text = project_overview(Path("/path/to/project"))
 
 # 2. Call MCP tools programmatically (JSON mode or Markdown)
 json_overview = project_overview(path="/path/to/project", format="json")
