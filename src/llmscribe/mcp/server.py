@@ -209,7 +209,7 @@ def project_overview(
         root = _resolve_project_root(path)
         result = core_project_overview(root, max_content_chars=MAX_CONTENT_CHARS)
         if _is_json(format):
-            meta = {"file_count": result.file_count, "character_count": result.character_count}
+            meta: dict[str, Any] = {"file_count": result.file_count, "character_count": result.character_count}
             if result.truncated:
                 meta["truncated"] = True
                 meta["truncation_note"] = result.truncation_note

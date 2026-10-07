@@ -621,6 +621,12 @@ class BasicDependencyProvider(DependencyProvider):
                 result.unresolved_dependencies.append(dep.target)
 
 
+class PlaceholderDependencyProvider(BasicDependencyProvider):
+    """Compatibility alias kept for older imports and placeholder naming."""
+
+    pass
+
+
 # Global dependency provider instance
 _dependency_provider: DependencyProvider = BasicDependencyProvider()
 

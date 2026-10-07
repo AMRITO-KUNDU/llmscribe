@@ -96,8 +96,13 @@ def _make_icon(kind: str, color: str, px: int = 18):
         d.line([P(9, 15), P(6, 15), P(4, 13), P(4, 6), P(6, 4), P(13, 4), P(15, 6), P(15, 9)],
                fill=color, width=w, joint="curve")
 
-    resample = getattr(Image, "Resampling", Image)
-    img = img.resize((px * 2, px * 2), resample.LANCZOS)
+    resample = getattr(Image, "Resampling", None)
+    if resample is not None:
+        img = img.resize((px * 2, px * 2), resample.LANCZOS)
+    try:
+        img = img.resize((px * 2, px * 2), Image.Resampling.LANCZOS)
+    except AttributeError:
+        img = img.resize((px * 2, px * 2), getattr(Image, "LANCZOS", 3))
     return ctk.CTkImage(light_image=img, dark_image=img, size=(px, px))
 
 
@@ -247,7 +252,7 @@ def main() -> None:
             box, entry = self._field(body, self.project_var, "folder", self._browse_project,
                                      "Select a folder…")
             box.grid(row=3, column=0, sticky="ew")
-            entry.bind("<FocusOut>", lambda _: self._refresh_output_path(), add="+")
+            entry.bind("<FocusOut>", lambda _: self._refresh_output_path())
 
             ctk.CTkLabel(body, text="OUTPUT FILE", font=self.F["caps"], text_color=SUBTEXT,
                          anchor="w").grid(row=4, column=0, sticky="w", pady=(20, 8))
