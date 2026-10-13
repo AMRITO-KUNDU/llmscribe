@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { CopyButton } from "@/components/site/copy-button";
 import { Wordmark } from "@/components/site/logo";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,12 @@ export function FinalCta() {
           <Button asChild>
             <a href={SITE.pypi} target="_blank" rel="noreferrer">
               Open on PyPI
+            </a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href={SITE.releases} target="_blank" rel="noreferrer">
+              <Download className="size-4" />
+              Download for Windows
             </a>
           </Button>
           <Button variant="outline" asChild>
@@ -81,6 +88,11 @@ export function Footer() {
               <li>
                 <a className="hover:text-fg" href={SITE.pypi} target="_blank" rel="noreferrer">
                   PyPI
+                </a>
+              </li>
+              <li>
+                <a className="hover:text-fg" href={SITE.releases} target="_blank" rel="noreferrer">
+                  Releases
                 </a>
               </li>
               <li>

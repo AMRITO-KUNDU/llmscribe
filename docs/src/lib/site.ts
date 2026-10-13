@@ -7,6 +7,7 @@ export const SITE = {
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/LLMScribe",
   pypi: "https://pypi.org/project/llmscribe/",
+  releases: "https://github.com/AMRITO-KUNDU/LLMScribe/releases/latest",
   issues: "https://github.com/AMRITO-KUNDU/LLMScribe/issues",
   licenseUrl: "https://github.com/AMRITO-KUNDU/LLMScribe/blob/main/LICENSE",
   license: "Apache License 2.0",

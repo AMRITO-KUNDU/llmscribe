@@ -1,4 +1,6 @@
+import { Download } from "lucide-react";
 import { CopyButton } from "@/components/site/copy-button";
+import { Button } from "@/components/ui/button";
 import { SITE } from "@/lib/site";
 
 const SOURCE = `git clone https://github.com/AMRITO-KUNDU/LLMScribe.git
@@ -19,6 +21,20 @@ export function Install() {
           Install from PyPI using Python {SITE.python}, or download the pre-compiled
           LLMScribe-GUI.exe from GitHub Releases.
         </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Button asChild>
+            <a href={SITE.releases} target="_blank" rel="noreferrer">
+              <Download className="size-4" />
+              Download LLMScribe-GUI.exe
+            </a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href={SITE.pypi} target="_blank" rel="noreferrer">
+              View on PyPI
+            </a>
+          </Button>
+        </div>
 
         <div className="mt-10 overflow-hidden rounded-xl border border-border bg-surface">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">

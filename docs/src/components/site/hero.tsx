@@ -1,4 +1,4 @@
-import { ArrowDown, Github, Bot, Monitor } from "lucide-react";
+import { ArrowDown, Github, Bot, Monitor, Download } from "lucide-react";
 import { CopyButton } from "@/components/site/copy-button";
 import { GuiMock } from "@/components/site/gui-mock";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,12 @@ export function Hero() {
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <Button size="lg" asChild>
               <a href="#install">Get started</a>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <a href={SITE.releases} target="_blank" rel="noreferrer">
+                <Download className="size-4" />
+                Download for Windows
+              </a>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a href={SITE.github} target="_blank" rel="noreferrer">
