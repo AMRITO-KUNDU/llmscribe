@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.AMRITO-KUNDU/llmscribe -->
 <h3 align="center">
   <a name="readme-top"></a>
   <img
@@ -400,7 +401,7 @@ docker build -t llmscribe-mcp .
 docker run -p 8000:8000 -e MCP_ALLOWED_HOSTS="localhost,localhost:*,mcp.example.com" llmscribe-mcp
 ```
 
-The image runs `python -m llmscribe.mcp` with `MCP_TRANSPORT=http`, as an unprivileged user, and has a `/health` healthcheck.
+The image runs `python -m llmscribe.mcp` with `MCP_TRANSPORT=http`, as an unprivileged user, and has a `/health` with a `healthcheck`.
 
 ### Railway
 

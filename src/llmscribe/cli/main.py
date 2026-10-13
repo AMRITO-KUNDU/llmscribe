@@ -12,9 +12,7 @@ import json
 import sys
 from typing import Any
 
-from llmscribe import __version__
-from llmscribe import service
-from llmscribe.core.errors import LLMScribeError
+from llmscribe import __version__, service
 
 
 def _emit(tool: str, command: str, as_json: bool, **kwargs: Any) -> int:

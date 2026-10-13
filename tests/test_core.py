@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+from conftest import git
 from llmscribe.core import (
     LLMScribeError,
     LocalRepository,
@@ -15,7 +16,6 @@ from llmscribe.core import (
     read_files,
     search_project,
 )
-from conftest import git
 
 
 def test_map_respects_gitignore_nested_negation_and_root_relative(repo):

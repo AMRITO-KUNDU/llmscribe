@@ -30,6 +30,9 @@ dist/
 *.spec
 *.tar.gz
 
+# Built GUI executables (distributed via GitHub Releases, never committed)
+release/
+
 # Test / tooling caches
 .pytest_cache/
 .tox/

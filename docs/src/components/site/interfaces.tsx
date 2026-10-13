@@ -2,6 +2,7 @@
 
 import { CopyButton } from "@/components/site/copy-button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SITE } from "@/lib/site";
 
 const MCP_CONFIG = `{
   "mcpServers": {
@@ -65,6 +66,18 @@ export function Interfaces() {
               command={EXE_BUILD}
               extra="Bundles Python, CustomTkinter, and dependencies into a self-contained ~29 MB binary."
             />
+            <p className="mt-3 text-sm text-muted">
+              No Python installed?{" "}
+              <a
+                className="text-primary underline underline-offset-4 hover:no-underline"
+                href={SITE.releases}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Download the latest LLMScribe-GUI.exe from GitHub Releases
+              </a>
+              .
+            </p>
           </TabsContent>
 
           <TabsContent value="gui">

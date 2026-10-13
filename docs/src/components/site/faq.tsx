@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { SITE } from "@/lib/site";
 
 const ITEMS = [
   {
@@ -12,7 +13,21 @@ const ITEMS = [
   },
   {
     q: "Can non-technical users run the GUI without installing Python?",
-    a: "Yes. Download LLMScribe-GUI.exe from the latest GitHub Release. It is a self-contained ~29 MB binary that runs directly on Windows without requiring Python or pip.",
+    a: (
+      <>
+        Yes. Download LLMScribe-GUI.exe from the{" "}
+        <a
+          className="text-primary underline underline-offset-4 hover:no-underline"
+          href={SITE.releases}
+          target="_blank"
+          rel="noreferrer"
+        >
+          latest GitHub Release
+        </a>
+        . It is a self-contained ~29 MB binary that runs directly on Windows without requiring Python
+        or pip.
+      </>
+    ),
   },
   {
     q: "What tools are included in the MCP server?",

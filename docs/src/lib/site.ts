@@ -1,12 +1,13 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "1.2.0",
+  version: "1.2.1",
   tagline: "Deterministic repository extraction and structured code context for developers.",
   description:
     "LLMScribe provides a lightweight Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn local projects or public GitHub repositories into clean, deterministic, structured context.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/LLMScribe",
   pypi: "https://pypi.org/project/llmscribe/",
+  releases: "https://github.com/AMRITO-KUNDU/LLMScribe/releases/latest",
   issues: "https://github.com/AMRITO-KUNDU/LLMScribe/issues",
   licenseUrl: "https://github.com/AMRITO-KUNDU/LLMScribe/blob/main/LICENSE",
   license: "Apache License 2.0",

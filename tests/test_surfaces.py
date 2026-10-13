@@ -99,9 +99,15 @@ def test_mcp_registration_via_public_api():
     listed = asyncio.run(mcp.list_tools())
     assert sorted(t.name for t in listed) == EXPECTED
     by_name = {t.name: t for t in listed}
-    assert "query" in by_name["search"].inputSchema["required"]
-    assert set(by_name["project_diff"].inputSchema["properties"]) >= {"path", "repo", "ref", "staged", "commit", "format"}
-    assert by_name["read_many"].inputSchema["properties"]["file_paths"]["type"] == "array"
+
+    def schema(tool):
+        # The MCP SDK exposes the JSON Schema as ``input_schema`` in 2.x and as
+        # ``inputSchema`` in 1.x; accept either so the test tracks both ranges.
+        return tool.input_schema if hasattr(tool, "input_schema") else tool.inputSchema
+
+    assert "query" in schema(by_name["search"])["required"]
+    assert set(schema(by_name["project_diff"])["properties"]) >= {"path", "repo", "ref", "staged", "commit", "format"}
+    assert schema(by_name["read_many"])["properties"]["file_paths"]["type"] == "array"
 
 
 # ---------------------------------------------------------------- HTTP layer
