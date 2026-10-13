@@ -277,7 +277,7 @@ class GitHubSnapshot(MemoryRepository):
             skipped = 0
             retained = 0
             try:
-                for info, name in zip(infos, names):
+                for info, name in zip(infos, names, strict=True):
                     if name.endswith("/") or len(name) <= prefix_len:
                         continue
                     mode = info.external_attr >> 16
