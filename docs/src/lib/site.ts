@@ -1,6 +1,6 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "1.2.0",
+  version: "1.2.1",
   tagline: "Deterministic repository extraction and structured code context for developers.",
   description:
     "LLMScribe provides a lightweight Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn local projects or public GitHub repositories into clean, deterministic, structured context.",
