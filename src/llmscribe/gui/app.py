@@ -164,7 +164,7 @@ def main() -> None:
             self.geometry("1180x760")
             self.minsize(880, 560)
             self.configure(fg_color=BG)
-            
+
             # Set window icon
             try:
                 icon_path = Path(__file__).parent.parent.parent.parent / "docs" / "public" / "favicon.ico"
