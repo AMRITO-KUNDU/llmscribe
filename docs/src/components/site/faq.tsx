@@ -16,7 +16,7 @@ const ITEMS = [
   },
   {
     q: "What tools are included in the MCP server?",
-    a: "7 tools: project_overview, project_map, project_search, project_list_files, project_get_file, project_get_files (batch file fetch with 50-file limit), and project_diff (git status & diffs).",
+    a: "7 tools: project_map, project_overview, search, read, read_many (batch read, 50-file limit), project_dependencies, and project_diff (git status & diffs).",
   },
   {
     q: "Does it support both Markdown and JSON output formats?",

@@ -1,54 +1,84 @@
-"""Core dependency analysis functionality for LLMScribe."""
+"""Static dependency analysis (imports/includes) over any repository source.
+
+Supported: Python (``ast``), JavaScript/TypeScript, Java, Go, Rust, C/C++.
+Every file is parsed once per analysis and the forward graph is inverted to
+answer "used by". Classification of each reference:
+
+* ``local``      – resolved to a file or directory inside the repository
+* ``stdlib``     – part of the language's standard library
+* ``external``   – not in the repository and not stdlib (assumed third-party)
+* ``unresolved`` – a relative/local-looking reference that matches nothing
+"""
 
 from __future__ import annotations
 
 import ast
 import re
+import sys
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable
 
-from .file_reader import is_text_file, TEXT_FILE_EXTENSIONS
-from .tree_builder import DEFAULT_IGNORE, IgnoreMatcher, load_gitignore
+from .errors import LLMScribeError
+from .file_ops import load_text
+from .source import LocalRepository, RepositorySource, normalize_rel_path
+
+PY_EXT = {".py"}
+JS_EXT = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"}
+C_EXT = {".c", ".h", ".cc", ".cpp", ".cxx", ".hpp"}
+SUPPORTED_EXTENSIONS = PY_EXT | JS_EXT | C_EXT | {".java", ".go", ".rs"}
+
+_PY_STDLIB = frozenset(getattr(sys, "stdlib_module_names", ()))
+_NODE_BUILTINS = frozenset(
+    "assert buffer child_process cluster console crypto dns events fs http http2 https module net os "
+    "path perf_hooks process punycode querystring readline stream string_decoder timers tls tty url "
+    "util v8 vm worker_threads zlib".split()
+)
+_JS_RESOLVE_EXT = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json")
 
 
 @dataclass
 class Dependency:
-    """A single dependency relationship."""
+    """One import/include reference."""
+
     source_file: str
     target: str
-    dependency_type: str  # "import", "require", "include", "unknown"
+    dependency_type: str  # import, from_import, require, include, use, mod, extern_crate
     line_number: int = 0
     resolved_path: str | None = None
     is_local: bool = False
     is_external: bool = False
+    is_stdlib: bool = False
     is_unresolved: bool = False
-    
+
     def to_dict(self) -> dict[str, Any]:
-        result = {
+        data: dict[str, Any] = {
             "source_file": self.source_file,
             "target": self.target,
             "dependency_type": self.dependency_type,
             "line_number": self.line_number,
             "is_local": self.is_local,
             "is_external": self.is_external,
+            "is_stdlib": self.is_stdlib,
             "is_unresolved": self.is_unresolved,
         }
         if self.resolved_path:
-            result["resolved_path"] = self.resolved_path
-        return result
+            data["resolved_path"] = self.resolved_path
+        return data
 
 
 @dataclass
 class FileDependencies:
-    """Dependencies for a single file."""
+    """Dependencies of a single file."""
+
     file_path: str
     imports: list[str] = field(default_factory=list)
     dependencies: list[Dependency] = field(default_factory=list)
     local_dependencies: list[str] = field(default_factory=list)
     external_dependencies: list[str] = field(default_factory=list)
+    stdlib_dependencies: list[str] = field(default_factory=list)
     unresolved_dependencies: list[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "file_path": self.file_path,
@@ -56,627 +86,503 @@ class FileDependencies:
             "dependencies": [d.to_dict() for d in self.dependencies],
             "local_dependencies": self.local_dependencies,
             "external_dependencies": self.external_dependencies,
+            "stdlib_dependencies": self.stdlib_dependencies,
             "unresolved_dependencies": self.unresolved_dependencies,
         }
 
 
 @dataclass
 class DependencyResult:
-    """Complete dependency analysis result."""
+    """Forward dependencies of ``target_file`` plus the files that use it."""
+
     root_path: str
     target_file: str
     file_dependencies: FileDependencies
-    all_local_files: list[str] = field(default_factory=list)
-    all_external_deps: list[str] = field(default_factory=list)
-    all_unresolved: list[str] = field(default_factory=list)
-    
+    used_by: list[str] = field(default_factory=list)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "root_path": self.root_path,
             "target_file": self.target_file,
             "file_dependencies": self.file_dependencies.to_dict(),
-            "all_local_files": self.all_local_files,
-            "all_external_deps": self.all_external_deps,
-            "all_unresolved": self.all_unresolved,
+            "used_by": self.used_by,
         }
 
 
-class DependencyProvider:
-    """Abstract base class for dependency providers."""
-    
-    def get_dependencies(self, file_path: str, root: Path) -> FileDependencies:
-        """Get dependencies for a specific file."""
-        raise NotImplementedError
-    
-    def get_dependents(self, file_path: str, root: Path) -> list[str]:
-        """Get files that depend on the specified file."""
-        raise NotImplementedError
+# A raw reference found in source text: (type, target, line, extra)
+_Raw = tuple[str, str, int, Any]
 
 
-class BasicDependencyProvider(DependencyProvider):
-    """Basic dependency provider using AST parsing for Python files."""
-    
-    def __init__(self):
-        # Language extensions we can analyze
-        self.supported_extensions = {
-            '.py': self._analyze_python,
-            '.js': self._analyze_javascript,
-            '.ts': self._analyze_javascript,
-            '.java': self._analyze_java,
-            '.go': self._analyze_go,
-            '.rs': self._analyze_rust,
-            '.cpp': self._analyze_cpp,
-            '.c': self._analyze_c,
-            '.h': self._analyze_c,
-            '.hpp': self._analyze_cpp,
-        }
-        
-        # Patterns for different import styles
-        self.python_import_patterns = [
-            (r'from\s+([^\s]+)\s+import\s+', 'from_import'),
-            (r'import\s+([^\s,]+)', 'import'),
-            (r'from\s+\.([^\s]+)\s+import\s+', 'relative_import'),
-            (r'import\s+\.([^\s,]+)', 'relative_import'),
-        ]
-        
-        self.javascript_import_patterns = [
-            (r'from\s+["\']([^"\']+)["\']\s+import\s+', 'from_import'),
-            (r'import\s+["\']([^"\']+)["\']', 'import'),
-            (r'require\(["\']([^"\']+)["\']\)', 'require'),
-        ]
-        
-        self.java_import_patterns = [
-            (r'import\s+([^;]+);', 'import'),
-        ]
-        
-        self.go_import_patterns = [
-            (r'"([^"]+)"', 'import'),
-        ]
-    
-    def get_dependencies(self, file_path: str, root: Path) -> FileDependencies:
-        """Get dependencies for a specific file using basic analysis."""
-        if not file_path or not file_path.strip():
-            return FileDependencies(file_path=file_path)
-        
-        root = root.resolve()
-        target_path = (root / file_path).resolve()
-        
-        # Check if file exists
-        if not target_path.exists():
-            return FileDependencies(
-                file_path=file_path,
-                unresolved_dependencies=[file_path]
-            )
-        
-        if not target_path.is_file():
-            return FileDependencies(file_path=file_path)
-        
-        if not is_text_file(target_path):
-            return FileDependencies(file_path=file_path)
-        
-        # Get file extension
-        ext = target_path.suffix.lower()
-        analyzer = self.supported_extensions.get(ext)
-        
-        if analyzer is None:
-            # Try to find an analyzer for multi-extension files
-            for supported_ext, analyze_func in self.supported_extensions.items():
-                if file_path.endswith(supported_ext):
-                    analyzer = analyze_func
-                    break
-        
-        if analyzer is None:
-            # Unsupported language - return empty dependencies but mark as unresolved
-            return FileDependencies(
-                file_path=file_path,
-                unresolved_dependencies=[f"Unsupported language: {ext}"],
-            )
-        
+class _Context:
+    """Per-analysis lookup tables derived from the repository file list."""
+
+    def __init__(self, source: RepositorySource) -> None:
+        self.source = source
+        self.files = [e.path for e in source.text_files()]
+        self.file_set = set(self.files)
+        self.dirs = {p.rpartition("/")[0] for p in self.files if "/" in p}
+        for directory in list(self.dirs):
+            while "/" in directory:
+                directory = directory.rpartition("/")[0]
+                self.dirs.add(directory)
+        self.go_module = self._go_module()
+
+    def _go_module(self) -> str:
+        if "go.mod" not in self.file_set:
+            return ""
         try:
-            content = target_path.read_text(encoding="utf-8", errors="ignore")
-            return analyzer(content, file_path, root, target_path)
-        except OSError:
-            return FileDependencies(file_path=file_path)
-    
-    def get_dependents(self, file_path: str, root: Path) -> list[str]:
-        """Find files that depend on the specified file."""
-        # This requires scanning all files to find imports of the target file
-        # This is expensive but necessary for complete dependency analysis
-        
-        if not file_path or not file_path.strip():
-            return []
-        
-        root = root.resolve()
-        target_path = (root / file_path).resolve()
-        
-        if not target_path.exists():
-            return []
-        
-        # Get the target file name without extension for matching
-        target_stem = target_path.stem
-        target_name = target_path.name
-        
-        # Collect all files in the project
-        all_files = []
-        ignore_patterns = [*DEFAULT_IGNORE, *load_gitignore(root)]
-        matcher = IgnoreMatcher(root, ignore_patterns)
-        
-        for file_path_obj in root.rglob("*"):
-            if file_path_obj.is_dir() or matcher.is_ignored(file_path_obj) or not is_text_file(file_path_obj):
+            _, text, _ = load_text(self.source, "go.mod")
+        except LLMScribeError:
+            return ""
+        match = re.search(r"^\s*module\s+(\S+)", text, re.MULTILINE)
+        return match.group(1).strip('"') if match else ""
+
+    def has_file(self, rel: str) -> bool:
+        return rel in self.file_set
+
+    def has_dir(self, rel: str) -> bool:
+        return rel in self.dirs
+
+
+def _join(*parts: str) -> str:
+    return "/".join(p for p in parts if p)
+
+
+def _normalize(path: str) -> str | None:
+    """Collapse ``.``/``..`` segments; None if the path escapes the root."""
+    out: list[str] = []
+    for part in path.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if not out:
+                return None
+            out.pop()
+        else:
+            out.append(part)
+    return "/".join(out)
+
+
+# --------------------------------------------------------------------------- Python
+
+def _python_refs(text: str) -> list[_Raw]:
+    refs: list[_Raw] = []
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return _python_refs_regex(text)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                refs.append(("import", alias.name, node.lineno, (0, ())))
+        elif isinstance(node, ast.ImportFrom):
+            names = tuple(a.name for a in node.names)
+            refs.append(("from_import", node.module or "", node.lineno, (node.level, names)))
+    return refs
+
+
+_PY_FROM = re.compile(r"^\s*from\s+(\.*)([\w.]*)\s+import\s+(.+)$")
+_PY_IMPORT = re.compile(r"^\s*import\s+([\w.,\s]+)")
+
+
+def _python_refs_regex(text: str) -> list[_Raw]:
+    """Line-based fallback used only when the file does not parse."""
+    refs: list[_Raw] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        line = line.split("#", 1)[0]
+        match = _PY_FROM.match(line)
+        if match:
+            names = tuple(n.strip().split(" as ")[0].strip("() ") for n in match.group(3).split(",") if n.strip())
+            refs.append(("from_import", match.group(2), number, (len(match.group(1)), names)))
+            continue
+        match = _PY_IMPORT.match(line)
+        if match:
+            for part in match.group(1).split(","):
+                name = part.strip().split(" as ")[0].strip()
+                if name:
+                    refs.append(("import", name, number, (0, ())))
+    return refs
+
+
+def _py_module_candidates(ctx: _Context, base: str, module: str) -> str | None:
+    rel = _join(base, *module.split(".")) if module else base
+    if not rel:
+        return None
+    if ctx.has_file(rel + ".py"):
+        return rel + ".py"
+    if ctx.has_file(rel + "/__init__.py"):
+        return rel + "/__init__.py"
+    return None
+
+
+def _resolve_python(ctx: _Context, source_file: str, raw: _Raw) -> list[Dependency]:
+    kind, module, line, (level, names) = raw
+    here = source_file.rpartition("/")[0]
+    out: list[Dependency] = []
+
+    def local(target: str, path: str) -> Dependency:
+        return Dependency(source_file, target, kind, line, path, is_local=True)
+
+    if level > 0:
+        base_parts = here.split("/") if here else []
+        if level - 1 > len(base_parts):
+            return [Dependency(source_file, "." * level + module, kind, line, is_unresolved=True)]
+        base = "/".join(base_parts[: len(base_parts) - (level - 1)])
+        shown = "." * level + module
+        if module:
+            found = _py_module_candidates(ctx, base, module)
+            if found:
+                out.append(local(shown, found))
+            elif ctx.has_dir(_join(base, *module.split("."))):
+                out.append(local(shown, _join(base, *module.split(".")) + "/"))
+        package = _join(base, *module.split(".")) if module else base
+        for name in names:
+            sub = _py_module_candidates(ctx, package, name)
+            if sub:
+                out.append(local(f"{shown}{'.' if module else ''}{name}" if module else f".{name}", sub))
+        if not out:
+            init = _join(package, "__init__.py")
+            if ctx.has_file(init):
+                out.append(local(shown, init))
+        return out or [Dependency(source_file, shown or "." * level, kind, line, is_unresolved=True)]
+
+    top = module.split(".")[0]
+    prefixes: list[str] = []
+    parts = here.split("/") if here else []
+    for depth in range(len(parts), -1, -1):
+        prefixes.append("/".join(parts[:depth]))
+    for extra in ("src", "lib"):
+        if extra not in prefixes:
+            prefixes.append(extra)
+    for base in prefixes:
+        found = _py_module_candidates(ctx, base, module)
+        if found:
+            out.append(local(module, found))
+            for name in names:
+                sub = _py_module_candidates(ctx, _join(base, *module.split(".")), name)
+                if sub:
+                    out.append(local(f"{module}.{name}", sub))
+            return out
+        if ctx.has_dir(_join(base, *module.split("."))) and not module.count("."):
+            return [local(module, _join(base, module) + "/")]
+    if top in _PY_STDLIB:
+        return [Dependency(source_file, module, kind, line, is_stdlib=True)]
+    return [Dependency(source_file, module, kind, line, is_external=True)]
+
+
+# --------------------------------------------------------------------------- JS / TS
+
+_JS_PATTERNS = (
+    re.compile(r"""\bimport\s+(?:[\w*{}\s,$]+\s+from\s+)?['"]([^'"]+)['"]"""),
+    re.compile(r"""\bexport\s+(?:[\w*{}\s,$]+\s+)?from\s+['"]([^'"]+)['"]"""),
+    re.compile(r"""\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)"""),
+    re.compile(r"""\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)"""),
+)
+
+
+def _js_refs(text: str) -> list[_Raw]:
+    text = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), text, flags=re.DOTALL)
+    refs: list[_Raw] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith("//"):
+            continue
+        for pattern in _JS_PATTERNS:
+            for match in pattern.finditer(line):
+                kind = "require" if "require" in pattern.pattern else "import"
+                refs.append((kind, match.group(1), number, None))
+    return refs
+
+
+def _resolve_js(ctx: _Context, source_file: str, raw: _Raw) -> list[Dependency]:
+    kind, spec, line, _ = raw
+    here = source_file.rpartition("/")[0]
+    if spec.startswith(("./", "../", "/")) or spec in (".", ".."):
+        base = _normalize(_join(here, spec)) if not spec.startswith("/") else _normalize(spec)
+        if base is not None:
+            stem_options = [base]
+            for js_ext, ts_exts in ((".js", (".ts", ".tsx")), (".jsx", (".tsx",)), (".mjs", (".mts",)), (".cjs", (".cts",))):
+                if base.endswith(js_ext):
+                    stem_options += [base[: -len(js_ext)] + e for e in ts_exts]
+            candidates = list(stem_options)
+            candidates += [base + e for e in _JS_RESOLVE_EXT]
+            candidates += [_join(base, "index" + e) for e in _JS_RESOLVE_EXT]
+            for candidate in candidates:
+                if ctx.has_file(candidate):
+                    return [Dependency(source_file, spec, kind, line, candidate, is_local=True)]
+        return [Dependency(source_file, spec, kind, line, is_unresolved=True)]
+    if spec.startswith("node:") or spec.split("/")[0] in _NODE_BUILTINS:
+        return [Dependency(source_file, spec, kind, line, is_stdlib=True)]
+    parts = spec.split("/")
+    package = "/".join(parts[:2]) if spec.startswith("@") and len(parts) > 1 else parts[0]
+    return [Dependency(source_file, package, kind, line, is_external=True)]
+
+
+# --------------------------------------------------------------------------- Java
+
+_JAVA_IMPORT = re.compile(r"^\s*import\s+(?:static\s+)?([\w.]+(?:\.\*)?)\s*;")
+
+
+def _java_refs(text: str) -> list[_Raw]:
+    refs: list[_Raw] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        match = _JAVA_IMPORT.match(line)
+        if match:
+            refs.append(("import", match.group(1), number, None))
+    return refs
+
+
+def _resolve_java(ctx: _Context, source_file: str, raw: _Raw) -> list[Dependency]:
+    kind, name, line, _ = raw
+    wildcard = name.endswith(".*")
+    path = name[:-2] if wildcard else name
+    segments = path.split(".")
+    if wildcard:
+        suffix = "/".join(segments)
+        for directory in sorted(ctx.dirs):
+            if directory == suffix or directory.endswith("/" + suffix):
+                return [Dependency(source_file, name, kind, line, directory + "/", is_local=True)]
+    else:
+        # ``import a.b.C.member`` (static) may carry trailing member segments.
+        for cut in range(len(segments), 0, -1):
+            suffix = "/".join(segments[:cut]) + ".java"
+            for candidate in ctx.files:
+                if candidate == suffix or candidate.endswith("/" + suffix):
+                    return [Dependency(source_file, name, kind, line, candidate, is_local=True)]
+    if segments[0] in ("java", "javax", "jdk", "sun"):
+        return [Dependency(source_file, name, kind, line, is_stdlib=True)]
+    return [Dependency(source_file, name, kind, line, is_external=True)]
+
+
+# --------------------------------------------------------------------------- Go
+
+def _go_refs(text: str) -> list[_Raw]:
+    refs: list[_Raw] = []
+    in_block = False
+    for number, line in enumerate(text.splitlines(), start=1):
+        code = line.split("//", 1)[0].strip()
+        if in_block:
+            if code.startswith(")"):
+                in_block = False
                 continue
-            try:
-                rel_path = file_path_obj.relative_to(root).as_posix()
-            except ValueError:
+            match = re.match(r'^(?:[\w.]+\s+)?"([^"]+)"', code)
+            if match:
+                refs.append(("import", match.group(1), number, None))
+            continue
+        if re.match(r"^import\s*\(", code):
+            in_block = True
+            continue
+        match = re.match(r'^import\s+(?:[\w.]+\s+)?"([^"]+)"', code)
+        if match:
+            refs.append(("import", match.group(1), number, None))
+    return refs
+
+
+def _resolve_go(ctx: _Context, source_file: str, raw: _Raw) -> list[Dependency]:
+    kind, path, line, _ = raw
+    module = ctx.go_module
+    if module and (path == module or path.startswith(module + "/")):
+        rel = path[len(module):].strip("/")
+        if rel == "" or ctx.has_dir(rel):
+            return [Dependency(source_file, path, kind, line, (rel + "/") if rel else "./", is_local=True)]
+        return [Dependency(source_file, path, kind, line, is_unresolved=True)]
+    if "." not in path.split("/")[0]:
+        return [Dependency(source_file, path, kind, line, is_stdlib=True)]
+    return [Dependency(source_file, path, kind, line, is_external=True)]
+
+
+# --------------------------------------------------------------------------- Rust
+
+_RUST_MOD = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+(\w+)\s*;")
+_RUST_USE = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?use\s+([\w:]+)")
+_RUST_EXTERN = re.compile(r"^\s*extern\s+crate\s+(\w+)")
+_RUST_STD = {"std", "core", "alloc", "proc_macro", "test"}
+
+
+def _rust_refs(text: str) -> list[_Raw]:
+    refs: list[_Raw] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        code = line.split("//", 1)[0]
+        for pattern, kind in ((_RUST_MOD, "mod"), (_RUST_USE, "use"), (_RUST_EXTERN, "extern_crate")):
+            match = pattern.match(code)
+            if match:
+                refs.append((kind, match.group(1), number, None))
+                break
+    return refs
+
+
+def _rust_crate_src(ctx: _Context, source_file: str) -> str:
+    parts = source_file.split("/")
+    for index in range(len(parts) - 1, -1, -1):
+        if parts[index] == "src":
+            return "/".join(parts[: index + 1])
+    return source_file.rpartition("/")[0]
+
+
+def _resolve_rust(ctx: _Context, source_file: str, raw: _Raw) -> list[Dependency]:
+    kind, name, line, _ = raw
+    here = source_file.rpartition("/")[0]
+    stem = PurePosixPath(source_file).stem
+    mod_dir = here if stem in ("mod", "lib", "main") else _join(here, stem)
+
+    def attempt(base: str, segments: list[str]) -> str | None:
+        for cut in range(len(segments), 0, -1):
+            rel = _join(base, *segments[:cut])
+            for candidate in (rel + ".rs", rel + "/mod.rs"):
+                if ctx.has_file(candidate):
+                    return candidate
+        return None
+
+    if kind == "mod":
+        found = attempt(mod_dir, [name])
+        if found:
+            return [Dependency(source_file, name, kind, line, found, is_local=True)]
+        return [Dependency(source_file, name, kind, line, is_unresolved=True)]
+    segments = name.split("::")
+    head = segments[0]
+    if head in ("crate", "self", "super"):
+        if head == "crate":
+            base = _rust_crate_src(ctx, source_file)
+        elif head == "self":
+            base = mod_dir
+        else:
+            base = mod_dir.rpartition("/")[0]
+        found = attempt(base, segments[1:])
+        if found:
+            return [Dependency(source_file, name, kind, line, found, is_local=True)]
+        return [Dependency(source_file, name, kind, line, is_unresolved=True)]
+    if head in _RUST_STD:
+        return [Dependency(source_file, name, kind, line, is_stdlib=True)]
+    sibling = attempt(mod_dir, [head])
+    if kind == "use" and sibling:
+        return [Dependency(source_file, name, kind, line, sibling, is_local=True)]
+    return [Dependency(source_file, head, kind, line, is_external=True)]
+
+
+# --------------------------------------------------------------------------- C / C++
+
+_C_INCLUDE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]')
+
+
+def _c_refs(text: str) -> list[_Raw]:
+    refs: list[_Raw] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        match = _C_INCLUDE.match(line)
+        if match:
+            refs.append(("include", match.group(2), number, match.group(1)))
+    return refs
+
+
+def _resolve_c(ctx: _Context, source_file: str, raw: _Raw) -> list[Dependency]:
+    kind, header, line, bracket = raw
+    here = source_file.rpartition("/")[0]
+    if bracket == '"':
+        direct = _normalize(_join(here, header))
+        if direct and ctx.has_file(direct):
+            return [Dependency(source_file, header, kind, line, direct, is_local=True)]
+    for candidate in ctx.files:
+        if candidate == header or candidate.endswith("/" + header):
+            return [Dependency(source_file, header, kind, line, candidate, is_local=True)]
+    if bracket == '"':
+        return [Dependency(source_file, header, kind, line, is_unresolved=True)]
+    return [Dependency(source_file, header, kind, line, is_external=True)]
+
+
+_LANGUAGES: dict[str, tuple[Callable[[str], list[_Raw]], Callable[[_Context, str, _Raw], list[Dependency]]]] = {}
+for _ext in PY_EXT:
+    _LANGUAGES[_ext] = (_python_refs, _resolve_python)
+for _ext in JS_EXT:
+    _LANGUAGES[_ext] = (_js_refs, _resolve_js)
+for _ext in C_EXT:
+    _LANGUAGES[_ext] = (_c_refs, _resolve_c)
+_LANGUAGES[".java"] = (_java_refs, _resolve_java)
+_LANGUAGES[".go"] = (_go_refs, _resolve_go)
+_LANGUAGES[".rs"] = (_rust_refs, _resolve_rust)
+
+
+def _analyze_file(ctx: _Context, rel: str) -> FileDependencies:
+    suffix = PurePosixPath(rel).suffix.lower()
+    parse, resolve = _LANGUAGES[suffix]
+    result = FileDependencies(file_path=rel)
+    try:
+        _, text, _enc = load_text(ctx.source, rel)
+    except LLMScribeError:
+        return result
+    seen: set[tuple[str, int, str | None]] = set()
+    for raw in parse(text):
+        for dep in resolve(ctx, rel, raw):
+            key = (dep.target, dep.line_number, dep.resolved_path)
+            if key in seen:
                 continue
-            all_files.append((rel_path, file_path_obj))
-        
-        dependents = []
-        target_identifiers = [target_name, target_stem, file_path]
-        
-        for rel_path, file_path_obj in all_files:
-            if rel_path == file_path:
-                continue  # Skip self
-                
-            ext = file_path_obj.suffix.lower()
-            analyzer = self.supported_extensions.get(ext)
-            
-            if analyzer is None:
-                continue
-            
-            try:
-                content = file_path_obj.read_text(encoding="utf-8", errors="ignore")
-                deps = analyzer(content, rel_path, root, file_path_obj)
-                
-                # Check if any of the dependencies match our target
-                for dep in deps.dependencies:
-                    if dep.target in target_identifiers:
-                        dependents.append(rel_path)
-                        break
-                    elif dep.resolved_path and dep.resolved_path in target_identifiers:
-                        dependents.append(rel_path)
-                        break
-            except OSError:
-                continue
-        
-        return dependents
-    
-    def _analyze_python(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze Python file for dependencies."""
-        result = FileDependencies(file_path=file_path)
-        imports = []
-        dependencies = []
-        
-        try:
-            tree = ast.parse(content)
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        import_name = alias.name
-                        imports.append(import_name)
-                        
-                        dep = self._classify_dependency(import_name, file_path, root, full_path)
-                        dependencies.append(dep)
-                        self._categorize_dependency(result, dep)
-                        
-                elif isinstance(node, ast.ImportFrom):
-                    module = node.module or ""
-                    for alias in node.names:
-                        import_name = f"{module}.{alias.name}" if module else alias.name
-                        imports.append(import_name)
-                        
-                        dep = self._classify_dependency(import_name, file_path, root, full_path, node.level)
-                        dependencies.append(dep)
-                        self._categorize_dependency(result, dep)
-        except SyntaxError:
-            # Fall back to regex-based analysis
-            regex_deps = self._analyze_python_regex(content, file_path, root, full_path)
-            result.imports.extend(regex_deps.imports)
-            result.dependencies.extend(regex_deps.dependencies)
-            for dep in regex_deps.dependencies:
-                self._categorize_dependency(result, dep)
-        
-        result.imports = sorted(set(imports))
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        
-        return result
-    
-    def _analyze_python_regex(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Regex-based Python dependency analysis as fallback."""
-        result = FileDependencies(file_path=file_path)
-        imports = set()
-        dependencies = []
-        
-        for line_idx, line in enumerate(content.splitlines(), start=1):
-            line = line.strip()
-            
-            for pattern, dep_type in self.python_import_patterns:
-                matches = re.finditer(pattern, line)
-                for match in matches:
-                    import_name = match.group(1)
-                    if import_name and not import_name.startswith('#'):
-                        imports.add(import_name)
-                        dep = Dependency(
-                            source_file=file_path,
-                            target=import_name,
-                            dependency_type=dep_type,
-                            line_number=line_idx,
-                        )
-                        
-                        # Classify the dependency
-                        classified_dep = self._classify_dependency(import_name, file_path, root, full_path)
-                        dependencies.append(classified_dep)
-                        self._categorize_dependency(result, classified_dep)
-        
-        result.imports = sorted(imports)
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        return result
-    
-    def _analyze_javascript(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze JavaScript/TypeScript file for dependencies."""
-        result = FileDependencies(file_path=file_path)
-        imports = set()
-        dependencies = []
-        
-        for line_idx, line in enumerate(content.splitlines(), start=1):
-            line = line.strip()
-            
-            for pattern, dep_type in self.javascript_import_patterns:
-                matches = re.finditer(pattern, line)
-                for match in matches:
-                    import_name = match.group(1)
-                    if import_name and not import_name.startswith('//'):
-                        imports.add(import_name)
-                        dep = Dependency(
-                            source_file=file_path,
-                            target=import_name,
-                            dependency_type=dep_type,
-                            line_number=line_idx,
-                        )
-                        
-                        classified_dep = self._classify_dependency(import_name, file_path, root, full_path)
-                        dependencies.append(classified_dep)
-                        self._categorize_dependency(result, classified_dep)
-        
-        result.imports = sorted(imports)
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        return result
-    
-    def _analyze_java(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze Java file for dependencies."""
-        result = FileDependencies(file_path=file_path)
-        imports = set()
-        dependencies = []
-        
-        for line_idx, line in enumerate(content.splitlines(), start=1):
-            line = line.strip()
-            
-            for pattern, dep_type in self.java_import_patterns:
-                matches = re.finditer(pattern, line)
-                for match in matches:
-                    import_name = match.group(1).strip()
-                    if import_name and not import_name.startswith('//'):
-                        imports.add(import_name)
-                        dep = Dependency(
-                            source_file=file_path,
-                            target=import_name,
-                            dependency_type=dep_type,
-                            line_number=line_idx,
-                        )
-                        
-                        classified_dep = self._classify_dependency(import_name, file_path, root, full_path)
-                        dependencies.append(classified_dep)
-                        self._categorize_dependency(result, classified_dep)
-        
-        result.imports = sorted(imports)
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        return result
-    
-    def _analyze_go(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze Go file for dependencies."""
-        result = FileDependencies(file_path=file_path)
-        imports = set()
-        dependencies = []
-        
-        for line_idx, line in enumerate(content.splitlines(), start=1):
-            line = line.strip()
-            
-            for pattern, dep_type in self.go_import_patterns:
-                matches = re.finditer(pattern, line)
-                for match in matches:
-                    import_name = match.group(1)
-                    if import_name and not import_name.startswith('//'):
-                        imports.add(import_name)
-                        dep = Dependency(
-                            source_file=file_path,
-                            target=import_name,
-                            dependency_type=dep_type,
-                            line_number=line_idx,
-                        )
-                        
-                        classified_dep = self._classify_dependency(import_name, file_path, root, full_path)
-                        dependencies.append(classified_dep)
-                        self._categorize_dependency(result, classified_dep)
-        
-        result.imports = sorted(imports)
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        return result
-    
-    def _analyze_c(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze C file for dependencies."""
-        return self._analyze_cpp_like(content, file_path, root, full_path, r'#include\s+["<]([^">]+)[">]')
-    
-    def _analyze_cpp(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze C++ file for dependencies."""
-        return self._analyze_cpp_like(content, file_path, root, full_path, r'#include\s+["<]([^">]+)[">]')
-    
-    def _analyze_rust(self, content: str, file_path: str, root: Path, full_path: Path) -> FileDependencies:
-        """Analyze Rust file for dependencies."""
-        result = FileDependencies(file_path=file_path)
-        imports = set()
-        dependencies = []
-        
-        # Look for use and extern crate statements
-        patterns = [
-            (r'use\s+([^;]+);', 'use'),
-            (r'extern\s+crate\s+([^;]+);', 'extern_crate'),
-            (r'mod\s+([^;]+);', 'mod'),
-        ]
-        
-        for line_idx, line in enumerate(content.splitlines(), start=1):
-            line = line.strip()
-            
-            for pattern, dep_type in patterns:
-                matches = re.finditer(pattern, line)
-                for match in matches:
-                    import_name = match.group(1).strip()
-                    if import_name and not import_name.startswith('//'):
-                        imports.add(import_name)
-                        dep = Dependency(
-                            source_file=file_path,
-                            target=import_name,
-                            dependency_type=dep_type,
-                            line_number=line_idx,
-                        )
-                        
-                        classified_dep = self._classify_dependency(import_name, file_path, root, full_path)
-                        dependencies.append(classified_dep)
-                        self._categorize_dependency(result, classified_dep)
-        
-        result.imports = sorted(imports)
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        return result
-    
-    def _analyze_cpp_like(self, content: str, file_path: str, root: Path, full_path: Path, pattern: str) -> FileDependencies:
-        """Generic C/C++-like include analyzer."""
-        result = FileDependencies(file_path=file_path)
-        imports = set()
-        dependencies = []
-        
-        for line_idx, line in enumerate(content.splitlines(), start=1):
-            line = line.strip()
-            
-            matches = re.finditer(pattern, line)
-            for match in matches:
-                import_name = match.group(1).strip()
-                if import_name and not import_name.startswith('//'):
-                    imports.add(import_name)
-                    dep = Dependency(
-                        source_file=file_path,
-                        target=import_name,
-                        dependency_type="include",
-                        line_number=line_idx,
-                    )
-                    
-                    classified_dep = self._classify_dependency(import_name, file_path, root, full_path)
-                    dependencies.append(classified_dep)
-                    self._categorize_dependency(result, classified_dep)
-        
-        result.imports = sorted(imports)
-        result.dependencies = sorted(dependencies, key=lambda d: d.target)
-        return result
-    
-    def _classify_dependency(self, import_name: str, source_file: str, root: Path, source_path: Path, relative_level: int = 0) -> Dependency:
-        """Classify a dependency as local, external, or unresolved."""
-        dep = Dependency(
-            source_file=source_file,
-            target=import_name,
-            dependency_type="import",
-            line_number=0,
-        )
-        
-        # Handle relative imports
-        if import_name.startswith('.'):
-            # This is a relative import
-            try:
-                # Resolve the relative path
-                relative_path = import_name.replace('.', '/')
-                if relative_path.startswith('/'):
-                    relative_path = relative_path[1:]
-                
-                # Navigate up based on relative level
-                source_dir = source_path.parent
-                for _ in range(relative_level):
-                    source_dir = source_dir.parent
-                
-                resolved_path = (source_dir / relative_path).resolve()
-                
-                # Check if the resolved path exists
-                if resolved_path.exists():
-                    try:
-                        rel_to_root = resolved_path.relative_to(root)
-                        dep.resolved_path = rel_to_root.as_posix()
-                        dep.is_local = True
-                        dep.is_external = False
-                        dep.is_unresolved = False
-                    except ValueError:
-                        # Outside root, still consider it resolved but external
-                        dep.resolved_path = str(resolved_path)
-                        dep.is_local = False
-                        dep.is_external = True
-                        dep.is_unresolved = False
-                else:
-                    # File doesn't exist - unresolved
-                    dep.is_unresolved = True
-                    dep.is_local = False
-                    dep.is_external = False
-            except Exception:
-                dep.is_unresolved = True
-                dep.is_local = False
-                dep.is_external = False
-            
-            return dep
-        
-        # Handle standard library imports (Python)
-        python_builtin_modules = {
-            'os', 'sys', 're', 'json', 'math', 'datetime', 'collections', 'itertools',
-            'functools', 'pathlib', 'typing', 'abc', 'argparse', 'copy', 'heapq',
-            'bisect', 'array', 'enum', 'graphlib', 'pprint', 'random', 'statistics',
-            'time', 'calendar', 'dataclasses', 'hashlib', 'hmac', 'base64', 'binascii',
-            'struct', 'io', 'builtins', 'gc', 'inspect', 'dis', 'traceback',
-            'warnings', 'logging', 'configparser', 'string', 'textwrap', 'unicodedata',
-            'stringprep', 'difflib', 'reprlib', 'pickle', 'shelve', 'marshal',
-            'contextlib', 'contextvars', 'asyncio', 'concurrent', 'multiprocessing',
-            'threading', 'queue', 'sched', 'atexit', 'signal', 'mmap', 'code',
-            'codeop', 'ast', 'symtable', 'token', 'keyword', 'tokenize', 'tabnanny',
-            'py_compile', 'compile', 'zipimport', 'pkgutil', 'runpy', 'importlib',
-            'modulefinder', 'sysconfig', 'platform', 'webbrowser', 'cgi', 'cgitb',
-            'wsgiref', 'urllib', 'http', 'ftplib', 'poplib', 'imaplib', 'smtplib',
-            'smtpd', 'telnetlib', 'ssl', 'socket', 'socketserver', 'xml', 'xmlrpc',
-            'json', 'csv', 'sqlite3', 'dbm', 'shelve'
-        }
-        
-        if import_name in python_builtin_modules:
-            dep.is_local = False
-            dep.is_external = False  # Built-in, not external
-            dep.is_unresolved = False
-            return dep
-        
-        # Check if it's a local file
-        candidate_extensions = ['.py', '.js', '.ts', '.java', '.go', '.rs', '.c', '.cpp', '.h', '.hpp']
-        
-        for ext in candidate_extensions:
-            # Try direct file match
-            candidate_path = (source_path.parent / f"{import_name}{ext}").resolve()
-            if candidate_path.exists():
-                try:
-                    rel_to_root = candidate_path.relative_to(root)
-                    dep.resolved_path = rel_to_root.as_posix()
-                    dep.is_local = True
-                    dep.is_external = False
-                    dep.is_unresolved = False
-                    return dep
-                except ValueError:
-                    continue
-            
-            # Try directory with __init__.py
-            candidate_dir = (source_path.parent / import_name).resolve()
-            if candidate_dir.exists() and candidate_dir.is_dir():
-                init_file = candidate_dir / f"__init__.py"
-                if init_file.exists():
-                    try:
-                        rel_to_root = candidate_dir.relative_to(root)
-                        dep.resolved_path = rel_to_root.as_posix()
-                        dep.is_local = True
-                        dep.is_external = False
-                        dep.is_unresolved = False
-                        return dep
-                    except ValueError:
-                        continue
-        
-        # Check for node_modules (JavaScript)
-        if '.' not in import_name and import_name not in python_builtin_modules:
-            node_modules_path = (root / "node_modules" / import_name).resolve()
-            if node_modules_path.exists():
-                dep.resolved_path = f"node_modules/{import_name}"
-                dep.is_local = True  # Local to project
-                dep.is_external = True  # But external dependency
-                dep.is_unresolved = False
-                return dep
-        
-        # Check for known external packages (this is a simplified approach)
-        # For a real implementation, we'd use a more sophisticated approach
-        if '.' in import_name or import_name.startswith('http://') or import_name.startswith('https://'):
-            dep.is_local = False
-            dep.is_external = True
-            dep.is_unresolved = False
-            return dep
-        
-        # If we can't resolve it, mark as unresolved
-        dep.is_local = False
-        dep.is_external = False
-        dep.is_unresolved = True
-        
-        return dep
-    
-    def _categorize_dependency(self, result: FileDependencies, dep: Dependency) -> None:
-        """Categorize a dependency into the appropriate list."""
-        if dep.is_local and not dep.is_unresolved:
-            if dep.resolved_path and dep.resolved_path not in result.local_dependencies:
-                result.local_dependencies.append(dep.resolved_path)
-        elif dep.is_external and not dep.is_unresolved:
-            if dep.target not in result.external_dependencies:
-                result.external_dependencies.append(dep.target)
+            seen.add(key)
+            result.dependencies.append(dep)
+    result.dependencies.sort(key=lambda d: (d.line_number, d.target, d.resolved_path or ""))
+    result.imports = sorted({d.target for d in result.dependencies})
+    for dep in result.dependencies:
+        if dep.is_local:
+            _add(result.local_dependencies, dep.resolved_path or "")
+        elif dep.is_stdlib:
+            _add(result.stdlib_dependencies, dep.target)
+        elif dep.is_external:
+            _add(result.external_dependencies, dep.target)
         elif dep.is_unresolved:
-            if dep.target not in result.unresolved_dependencies:
-                result.unresolved_dependencies.append(dep.target)
+            _add(result.unresolved_dependencies, dep.target)
+    for name in ("local_dependencies", "external_dependencies", "stdlib_dependencies", "unresolved_dependencies"):
+        getattr(result, name).sort()
+    return result
 
 
-class PlaceholderDependencyProvider(BasicDependencyProvider):
-    """Compatibility alias kept for older imports and placeholder naming."""
-
-    pass
-
-
-# Global dependency provider instance
-_dependency_provider: DependencyProvider = BasicDependencyProvider()
+def _add(items: list[str], value: str) -> None:
+    if value and value not in items:
+        items.append(value)
 
 
-def set_dependency_provider(provider: DependencyProvider) -> None:
-    """Set the global dependency provider."""
-    global _dependency_provider
-    _dependency_provider = provider
+def _uses(dep: Dependency, target: str) -> bool:
+    path = dep.resolved_path
+    if not dep.is_local or not path:
+        return False
+    if path.endswith("/"):  # directory-level import (Go package, Java wildcard, Python namespace)
+        return target.startswith(path) and "/" not in target[len(path):]
+    return path == target
 
 
-def get_dependency_provider() -> DependencyProvider:
-    """Get the current dependency provider."""
-    return _dependency_provider
+def analyze_source_dependencies(source: RepositorySource, file_path: str) -> DependencyResult:
+    """Analyze ``file_path`` in ``source``; parses each supported file once.
+
+    Raises ``LLMScribeError``: ``file_not_found``/``invalid_path`` for bad paths and
+    ``unsupported_operation`` for languages that are not analyzed.
+    """
+    rel = normalize_rel_path(file_path)
+    source.info(rel)
+    suffix = PurePosixPath(rel).suffix.lower()
+    if suffix not in SUPPORTED_EXTENSIONS:
+        raise LLMScribeError(
+            "unsupported_operation",
+            f"Dependency analysis does not support '{suffix or rel}' files. "
+            f"Supported extensions: {', '.join(sorted(SUPPORTED_EXTENSIONS))}.",
+        )
+    ctx = _Context(source)
+    if rel not in ctx.file_set:
+        raise LLMScribeError("file_not_found", f"File is not part of the analyzed repository (ignored?): '{rel}'.")
+    used_by: list[str] = []
+    forward: FileDependencies | None = None
+    for candidate in ctx.files:
+        if PurePosixPath(candidate).suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        analysis = _analyze_file(ctx, candidate)
+        if candidate == rel:
+            forward = analysis
+        elif any(_uses(d, rel) for d in analysis.dependencies):
+            used_by.append(candidate)
+    assert forward is not None
+    return DependencyResult(
+        root_path=source.logical_path,
+        target_file=rel,
+        file_dependencies=forward,
+        used_by=sorted(used_by),
+    )
 
 
 def analyze_dependencies(file_path: str, root: Path | None = None) -> DependencyResult:
-    """Analyze dependencies for a specific file.
-    
-    Args:
-        file_path: Relative path to the file from root
-        root: Project root directory (defaults to current working directory)
-        
-    Returns:
-        DependencyResult with complete dependency analysis
-    """
-    if root is None:
-        root = Path.cwd().resolve()
-    else:
-        root = root.resolve()
-    
-    if not root.exists():
-        raise FileNotFoundError(f"Directory does not exist: {root}")
-    if not root.is_dir():
-        raise NotADirectoryError(f"Path is not a directory: {root}")
-    
-    file_deps = _dependency_provider.get_dependencies(file_path, root)
-    
-    # Get dependents (files that import this file)
-    dependents = _dependency_provider.get_dependents(file_path, root)
-    
-    # Extract all local/external/unresolved from the file dependencies
-    all_local = file_deps.local_dependencies.copy()
-    all_external = file_deps.external_dependencies.copy()
-    all_unresolved = file_deps.unresolved_dependencies.copy()
-    
-    return DependencyResult(
-        root_path=root.as_posix(),
-        target_file=file_path,
-        file_dependencies=file_deps,
-        all_local_files=dependents + all_local,
-        all_external_deps=all_external,
-        all_unresolved=all_unresolved,
-    )
+    """Analyze a file of a local project. See ``analyze_source_dependencies``."""
+    return analyze_source_dependencies(LocalRepository(root), file_path)

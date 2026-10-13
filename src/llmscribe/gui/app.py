@@ -16,8 +16,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import customtkinter as ctk
 from llmscribe import __version__
+
+try:
+    import customtkinter as ctk
+except ImportError:  # optional extra: pip install "llmscribe[gui]"
+    ctk = None  # type: ignore[assignment]
 
 APP_VERSION = f"v{__version__}"
 
@@ -114,9 +118,19 @@ def _first(candidates: list[str], available: set[str], fallback: str) -> str:
 
 
 def main() -> None:
-    import tkinter.font as tkfont
-    from tkinter import filedialog
+    import sys
 
+    if ctk is None:
+        print('LLMScribe GUI needs its optional dependencies: pip install "llmscribe[gui]"', file=sys.stderr)
+        sys.exit(1)
+    try:
+        import tkinter.font as tkfont
+        from tkinter import filedialog  # noqa: F401
+    except ImportError:
+        print("LLMScribe GUI needs Tkinter (on Debian/Ubuntu: apt install python3-tk).", file=sys.stderr)
+        sys.exit(1)
+
+    from llmscribe.core.errors import LLMScribeError
     from llmscribe.core.writer import build_project_summary
 
     ctk.set_appearance_mode("dark")
@@ -383,8 +397,9 @@ def main() -> None:
                     summary = build_project_summary(project_path.resolve(), tree_only=tree_only)
                     output_file.parent.mkdir(parents=True, exist_ok=True)
                     output_file.write_text(summary, encoding="utf-8")
-                except Exception as exc:
-                    self._queue.put(_WorkerResult(False, f"Failed: {exc}"))
+                except Exception as exc:  # noqa: BLE001 - shown in the status line
+                    message = exc.message if isinstance(exc, LLMScribeError) else "Unexpected error"
+                    self._queue.put(_WorkerResult(False, f"Failed: {message}"))
                     return
                 self._queue.put(_WorkerResult(True, "Done.", output_file=output_file, summary=summary))
 

@@ -1,1 +1,1 @@
-web: python -m llmscribe.mcp.server
+web: MCP_TRANSPORT=http python -m llmscribe.mcp

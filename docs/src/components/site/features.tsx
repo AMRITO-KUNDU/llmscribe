@@ -15,7 +15,7 @@ const FEATURES = [
   {
     icon: AppWindow,
     title: "Four Interfaces",
-    body: "MCP server for agents, standalone Windows EXE for non-tech users, modern CustomTkinter GUI, and CLI/CUI for terminal power users.",
+    body: "MCP server for agents, standalone Windows EXE for non-tech users, modern CustomTkinter GUI, and a CLI for terminal power users.",
   },
   {
     icon: FolderX,

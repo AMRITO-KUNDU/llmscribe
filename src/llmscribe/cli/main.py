@@ -1,22 +1,8 @@
 """Command-line interface for LLMScribe.
 
-LLMScribe — code context for AI agents
-
-Usage:
-  llmscribe <command> [options]
-
-Commands:
-  map             Show project structure
-  overview        Generate project overview
-  search          Search project code
-  read            Read a file or line range
-  read-many       Read multiple files
-  dependencies    Show file dependencies
-  diff            Show project changes
-
-Other:
-  version         Show version
-  help            Show help
+Every command runs the same implementation as the MCP tools (``llmscribe.service``)
+on a local directory. With ``--json`` stdout contains exactly one JSON document;
+diagnostics go to stderr. Exit codes: 0 success, 1 tool error, 2 usage error.
 """
 
 from __future__ import annotations
@@ -24,489 +10,117 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
-
-# Set stdout to use UTF-8 encoding to avoid encoding issues on Windows
-if sys.platform == "win32":
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='ignore')
+from typing import Any
 
 from llmscribe import __version__
-from llmscribe.core import (
-    analyze_dependencies,
-    get_git_diff,
-    project_map as core_project_map,
-    project_overview as core_project_overview,
-    read_file,
-    read_files,
-    search_project,
-)
+from llmscribe import service
+from llmscribe.core.errors import LLMScribeError
 
 
-def _print_json(data: dict) -> None:
-    """Print JSON output to stdout."""
-    print(json.dumps(data, indent=2, ensure_ascii=False))
-
-
-def _print_markdown(text: str) -> None:
-    """Print markdown output to stdout."""
-    print(text, encoding='utf-8', errors='ignore')
-
-
-def _handle_error(error: Exception, command: str, json_mode: bool = False) -> int:
-    """Handle an error and print appropriate message."""
-    if json_mode:
-        msg = str(error)
-        code = "git_unavailable" if "git" in msg.lower() or "repository" in msg.lower() else "internal_error"
-        _print_json({
-            "ok": False,
-            "command": command,
-            "error": {
-                "code": code,
-                "message": msg,
-            }
-        })
+def _emit(tool: str, command: str, as_json: bool, **kwargs: Any) -> int:
+    try:
+        response = service.execute(tool, **kwargs)
+    except Exception as exc:  # noqa: BLE001 - converted to a structured error
+        error = service.to_error(exc)
+        if as_json:
+            payload = service.error_envelope(tool, error)
+            payload["command"] = command
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print(f"llmscribe {command}: error [{error.code}]: {error.message}", file=sys.stderr)
+        return 1
+    if as_json:
+        payload = service.envelope(response)
+        payload["command"] = command
+        print(service.redact_text(json.dumps(payload, indent=2, ensure_ascii=False)))
     else:
-        print(f"llmscribe {command}: Error: {error}", file=sys.stderr)
-    return 1
+        print(service.redact_text(response.text))
+    return 0
 
 
-def _resolve_project_root(path: str | None = None) -> Path:
-    """Resolve project root directory."""
-    if path and path.strip():
-        return Path(path).resolve()
-    else:
-        return Path.cwd().resolve()
-
-
-def cmd_map(args: argparse.Namespace) -> int:
-    """Handle the 'map' command."""
-    try:
-        root = _resolve_project_root(args.path)
-        result = core_project_map(root)
-        
-        if args.json:
-            _print_json({
-                "ok": True,
-                "command": "map",
-                "path": root.as_posix(),
-                "data": result.to_dict(),
-                "metadata": {
-                    "file_count": result.file_count,
-                    "character_count": result.character_count,
-                },
-            })
-        else:
-            print(f"Project Map: {root}")
-            print("=" * 40)
-            print(result.tree)
-            print(f"\nTotal files: {result.file_count}")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "map")
-
-
-def cmd_overview(args: argparse.Namespace) -> int:
-    """Handle the 'overview' command."""
-    try:
-        root = _resolve_project_root(args.path)
-        result = core_project_overview(root)
-        
-        if args.json:
-            data = result.to_dict()
-            metadata: dict = {
-                "file_count": result.file_count,
-                "character_count": result.character_count,
-            }
-            if result.truncated:
-                metadata["truncated"] = True
-                metadata["truncation_note"] = result.truncation_note
-            
-            _print_json({
-                "ok": True,
-                "command": "overview",
-                "path": root.as_posix(),
-                "data": data,
-                "metadata": metadata,
-            })
-        else:
-            print(f"Project Overview: {root}")
-            print("=" * 40)
-            print("Directory Structure:")
-            print(result.tree)
-            print(f"\nFile Count: {result.file_count}")
-            print(f"Character Count: {result.character_count:,}")
-            if result.truncated:
-                print(f"Note: {result.truncation_note}")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "overview")
-
-
-def cmd_search(args: argparse.Namespace) -> int:
-    """Handle the 'search' command."""
-    try:
-        if not args.query:
-            print("Error: Query cannot be empty", file=sys.stderr)
-            return 1
-        
-        root = _resolve_project_root(args.path)
-        result = search_project(args.query, root, max_results=1000)
-        
-        if args.json:
-            _print_json({
-                "ok": True,
-                "command": "search",
-                "path": root.as_posix(),
-                "data": result.to_dict(),
-                "metadata": {
-                    "query": result.query,
-                    "file_count": result.file_count,
-                    "match_count": result.match_count,
-                    "truncated": result.truncated,
-                },
-            })
-        else:
-            print(f"Search Results for '{args.query}': {root}")
-            print("=" * 50)
-            
-            if not result.matches:
-                print("No matches found.")
-                return 0
-            
-            # Group by file
-            matches_by_file: dict[str, list] = {}
-            for match in result.matches:
-                if match.file_path not in matches_by_file:
-                    matches_by_file[match.file_path] = []
-                matches_by_file[match.file_path].append(match)
-            
-            for file_path, file_matches in sorted(matches_by_file.items()):
-                print(f"\nFile: {file_path}")
-                
-                # Check match types
-                has_filename = any(m.match_type == "filename" for m in file_matches)
-                content_matches = [m for m in file_matches if m.match_type == "content"]
-                
-                if has_filename and not content_matches:
-                    print("  (Filename match)")
-                
-                # Show content matches (limit to 5 per file)
-                for match in content_matches[:5]:
-                    print(f"  Line {match.line_number}: {match.line_content}")
-                
-                if len(content_matches) > 5:
-                    print(f"  ... and {len(content_matches) - 5} more matches")
-            
-            print(f"\nFound {result.match_count} matches in {result.file_count} files")
-            if result.truncated:
-                print("Note: Results truncated.")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "search")
-
-
-def cmd_read(args: argparse.Namespace) -> int:
-    """Handle the 'read' command."""
-    try:
-        if not args.file_path:
-            print("Error: File path must be provided", file=sys.stderr)
-            return 1
-        
-        root = _resolve_project_root(args.path)
-        result = read_file(args.file_path, root)
-        
-        if not result.ok:
-            print(f"Error: {result.error_message}", file=sys.stderr)
-            return 1
-        
-        if args.json:
-            _print_json({
-                "ok": True,
-                "command": "read",
-                "path": root.as_posix(),
-                "data": result.to_dict(),
-                "metadata": {
-                    "character_count": result.character_count,
-                },
-            })
-        else:
-            print(f"File: {result.file_path}")
-            print("=" * 40)
-            print(result.content)
-            print(f"\nCharacters: {result.character_count:,}")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "read")
-
-
-def cmd_read_many(args: argparse.Namespace) -> int:
-    """Handle the 'read-many' command."""
-    try:
-        if not args.file_paths:
-            print("Error: At least one file path must be provided", file=sys.stderr)
-            return 1
-        
-        root = _resolve_project_root(args.path)
-        result = read_files(args.file_paths, root)
-        
-        if args.json:
-            metadata: dict = {
-                "file_count": result.file_count,
-                "success_count": result.success_count,
-                "error_count": result.error_count,
-                "character_count": result.character_count,
-            }
-            if result.truncated:
-                metadata["truncated"] = True
-                metadata["truncation_note"] = result.truncation_note
-            
-            _print_json({
-                "ok": True,
-                "command": "read-many",
-                "path": root.as_posix(),
-                "data": result.to_dict(),
-                "metadata": metadata,
-            })
-        else:
-            print(f"Reading {len(args.file_paths)} files from: {root}")
-            print("=" * 50)
-            
-            for file_result in result.results:
-                if file_result.ok:
-                    print(f"\n--- {file_result.file_path} ---")
-                    print(file_result.content)
-                    print(f"Characters: {file_result.character_count:,}")
-                else:
-                    print(f"Error reading {file_result.file_path}: [{file_result.error_code}] {file_result.error_message}")
-            
-            print(f"\nSummary: {result.success_count} succeeded, {result.error_count} failed")
-            if result.truncated:
-                print(f"Note: {result.truncation_note}")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "read-many")
-
-
-def cmd_dependencies(args: argparse.Namespace) -> int:
-    """Handle the 'dependencies' command."""
-    try:
-        if not args.file_path:
-            print("Error: File path must be provided", file=sys.stderr)
-            return 1
-        
-        root = _resolve_project_root(args.path)
-        result = analyze_dependencies(args.file_path, root)
-        
-        if args.json:
-            _print_json({
-                "ok": True,
-                "command": "dependencies",
-                "path": root.as_posix(),
-                "data": result.to_dict(),
-                "metadata": {
-                    "file_count": len(result.all_local_files),
-                    "external_dep_count": len(result.all_external_deps),
-                    "unresolved_count": len(result.all_unresolved),
-                },
-            })
-        else:
-            print(f"Dependencies for: {args.file_path}")
-            print("=" * 40)
-            
-            file_deps = result.file_dependencies
-            
-            if file_deps.imports:
-                print(f"\nImports: {', '.join(file_deps.imports)}")
-            
-            if file_deps.local_dependencies:
-                print(f"\nLocal Dependencies:")
-                for dep in file_deps.local_dependencies:
-                    print(f"  - {dep}")
-            
-            if file_deps.external_dependencies:
-                print(f"\nExternal Dependencies:")
-                for dep in file_deps.external_dependencies:
-                    print(f"  - {dep}")
-            
-            if file_deps.unresolved_dependencies:
-                print(f"\nUnresolved Dependencies:")
-                for dep in file_deps.unresolved_dependencies:
-                    print(f"  - {dep}")
-            
-            if result.all_local_files:
-                print(f"\nFiles that depend on this file:")
-                for dep in result.all_local_files:
-                    print(f"  - {dep}")
-            
-            if not any([file_deps.imports, file_deps.local_dependencies, 
-                      file_deps.external_dependencies, file_deps.unresolved_dependencies]):
-                print("\nNo dependencies found or file not supported.")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "dependencies")
-
-
-def cmd_diff(args: argparse.Namespace) -> int:
-    """Handle the 'diff' command."""
-    try:
-        root = _resolve_project_root(args.path)
-        result = get_git_diff(root, staged=args.staged, commit=args.commit)
-        
-        if args.json:
-            _print_json({
-                "ok": True,
-                "command": "diff",
-                "path": root.as_posix(),
-                "data": {
-                    "staged": result.staged,
-                    "commit": result.commit,
-                    "changed_files": result.changed_files,
-                    "status_lines": result.status_lines,
-                    "diff": result.diff,
-                    "truncated": result.truncated,
-                },
-                "metadata": {
-                    "changed_file_count": len(result.changed_files),
-                    "character_count": result.character_count,
-                    "truncated": result.truncated,
-                },
-            })
-        else:
-            print(f"Git Status & Diff: {root}")
-            print("=" * 40)
-            
-            if result.changed_files:
-                print("Changed Files:")
-                for f in result.changed_files:
-                    print(f"  - {f}")
-            else:
-                print("No changed files.")
-            
-            if result.diff.strip():
-                print(f"\nDiff (first {len(result.diff):,} characters):")
-                print("-" * 30)
-                print(result.diff)
-            else:
-                print("\nNo diff output.")
-            
-            if result.truncated:
-                print(f"\nNote: Diff truncated at {result.truncation_limit:,} characters.")
-        
-        return 0
-    except Exception as e:
-        return _handle_error(e, "diff", json_mode=getattr(args, "json", False))
+def _path_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--path", help="Project directory (default: current directory)")
+    parser.add_argument("--json", action="store_true", help="Print one machine-readable JSON document")
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create the main argument parser."""
     parser = argparse.ArgumentParser(
         prog="llmscribe",
-        description="LLMScribe — code context for AI agents",
+        description="LLMScribe — deterministic repository data for humans, agents and LLM applications.",
+        epilog="Examples:\n  llmscribe map\n  llmscribe search \"auth\" --json\n  llmscribe read src/main.py\n"
+        "  llmscribe dependencies src/main.py\n  llmscribe diff --staged",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  llmscribe map                    # Show project structure
-  llmscribe overview               # Generate full project overview
-  llmscribe search "auth"          # Search for "auth" in code
-  llmscribe read src/main.py       # Read a specific file
-  llmscribe read-many src/main.py src/utils.py  # Read multiple files
-  llmscribe dependencies src/main.py  # Show file dependencies
-  llmscribe diff                   # Show git diff
-  llmscribe search "auth" --json   # Get JSON output
-
-For more help on a specific command:
-  llmscribe search --help
-        """
     )
-    
-    # Subparsers for commands
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
-    # Map command
-    map_parser = subparsers.add_parser("map", help="Show project structure")
-    map_parser.add_argument("--path", help="Project folder path (default: current directory)")
-    map_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Overview command
-    overview_parser = subparsers.add_parser("overview", help="Generate project overview")
-    overview_parser.add_argument("--path", help="Project folder path (default: current directory)")
-    overview_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Search command
-    search_parser = subparsers.add_parser("search", help="Search project code")
-    search_parser.add_argument("query", help="Search query")
-    search_parser.add_argument("--path", help="Project folder path (default: current directory)")
-    search_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Read command
-    read_parser = subparsers.add_parser("read", help="Read a file")
-    read_parser.add_argument("file_path", help="File path to read")
-    read_parser.add_argument("--path", help="Project root path (default: current directory)")
-    read_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Read-many command
-    read_many_parser = subparsers.add_parser("read-many", help="Read multiple files")
-    read_many_parser.add_argument("file_paths", nargs="+", help="File paths to read")
-    read_many_parser.add_argument("--path", help="Project root path (default: current directory)")
-    read_many_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Dependencies command
-    deps_parser = subparsers.add_parser("dependencies", help="Show file dependencies")
-    deps_parser.add_argument("file_path", help="File path to analyze")
-    deps_parser.add_argument("--path", help="Project root path (default: current directory)")
-    deps_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Diff command
-    diff_parser = subparsers.add_parser("diff", help="Show project changes")
-    diff_parser.add_argument("--path", help="Project root path (default: current directory)")
-    diff_parser.add_argument("--staged", action="store_true", help="Show staged changes only")
-    diff_parser.add_argument("--commit", help="Compare against specific commit")
-    diff_parser.add_argument("--json", action="store_true", help="Output in JSON format")
-    
-    # Version command
-    subparsers.add_parser("version", help="Show version")
-    
+    sub = parser.add_subparsers(dest="command")
+
+    for name, help_text in (("map", "Show project structure"), ("overview", "Tree plus file contents")):
+        _path_option(sub.add_parser(name, help=help_text))
+
+    p = sub.add_parser("search", help="Search file names and contents")
+    p.add_argument("query")
+    _path_option(p)
+
+    p = sub.add_parser("read", help="Read one file")
+    p.add_argument("file_path")
+    _path_option(p)
+
+    p = sub.add_parser("read-many", help="Read several files")
+    p.add_argument("file_paths", nargs="+")
+    _path_option(p)
+
+    p = sub.add_parser("dependencies", help="Show a file's dependencies and dependents")
+    p.add_argument("file_path")
+    _path_option(p)
+
+    p = sub.add_parser("diff", help="Show git status and diff")
+    p.add_argument("--staged", action="store_true", help="Staged changes only")
+    p.add_argument("--commit", help="Compare the working tree with this revision")
+    _path_option(p)
+
+    sub.add_parser("version", help="Show version")
     return parser
 
 
-def main() -> None:
-    """Run the LLMScribe CLI."""
+def main(argv: list[str] | None = None) -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+        except (AttributeError, ValueError):
+            pass
+
     parser = create_parser()
-    args = parser.parse_args()
-    
-    if not args.command or args.command == "help":
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as exc:  # argparse: 0 for --help, 2 for usage errors
+        raise exc
+    if not args.command:
         parser.print_help()
         return
-    
     if args.command == "version":
         print(f"llmscribe version {__version__}")
         return
-    
-    # Route to appropriate command handler
-    command_handlers = {
-        "map": cmd_map,
-        "overview": cmd_overview,
-        "search": cmd_search,
-        "read": cmd_read,
-        "read-many": cmd_read_many,
-        "dependencies": cmd_dependencies,
-        "diff": cmd_diff,
-    }
-    
-    handler = command_handlers.get(args.command)
-    if handler:
-        sys.exit(handler(args))
+
+    common = {"path": args.path}
+    as_json = args.json
+    if args.command == "map":
+        code = _emit("project_map", "map", as_json, **common)
+    elif args.command == "overview":
+        code = _emit("project_overview", "overview", as_json, **common)
+    elif args.command == "search":
+        code = _emit("search", "search", as_json, query=args.query, **common)
+    elif args.command == "read":
+        code = _emit("read", "read", as_json, file_path=args.file_path, **common)
+    elif args.command == "read-many":
+        code = _emit("read_many", "read-many", as_json, file_paths=args.file_paths, **common)
+    elif args.command == "dependencies":
+        code = _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
     else:
-        print(f"Unknown command: {args.command}", file=sys.stderr)
-        parser.print_help()
-        sys.exit(1)
+        code = _emit("project_diff", "diff", as_json, staged=args.staged, commit=args.commit, **common)
+    try:
+        sys.stdout.flush()
+    except BrokenPipeError:
+        sys.stderr.close()
+    sys.exit(code)
 
 
 if __name__ == "__main__":

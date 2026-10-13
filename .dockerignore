@@ -1,0 +1,7 @@
+.git
+docs
+release
+tests
+dist
+build
+**/__pycache__

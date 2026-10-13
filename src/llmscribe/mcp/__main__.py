@@ -1,4 +1,4 @@
-"""Entry point for running module directly: python -m llmscribe.mcp."""
+"""``python -m llmscribe.mcp`` starts the MCP server."""
 
 from llmscribe.mcp.server import main
 

@@ -95,7 +95,9 @@ Install LLMScribe from PyPI:
 pip install llmscribe
 ```
 
-Then point it at any project directory, or at a public GitHub repo. No API key needed.
+Then point it at any project directory, or (through the MCP tools) at a public GitHub repo. No API key needed.
+
+> The `project_map(...)`, `search(...)`, `read(...)` snippets below show **MCP tool calls**. The same operations are available from the CLI (local directories) and from Python through `llmscribe.core` (see [Python API](#python-api)).
 
 ### Map
 
@@ -160,16 +162,17 @@ search
 ```
 </details>
 
-Each result includes the file path, line number, matching text, and match type.
+Each match includes the file path, line number, the matching line, the matched text and the match type (`filename` or `content`). Results are ordered by path then line and limited to 1,000 matches; binary and oversized files are skipped.
 
-Output:
+Output (`--json`, `data.matches`):
 ```json
 [
   {
     "file_path": "src/auth/service.py",
-    "line": 12,
-    "text": "def authenticate(user, password):",
-    "match_type": "content"
+    "line_number": 12,
+    "line_content": "def authenticate(user, password):",
+    "match_type": "content",
+    "matched_text": "authenticate"
   }
 ]
 ```
@@ -382,18 +385,22 @@ Run your own HTTP MCP server for private repositories, teams, internal developer
 ```bash
 pip install llmscribe
 
-MCP_TRANSPORT=http python -m llmscribe.mcp.server
+MCP_TRANSPORT=http MCP_ALLOW_LOCAL_PATHS=1 llmscribe-mcp
 ```
 
-The server will be available at `http://localhost:8000/mcp`.
+The server will be available at `http://localhost:8000/mcp`, with `GET /health` and `GET /info` for monitoring.
+
+> Over HTTP the `path` argument is **disabled by default** so a hosted server does not expose its own disk. Set `MCP_ALLOW_LOCAL_PATHS=1` to allow any local path (only on a machine you trust), or `MCP_ALLOWED_ROOTS=/srv/a:/srv/b` to allow specific directories. GitHub repositories (`repo=`) always work.
 
 ### Docker
 
 ```bash
 docker build -t llmscribe-mcp .
 
-docker run -p 8000:8000 llmscribe-mcp
+docker run -p 8000:8000 -e MCP_ALLOWED_HOSTS="localhost,localhost:*,mcp.example.com" llmscribe-mcp
 ```
+
+The image runs `python -m llmscribe.mcp` with `MCP_TRANSPORT=http`, as an unprivileged user, and has a `/health` healthcheck.
 
 ### Railway
 
@@ -408,6 +415,56 @@ railway up
 | `MCP_TRANSPORT` | `stdio` or `http` | `stdio` |
 | `HOST` | HTTP bind address | `0.0.0.0` |
 | `PORT` | HTTP port | `8000` |
+| `MCP_ALLOWED_HOSTS` | Accepted `Host` values for `/mcp` (comma-separated, `host:*` for any port, `*` for any). Default: loopback plus `RENDER_EXTERNAL_HOSTNAME` / `RAILWAY_PUBLIC_DOMAIN` | loopback |
+| `MCP_ALLOWED_ORIGINS` | Accepted `Origin` values for `/mcp` (requests without an `Origin`, i.e. all non-browser clients, are always accepted). Default: loopback, `claude.ai`, the platform hostname; `*` allows any | see left |
+| `MCP_ALLOW_LOCAL_PATHS` | `1` allows any local `path` over HTTP | off |
+| `MCP_ALLOWED_ROOTS` | Directories (separated by `:` / `;`) allowed as `path` over HTTP | none |
+| `GITHUB_TOKEN` / `GH_TOKEN` | Token for private repositories and higher rate limits (sent only to `api.github.com`) | none |
+| `LLMSCRIBE_CACHE_MAX_ENTRIES` | GitHub snapshots kept in memory (`0` disables) | `8` |
+| `LLMSCRIBE_CACHE_TTL_SECONDS` | Snapshot lifetime | `300` |
+
+Run a single process (the cache and MCP sessions live in memory). `PORT` without `MCP_TRANSPORT` still selects HTTP for backward compatibility, but set `MCP_TRANSPORT=http` explicitly.
+---
+
+## Python API
+
+```python
+from pathlib import Path
+from llmscribe.core import project_map, search_project, read_file, read_files, analyze_dependencies, get_git_diff, LLMScribeError
+
+root = Path(".")
+print(project_map(root).tree)
+print(search_project("auth", root).to_dict())
+print(read_files(["README.md", "missing.py"], root).to_dict())   # per-file errors, never raises
+try:
+    analyze_dependencies("src/app.py", root)
+except LLMScribeError as err:      # err.code is a stable machine-readable code
+    print(err.code, err.message)
+```
+
+## Behavior reference
+
+**Ignore rules.** Defaults (`.git`, `node_modules`, `venv`, `dist`, `build`, `.env`, `*.log`, …), the root `.gitignore` and nested `.gitignore` files are applied with real Git semantics (wildcards, directories, `!` negation, root-anchored patterns). Hidden files are included unless ignored; symlinks are never followed or listed.
+
+**Supported text files.** Known source/config/doc extensions plus names such as `Dockerfile`, `Makefile`, `LICENSE`, `.gitignore`. Other files appear in the tree but cannot be read or searched.
+
+**Limits** (single source: `llmscribe.core.limits`): 400,000 content characters per overview/read_many, 50 files per `read_many`, 1,000 search matches, 20,000 map entries, 2 MiB per file, 200,000 diff characters, 100 MiB archive download, 250 MiB / 100,000 entries per archive. Anything cut is reported (`truncated`, `truncation_note`, `omitted_files`).
+
+**Errors.** Every failure has a stable code: `invalid_argument`, `invalid_path`, `file_not_found`, `unsupported_file_type`, `binary_file`, `file_too_large`, `read_error`, `repository_not_found`, `not_a_repository`, `repository_too_large`, `github_rate_limited`, `github_auth_required`, `github_unavailable`, `git_unavailable`, `unsupported_operation`, `internal_error`. JSON: `{"ok": false, "tool": "...", "error": {"code": "...", "message": "..."}}`.
+
+**Dependencies.** Python, JavaScript/TypeScript, Java, Go, Rust, C/C++. Each reference is `local`, `stdlib`, `external` (not in the repository, assumed third-party) or `unresolved` (relative/local reference that matches nothing); `used_by` lists reverse dependencies. Works identically for local and GitHub sources.
+
+**GitHub.** Public repositories (and private ones with `GITHUB_TOKEN`) are fetched as one zip archive and cached in memory per owner/repo/ref/credential. Nothing is cloned or written to disk. `project_diff` on GitHub uses the compare API and requires `commit` (base) with optional `ref` (head); `staged` is local only.
+
+**Git diff (local).** Runs `git` with an argument list, a 30 s timeout, a minimal environment, and without external diff/textconv drivers.
+
+### Migration notes
+
+- Legacy tool names (`project_get_file`, `project_get_files`, `project_search`, `project_list_files`) are gone; use `read`, `read_many`, `search`.
+- Error code `path_traversal` is now `invalid_path`; `not_text_file` is `unsupported_file_type`.
+- `project_dependencies` results: `all_local_files`/`all_external_deps`/`all_unresolved` were replaced by `used_by` and per-category lists (`stdlib_dependencies` added).
+- `llmscribe.core` functions raise `LLMScribeError` (not `FileNotFoundError`) for a bad root; the dependency-provider classes and `llmscribe.github.provider` helpers were removed.
+- Over HTTP, local `path` access now requires `MCP_ALLOW_LOCAL_PATHS` or `MCP_ALLOWED_ROOTS`.
 
 ---
 

@@ -1,27 +1,25 @@
-"""GitHub repository source resolver package for LLMScribe."""
+"""GitHub repository source for LLMScribe (archive snapshots, no cloning)."""
 
-from .client import GitHubError, GitHubSnapshot, fetch_github_diff, fetch_github_snapshot, parse_github_repo
-from .provider import (
-    github_project_diff,
-    github_project_get_file,
-    github_project_get_files,
-    github_project_list_files,
-    github_project_map,
-    github_project_overview,
-    github_project_search,
+from .client import (
+    GitHubError,
+    GitHubSnapshot,
+    SnapshotCache,
+    clear_snapshot_cache,
+    fetch_github_diff,
+    fetch_github_snapshot,
+    get_snapshot_cache,
+    parse_github_repo,
+    validate_github_ref,
 )
 
 __all__ = [
     "GitHubError",
     "GitHubSnapshot",
+    "SnapshotCache",
+    "clear_snapshot_cache",
     "fetch_github_diff",
     "fetch_github_snapshot",
-    "github_project_diff",
-    "github_project_get_file",
-    "github_project_get_files",
-    "github_project_list_files",
-    "github_project_map",
-    "github_project_overview",
-    "github_project_search",
+    "get_snapshot_cache",
     "parse_github_repo",
+    "validate_github_ref",
 ]

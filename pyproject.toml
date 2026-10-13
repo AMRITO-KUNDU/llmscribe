@@ -5,45 +5,44 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmscribe"
 dynamic = ["version"]
-description = "Deterministic repository extractor and code-context tool for local projects and public GitHub repositories."
+description = "Deterministic repository extractor and structured code-access tool for local projects and public GitHub repositories."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "Apache-2.0"
+license = { text = "Apache-2.0" }
 authors = [{ name = "Amrito Kundu" }]
-keywords = [
-    "cli",
-    "llm",
-    "codebase",
-    "developer-tools",
-    "context",
-    "prompt-engineering",
-    "code-export",
-    "mcp",
-]
+keywords = ["cli", "llm", "codebase", "developer-tools", "context", "code-export", "mcp"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
-    "Environment :: X11 Applications",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Documentation",
     "Topic :: Utilities",
 ]
+# Runtime: every entry is imported by the package.
 dependencies = [
-    "mcp>=1.0.0",
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.20.0",
-    "starlette>=0.27.0",
+    "mcp>=1.9,<3",       # MCP server (llmscribe.mcp)
+    "pydantic>=2.0",     # tool parameter schemas (llmscribe.mcp.tools)
+    "pathspec>=0.11",    # gitignore semantics (llmscribe.core.tree_builder)
+    "uvicorn>=0.23",     # hosted HTTP transport (llmscribe.mcp.server)
 ]
 
 [project.optional-dependencies]
 gui = [
     "customtkinter>=5.2.0",
     "Pillow>=10.0.0",
+]
+dev = [
+    "pytest>=7.4",
+    "ruff>=0.4",
+    "build>=1.0",
+    "twine>=5.0",
 ]
 
 [project.urls]
@@ -60,7 +59,18 @@ llmscribe-mcp = "llmscribe.mcp.server:main"
 where = ["src"]
 
 [tool.setuptools.dynamic]
+# Single version source: src/llmscribe/__init__.py
 version = { attr = "llmscribe.__version__" }
 
-[tool.setuptools.package-data]
-llmscribe = ["py.typed"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501", "B008"]

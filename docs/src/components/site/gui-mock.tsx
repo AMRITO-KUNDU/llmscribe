@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, FolderOpen, Save } from "lucide-react";
-import { SAMPLE_FULL, SAMPLE_TREE } from "@/lib/site";
+import { SAMPLE_FULL, SAMPLE_TREE, SITE } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 

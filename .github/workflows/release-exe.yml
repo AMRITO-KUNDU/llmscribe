@@ -1,0 +1,44 @@
+name: Build Windows EXE
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --upgrade pip ".[gui]" pyinstaller
+      - name: Build
+        run: python build_exe.py
+      - name: Verify the executable starts and reports a clear status
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/LLMScribe-GUI.exe)) { throw "exe missing" }
+          $p = Start-Process dist/LLMScribe-GUI.exe -PassThru
+          Start-Sleep -Seconds 8
+          if ($p.HasExited) { throw "GUI exited immediately with code $($p.ExitCode)" }
+          Stop-Process $p
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LLMScribe-GUI
+          path: |
+            dist/LLMScribe-GUI.exe
+            dist/LLMScribe-GUI.exe.sha256
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/LLMScribe-GUI.exe
+            dist/LLMScribe-GUI.exe.sha256

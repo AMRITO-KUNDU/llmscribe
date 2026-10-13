@@ -5,7 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "python -m llmscribe.mcp.server",
+    "startCommand": "python -m llmscribe.mcp",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
