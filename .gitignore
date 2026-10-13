@@ -14,6 +14,8 @@ pip-wheel-metadata/
 .ruff_cache/
 .coverage
 coverage/
+.pyc
+.pyo
 
 # Virtual environments
 .venv/
@@ -26,12 +28,21 @@ build/
 dist/
 *.whl
 *.spec
+*.tar.gz
+
+# Test / tooling caches
+.pytest_cache/
+.tox/
+.nox/
+.htmlcov/
+coverage.xml
 
 # Editors / IDEs
 .vscode/
 .idea/
 .vs/
 *.swp
+*.swo
 
 # OS files
 .DS_Store
@@ -41,6 +52,15 @@ desktop.ini
 # Web & Node
 node_modules/
 .vercel/
+.npm/
 
 # Logs
 *.log
+*.tmp
+*.temp
+
+# Local runtime / generated output
+.env
+.env.*
+*.sqlite3
+*.db
