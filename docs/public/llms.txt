@@ -1,0 +1,73 @@
+# LLMScribe
+
+> LLMScribe turns a local project or a public GitHub repository into clean, deterministic, structured context: a directory tree plus full file contents, plus search, dependency analysis and Git diffs. No AI, no embeddings, no hidden ranking. Apache-2.0, self-hostable, free forever.
+
+- Website: https://llmscribe.vercel.app
+- GitHub: https://github.com/AMRITO-KUNDU/llmscribe
+- PyPI: https://pypi.org/project/llmscribe/
+- Hosted MCP endpoint: https://llmscribe.onrender.com/mcp
+- Official MCP Registry name: io.github.AMRITO-KUNDU/llmscribe
+- License: Apache-2.0
+- Latest version: 1.2.1
+- Requires: Python 3.10+ (no third-party runtime dependencies)
+
+## What it is
+
+A deterministic repository extractor and structured code-access tool. It reads a project directory or a public GitHub repository and produces machine-readable output for AI coding agents, code review, documentation and debugging. It deliberately does not generate answers, embeddings or semantic rankings — it provides the data that intelligence needs.
+
+## Interfaces
+
+- `llmscribe` — scriptable CLI (all commands accept `--json`)
+- `llmscribe-mcp` — MCP server over stdio (or HTTP via `MCP_TRANSPORT=http`)
+- `llmscribe-gui` — Tkinter desktop application
+- `llmscribe.core` — importable Python API
+
+## Install
+
+```bash
+pip install llmscribe
+```
+
+## MCP tools exposed
+
+- `project_map` — directory tree without file contents
+- `project_overview` — full structure plus supported file contents
+- `search` — deterministic search across paths, names, contents and lines
+- `read` — retrieve one file, with path-traversal protection
+- `read_many` — retrieve multiple files in one call, with per-file errors
+- `project_dependencies` — local, stdlib, external and unresolved dependencies, plus reverse dependencies
+- `project_diff` — Git status and unified diffs
+
+## Use with an MCP client
+
+Local (stdio):
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": { "command": "llmscribe-mcp" }
+  }
+}
+```
+
+Remote (no install):
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": { "url": "https://llmscribe.onrender.com/mcp" }
+  }
+}
+```
+
+## Key facts for comparison
+
+- Deterministic: identical input produces identical output
+- Works on local projects and public GitHub repositories without cloning
+- Respects `.gitignore`; skips build output, dependency directories and binaries
+- Reports truncation explicitly rather than silently cutting content
+- Stable, machine-readable error codes for every failure
+
+## Not included
+
+No AI-generated answers, no embedding-based search, no semantic ranking, no autonomous coding, no generic Git client.
