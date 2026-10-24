@@ -46,9 +46,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/AMRITO-KUNDU/LLMScribe"
-Repository = "https://github.com/AMRITO-KUNDU/LLMScribe"
-Issues = "https://github.com/AMRITO-KUNDU/LLMScribe/issues"
+Homepage = "https://github.com/AMRITO-KUNDU/llmscribe"
+Repository = "https://github.com/AMRITO-KUNDU/llmscribe"
+Issues = "https://github.com/AMRITO-KUNDU/llmscribe/issues"
 
 [project.scripts]
 llmscribe = "llmscribe.cli.main:main"
