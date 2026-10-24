@@ -8,8 +8,23 @@ import { SITE } from "@/lib/site";
 
 const ITEMS = [
   {
-    q: "How do I connect LLMScribe to Cursor or Claude Desktop?",
-    a: "Add LLMScribe to your MCP client config (mcpServers block in Cursor or Claude Desktop) using command 'llmscribe-mcp'. Your AI agent will automatically gain access to all 7 project tools.",
+    q: "How do I connect LLMScribe to Cursor, Claude, or another MCP client?",
+    a: (
+      <>
+        Run the server locally with <code>llmscribe-mcp</code> and add it to your client's config —
+        for example <code>mcpServers</code> in Cursor or Claude Desktop, <code>servers</code> in VS
+        Code, or <code>context_servers</code> in Zed. Or point any remote-capable client at the
+        hosted endpoint <code>https://llmscribe.onrender.com/mcp</code>. Step-by-step setup for 13
+        popular clients is in the{" "}
+        <a
+          className="text-primary underline underline-offset-4 hover:no-underline"
+          href="#connect"
+        >
+          Connect section
+        </a>{" "}
+        above. Your agent then gains access to all 7 project tools.
+      </>
+    ),
   },
   {
     q: "Can non-technical users run the GUI without installing Python?",
