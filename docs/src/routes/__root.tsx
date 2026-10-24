@@ -18,7 +18,7 @@ const structuredData = {
   url: SITE_URL,
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Windows, macOS, Linux",
-  softwareVersion: "1.2.1",
+  softwareVersion: "1.2.2",
   license: "https://www.apache.org/licenses/LICENSE-2.0",
   downloadUrl: "https://pypi.org/project/llmscribe/",
   author: {
@@ -68,7 +68,7 @@ export const Route = createRootRoute({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Instrument+Serif:ital@0;1&display=swap",
+        href: "https://fonts.googleapis.com/css2",
       },
     ],
     scripts: [
