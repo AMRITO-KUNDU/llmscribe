@@ -8,8 +8,8 @@
 - Hosted MCP endpoint: https://llmscribe.onrender.com/mcp
 - Official MCP Registry name: io.github.AMRITO-KUNDU/llmscribe
 - License: Apache-2.0
-- Latest version: 1.2.1
-- Requires: Python 3.10+ (no third-party runtime dependencies)
+- Latest version: 1.2.2
+- Requires: Python 3.10+ (runtime dependencies: mcp, pydantic, pathspec, uvicorn; GUI extras: customtkinter, Pillow)
 
 ## What it is
 
