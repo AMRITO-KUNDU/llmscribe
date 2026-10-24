@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Api } from "@/components/site/api";
+import { Connect } from "@/components/site/connect";
 import { Faq } from "@/components/site/faq";
 import { Features } from "@/components/site/features";
 import { FinalCta, Footer } from "@/components/site/footer";
@@ -28,6 +29,7 @@ function Home() {
         <Problems />
         <HowItWorks />
         <Interfaces />
+        <Connect />
         <Output />
         <Features />
         <Install />
