@@ -3,8 +3,8 @@ import { CopyButton } from "@/components/site/copy-button";
 import { Button } from "@/components/ui/button";
 import { SITE } from "@/lib/site";
 
-const SOURCE = `git clone https://github.com/AMRITO-KUNDU/LLMScribe.git
-cd LLMScribe
+const SOURCE = `git clone https://github.com/AMRITO-KUNDU/llmscribe.git
+cd llmscribe
 pip install -e .`;
 
 const BUILD_EXE = `# Build standalone LLMScribe-GUI.exe:
