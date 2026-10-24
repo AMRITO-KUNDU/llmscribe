@@ -244,9 +244,16 @@ Instead of throwing an entire repository into a context window, an agent can pro
 
 ### MCP
 
-Connect any MCP-compatible client (Cursor, Claude, Windsurf, and more) to your repository.
+LLMScribe is a standard Model Context Protocol server, so any MCP-compatible client can use it. There are two ways to connect:
 
-**Free hosted MCP.** No installation required:
+| Mode | Transport | Endpoint / command | Best for |
+| --- | --- | --- | --- |
+| **Hosted** | Streamable HTTP | `https://llmscribe.onrender.com/mcp` | Zero-install experimentation |
+| **Local** | stdio | `llmscribe-mcp` | Private code, production, offline |
+
+> The hosted endpoint is convenient for experimentation. For private code or production workloads, self-host LLMScribe (see [Self-Hosting](#self-hosting)) or run it locally over stdio.
+
+**Hosted (remote HTTP)** — no installation required:
 
 ```json
 {
@@ -258,11 +265,7 @@ Connect any MCP-compatible client (Cursor, Claude, Windsurf, and more) to your r
 }
 ```
 
-For clients that support custom remote connectors, simply provide the endpoint: `https://llmscribe.onrender.com/mcp`
-
-> The public endpoint is convenient for experimentation. For private code or production workloads, self-host LLMScribe instead.
-
-**Local MCP.** Runs on your machine, over stdio:
+**Local (stdio)** — runs on your machine:
 
 ```json
 {
@@ -275,7 +278,9 @@ For clients that support custom remote connectors, simply provide the endpoint: 
 ```
 
 <details>
-<summary><b>Alternative: Python module</b></summary>
+<summary><b>Local: use the Python module instead of the command</b></summary>
+
+If `llmscribe-mcp` is not on your `PATH`, point the client at the module:
 
 ```json
 {
@@ -287,6 +292,254 @@ For clients that support custom remote connectors, simply provide the endpoint: 
   }
 }
 ```
+</details>
+
+#### Per-app setup
+
+Each client reads a different configuration file. The blocks below were checked against each tool's official documentation. Substitute the hosted or local snippet from above where shown.
+
+<details>
+<summary><b>Claude Desktop</b></summary>
+
+Edit `claude_desktop_config.json` (in the app: **Settings → Developer → Edit Config**):
+
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+Fully quit and reopen Claude Desktop after saving. For the **hosted** server, add it as a remote connector from **Settings → Connectors** instead.
+
+</details>
+
+<details>
+<summary><b>Claude Code</b></summary>
+
+```bash
+# Local (stdio)
+claude mcp add llmscribe -- llmscribe-mcp
+
+# Hosted (remote HTTP)
+claude mcp add --transport http llmscribe https://llmscribe.onrender.com/mcp
+```
+
+Confirm with `claude mcp list`. Add `--scope user` to make it available in every project, or `--scope project` to share it with your team via `.mcp.json`.
+
+</details>
+
+<details>
+<summary><b>Cursor</b></summary>
+
+Create `.cursor/mcp.json` in your project (or `~/.cursor/mcp.json` for all projects):
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+For the **hosted** server, use `"url": "https://llmscribe.onrender.com/mcp"` instead of `command`. Restart Cursor, then check **Customize → MCPs**.
+
+</details>
+
+<details>
+<summary><b>VS Code (GitHub Copilot)</b></summary>
+
+Create `.vscode/mcp.json` in your workspace. Note that VS Code uses `servers`, not `mcpServers`:
+
+```json
+{
+  "servers": {
+    "llmscribe": {
+      "type": "stdio",
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+For the **hosted** server, replace the entry with `{ "type": "http", "url": "https://llmscribe.onrender.com/mcp" }`. Then open Copilot Chat in **Agent** mode and click the tools icon to start the server.
+
+</details>
+
+<details>
+<summary><b>Windsurf (Cascade)</b></summary>
+
+Edit `~/.codeium/mcp_config.json` (in the app: **Windsurf Settings → Cascade → MCP → View Raw Config**):
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+For the **hosted** server, use the `serverUrl` field: `{ "serverUrl": "https://llmscribe.onrender.com/mcp" }`. Press the refresh button after saving.
+
+</details>
+
+<details>
+<summary><b>Cline</b></summary>
+
+Open the Cline panel → **MCP Servers** → **Configure** → **Configure MCP Servers**, then add:
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+For the **hosted** server, use the **Remote Servers** tab, or `"type": "streamableHttp"` with a `url`.
+
+</details>
+
+<details>
+<summary><b>Roo Code</b></summary>
+
+Edit the global `mcp_settings.json` (**Edit Global MCP**), or create `.roo/mcp.json` in your project (**Edit Project MCP**):
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+For the **hosted** server use `"type": "streamable-http"` (with a hyphen) plus a `url`.
+
+</details>
+
+<details>
+<summary><b>LM Studio</b></summary>
+
+In the app: **Program** tab → **Install → Edit mcp.json** (the file is `~/.lmstudio/mcp.json` on macOS/Linux, `%USERPROFILE%\.lmstudio\mcp.json` on Windows):
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+LM Studio follows Cursor's `mcp.json` notation. For the **hosted** server, use a `url` field.
+
+</details>
+
+<details>
+<summary><b>Zed</b></summary>
+
+Add to your Zed settings (in the app: **Settings → AI → MCP Servers → Add Server**, or `zed: open settings file`):
+
+```json
+{
+  "context_servers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+```
+
+For the **hosted** server, use `{ "url": "https://llmscribe.onrender.com/mcp" }` instead.
+
+</details>
+
+<details>
+<summary><b>Continue</b></summary>
+
+Add to `~/.continue/config.yaml` (or a standalone file under `.continue/mcpServers/`):
+
+```yaml
+name: LLMScribe
+version: 1.0.0
+schema: v1
+mcpServers:
+  - name: LLMScribe
+    command: llmscribe-mcp
+```
+
+Continue also picks up Cursor/Claude/Cline JSON configs dropped into `.continue/mcpServers/`.
+
+</details>
+
+<details>
+<summary><b>JetBrains IDEs (IntelliJ, WebStorm, …)</b></summary>
+
+**Settings → Tools → AI Assistant → Model Context Protocol (MCP) → Add → As JSON**:
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+You can also click **Import from Claude** to reuse an existing Claude Desktop configuration.
+
+</details>
+
+<details>
+<summary><b>Goose</b></summary>
+
+Add an extension to `~/.config/goose/config.yaml`:
+
+```yaml
+extensions:
+  llmscribe:
+    name: llmscribe
+    enabled: true
+    type: stdio
+    cmd: llmscribe-mcp
+    args: []
+    timeout: 300
+```
+
+For the **hosted** server, use `type: streamable_http` with a `uri` field.
+
+</details>
+
+<details>
+<summary><b>OpenAI Codex CLI</b></summary>
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.llmscribe]
+command = "llmscribe-mcp"
+```
+
+For the **hosted** server, use `url = "https://llmscribe.onrender.com/mcp"` instead of `command`.
+
 </details>
 
 **Available tools**
