@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Github } from "lucide-react";
 import { CopyButton } from "@/components/site/copy-button";
 import { Wordmark } from "@/components/site/logo";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ export function FinalCta() {
           </Button>
           <Button variant="outline" asChild>
             <a href={SITE.github} target="_blank" rel="noreferrer">
+              <Github className="size-4" />
               GitHub
             </a>
           </Button>
@@ -91,6 +92,11 @@ export function Footer() {
                 </a>
               </li>
               <li>
+                <a className="hover:text-fg" href={SITE.registry} target="_blank" rel="noreferrer">
+                  MCP Registry
+                </a>
+              </li>
+              <li>
                 <a className="hover:text-fg" href={SITE.releases} target="_blank" rel="noreferrer">
                   Releases
                 </a>
@@ -124,7 +130,8 @@ export function Footer() {
       </div>
       <div className="border-t border-border">
         <p className="mx-auto max-w-6xl px-5 py-5 font-mono text-xs text-subtle sm:px-8">
-          © {new Date().getFullYear()} {SITE.author}. LLMScribe {SITE.version}.
+          © {new Date().getFullYear()} {SITE.author}. LLMScribe {SITE.version}. Listed in the
+          official MCP Registry as {SITE.registryName}.
         </p>
       </div>
     </footer>

@@ -1,4 +1,4 @@
-import { ArrowDown, Github, Bot, Monitor, Download } from "lucide-react";
+import { ArrowDown, Github, Bot, Monitor, Download, ShieldCheck } from "lucide-react";
 import { CopyButton } from "@/components/site/copy-button";
 import { GuiMock } from "@/components/site/gui-mock";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,9 @@ export function Hero() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge>v{SITE.version} on PyPI</Badge>
             <Badge variant="outline" className="gap-1">
+              <ShieldCheck className="size-3" /> Official MCP Registry
+            </Badge>
+            <Badge variant="outline" className="gap-1">
               <Bot className="size-3" /> MCP Server Built-in
             </Badge>
             <Badge variant="outline" className="gap-1">
@@ -22,12 +25,14 @@ export function Hero() {
           </div>
 
           <h1 className="display mt-6 max-w-xl text-4xl text-fg sm:text-5xl lg:text-6xl">
-            Give any project to an AI in seconds.
+            Your agent keeps guessing which files matter.
           </h1>
 
           <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-            {SITE.tagline} Zero configuration. Built for AI agents, terminal power users, and
-            non-technical desktop users.
+            LLMScribe hands it the answer instead: a deterministic directory map, search that
+            reports what it found, a dependency graph and a safe file reader — over MCP, the CLI,
+            the GUI and Python. No embeddings. No semantic ranking. No re-reading the same file
+            four times.
           </p>
 
           <div className="mt-8 flex max-w-md items-center gap-2 rounded-lg border border-border bg-surface p-1.5 pl-4">

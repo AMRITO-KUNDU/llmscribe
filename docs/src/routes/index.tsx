@@ -9,6 +9,7 @@ import { HowItWorks } from "@/components/site/how-it-works";
 import { Install } from "@/components/site/install";
 import { Interfaces } from "@/components/site/interfaces";
 import { Output } from "@/components/site/output";
+import { Problems } from "@/components/site/problems";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -24,6 +25,7 @@ function Home() {
       <Header />
       <main id="main">
         <Hero />
+        <Problems />
         <HowItWorks />
         <Interfaces />
         <Output />

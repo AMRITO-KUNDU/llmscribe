@@ -24,6 +24,9 @@
   <a href="https://llmscribe.vercel.app">
     <img src="https://img.shields.io/badge/Visit-llmscribe.vercel.app-orange" alt="Visit llmscribe.vercel.app">
   </a>
+  <a href="https://registry.modelcontextprotocol.io/?q=llmscribe">
+    <img src="https://img.shields.io/badge/Official%20MCP%20Registry-active-blue" alt="Official MCP Registry">
+  </a>
 </div>
 
 <div>
@@ -43,7 +46,6 @@
 
 **Turn any code repository into clean, structured, deterministic data.** No AI. No embeddings. No hidden ranking. Open source and available as a [free hosted MCP](#mcp).
 
-_Pst. Hey, you, join our stargazers :)_
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe">
   <img src="https://img.shields.io/github/stars/AMRITO-KUNDU/llmscribe.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
@@ -51,19 +53,36 @@ _Pst. Hey, you, join our stargazers :)_
 
 ---
 
-## Why LLMScribe?
+## The problem
 
-- **Deterministic**: Same input, predictable output. No LLM, embeddings, or AI ranking
-- **Repository-first**: Works with local projects and public GitHub repositories, no cloning required
-- **Structured output**: Machine-readable JSON for every operation
-- **Fast discovery**: Map a project, search it, then retrieve exactly what you need
-- **Dependency-aware**: Understand local, external, and unresolved dependencies
-- **Git-aware**: Inspect status and unified diffs
-- **Agent ready**: Connect LLMScribe to any AI agent or MCP client with a single config block
-- **Multiple interfaces**: CLI, MCP, GUI, and a programmatic core, all sharing the same engine
-- **Open source**: Apache-2.0, self-hostable, and free forever
+Your agent does not have an intelligence problem. It has a **retrieval** problem.
 
-> **LLMScribe doesn't try to be the intelligence. It provides the data that intelligence needs.**
+On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output, zero score. The same model, given structured code search instead of free-form file reading, finished the same task in **89 seconds** and scored 0.90. Across another benchmark, Codex CLI completed its entire turn sequence without ever reaching the file that would have solved the task in **27–29% of runs**. Handed the right context up front, its score nearly doubled.
+
+The bottleneck is not the model. It is what goes into the context window.
+
+What users keep reporting:
+
+- The agent explores 200 files to change one line, and admits it is "looking at unnecessary files"
+- Nine searches and fourteen files to find one constant, because the search itself is not ranked
+- The same files re-read in a loop, with no reasoning between the reads
+- Stale fixtures, mock data and outdated comments read as current truth
+- Search reporting "no matches found" when a plain `grep` finds the text immediately
+- Truncation that hides itself, and build output filling the window with noise
+
+## What LLMScribe does about it
+
+| The failure | What LLMScribe does |
+| --- | --- |
+| Reads 200 files to change one line | `project_map` returns the whole tree with contents excluded, before a single file is read |
+| Re-reads the same files in a loop | Output is deterministic — same input, same bytes, every run |
+| Misses the file that actually mattered | `project_dependencies` resolves local, stdlib, external and unresolved imports, plus reverse dependencies |
+| Search returns nothing when the text exists | `search` returns path, line, matched text and match type, or a stable error code — never a silent empty |
+| Stale fixtures read as current truth | Nothing is inferred, embedded or ranked; you get the files as they are, plus a Git diff |
+| Build output and binaries fill the context | Real `.gitignore` semantics; binaries and oversized files are skipped |
+| Context silently truncated | Every cut is reported: `truncated`, `truncation_note`, `omitted_files` |
+
+> The file an agent needs next is usually the one *structurally* related to the file it is already looking at — a dependent, a sibling module, a test fixture. That is a graph question, not a similarity question, which is why LLMScribe ships dependency analysis and a real tree instead of embeddings.
 
 ---
 
@@ -550,6 +569,7 @@ The hosted MCP endpoint provides a convenient zero-install option for trying it 
 - **Website:** https://llmscribe.vercel.app
 - **GitHub:** https://github.com/AMRITO-KUNDU/llmscribe
 - **PyPI:** https://pypi.org/project/llmscribe/
+- **Official MCP Registry:** https://registry.modelcontextprotocol.io/?q=llmscribe (`io.github.AMRITO-KUNDU/llmscribe`)
 - **Public MCP:** https://llmscribe.onrender.com/mcp
 - **Issues:** https://github.com/AMRITO-KUNDU/llmscribe/issues
 - **Contributing:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md

@@ -9,6 +9,8 @@ export const SITE = {
   pypi: "https://pypi.org/project/llmscribe/",
   releases: "https://github.com/AMRITO-KUNDU/LLMScribe/releases/latest",
   issues: "https://github.com/AMRITO-KUNDU/LLMScribe/issues",
+  registry: "https://registry.modelcontextprotocol.io/?q=llmscribe",
+  registryName: "io.github.AMRITO-KUNDU/llmscribe",
   licenseUrl: "https://github.com/AMRITO-KUNDU/LLMScribe/blob/main/LICENSE",
   license: "Apache License 2.0",
   python: "3.10+",
@@ -135,4 +137,4 @@ json_overview = project_overview(path="/path/to/project", format="json")
 json_search = search(query="auth", path="/path/to/project", format="json")
 json_read = read(file_path="src/main.py", path="/path/to/project", format="json")
 json_deps = project_dependencies(file_path="src/main.py", path="/path/to/project", format="json")
-diff_markdown = project_diff(path="/path/to/project", staged=False)`;
+diff_markdown = project_diff(path="/path/to/project", staded=False)`;
