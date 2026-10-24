@@ -61,6 +61,8 @@ def _build_server() -> Any:
     """Create the MCP server; the SDK's own host check is off because ``http.SecurityMiddleware`` enforces it."""
     kwargs: dict[str, Any] = {}
     accepted = _parameters(_ServerClass.__init__)
+    if "version" in accepted:
+        kwargs["version"] = __version__
     if "streamable_http_path" in accepted:
         kwargs["streamable_http_path"] = "/"
     if "transport_security" in accepted:
