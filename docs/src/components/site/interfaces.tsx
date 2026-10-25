@@ -26,9 +26,7 @@ llmscribe map --json`;
 
 const EXE_BUILD = `# Build standalone LLMScribe-GUI.exe from source using PyInstaller:
 pip install pyinstaller
-python build_exe.py
-
-# Output binary placed at dist/LLMScribe-GUI.exe`;
+python build_exe.py`;
 
 export function Interfaces() {
   return (
