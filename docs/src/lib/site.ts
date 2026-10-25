@@ -20,7 +20,7 @@ export const SITE = {
 export const NAV = [
   { href: "#mcp", label: "For AI Agents" },
   { href: "#connect", label: "Connect" },
-  { href: "#interfaces", label: "3 Interfaces" },
+  { href: "#interfaces", label: "4 Interfaces" },
   { href: "#tools", label: "MCP Tools" },
   { href: "#output", label: "Output & JSON" },
   { href: "#install", label: "Install" },

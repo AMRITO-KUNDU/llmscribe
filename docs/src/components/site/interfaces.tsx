@@ -46,10 +46,16 @@ export function Interfaces() {
         <Tabs defaultValue="mcp" className="mt-10">
           <TabsList className="h-auto w-full max-w-2xl justify-start overflow-x-auto sm:w-auto sm:justify-center">
             <TabsTrigger value="mcp" className="px-3 sm:px-4">
-              MCP Server
+              <span className="sm:hidden">MCP</span>
+              <span className="hidden sm:inline">MCP Server</span>
             </TabsTrigger>
             <TabsTrigger value="exe" className="px-3 sm:px-4">
-              Standalone EXE
+              <span className="sm:hidden">EXE</span>
+              <span className="hidden sm:inline">Standalone EXE</span>
+            </TabsTrigger>
+            <TabsTrigger value="gui" className="px-3 sm:px-4">
+              <span className="sm:hidden">GUI</span>
+              <span className="hidden sm:inline">Desktop GUI</span>
             </TabsTrigger>
             <TabsTrigger value="cli" className="px-3 sm:px-4">
               CLI

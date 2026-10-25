@@ -44,7 +44,11 @@
 
 # **LLMScribe**
 
-**Turn any code repository into clean, structured, deterministic data.** No AI. No embeddings. No hidden ranking. Apache-2.0, and it runs entirely on your machine — no network, no account.
+**Turn any code repository into clean, structured, deterministic data.**
+
+No AI. No embeddings. No hidden ranking.
+
+Apache-2.0, and it runs entirely on your machine — no network, no account.
 
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe">
@@ -57,7 +61,13 @@
 
 Your agent does not have an intelligence problem. It has a **retrieval** problem.
 
-On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output, zero score. The same model, given structured code search instead of free-form file reading, finished the same task in **89 seconds** and scored 0.90. Across another benchmark, Codex CLI completed its entire turn sequence without ever reaching the file that would have solved the task in **27–29% of runs**. Handed the right context up front, its score nearly doubled.
+On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output, zero score.
+
+The same model, given structured code search instead of free-form file reading, finished the same task in **89 seconds** and scored 0.90.
+
+Across another benchmark, Codex CLI completed its entire turn sequence without ever reaching the file that would have solved the task in **27–29% of runs**.
+
+Handed the right context up front, its score nearly doubled.
 
 The bottleneck is not the model. It is what goes into the context window.
 
@@ -155,7 +165,9 @@ src/
 
 ### Search
 
-Search across file paths, file names, file contents, and individual lines. Search is intentionally deterministic: LLMScribe does not try to guess what you meant.
+Search across file paths, file names, file contents, and individual lines.
+
+Search is intentionally deterministic: LLMScribe does not try to guess what you meant.
 
 ```python
 search(query="authentication")
@@ -176,7 +188,9 @@ search
 ```
 </details>
 
-Each match includes the file path, line number, the matching line, the matched text and the match type (`filename` or `content`). Results are ordered by path then line and limited to 1,000 matches; binary and oversized files are skipped.
+Each match includes the file path, line number, the matching line, the matched text and the match type (`filename` or `content`).
+
+Results are ordered by path then line, and limited to 1,000 matches. Binary and oversized files are skipped.
 
 Output (`--json`, `data.matches`):
 ```json
@@ -233,7 +247,9 @@ Instead of throwing an entire repository into a context window, an agent can pro
 
 ### MCP
 
-LLMScribe is a standard Model Context Protocol server that runs locally over stdio, so any MCP-compatible client can use it against a project directory on your machine.
+LLMScribe is a standard Model Context Protocol server that runs locally over stdio.
+
+Any MCP-compatible client can use it against a project directory on your machine.
 
 **Config** — put this in your client (see the per-app setup below):
 
@@ -297,7 +313,9 @@ Fully quit and reopen Claude Desktop after saving.
 claude mcp add llmscribe -- llmscribe-mcp
 ```
 
-Confirm with `claude mcp list`. Add `--scope user` to make it available in every project, or `--scope project` to share it with your team via `.mcp.json`.
+Confirm with `claude mcp list`.
+
+Add `--scope user` to make it available in every project, or `--scope project` to share it with your team via `.mcp.json`.
 
 </details>
 
@@ -398,7 +416,9 @@ Edit the global `mcp_settings.json` (**Edit Global MCP**), or create `.roo/mcp.j
 <details>
 <summary><b>LM Studio</b></summary>
 
-In the app: **Program** tab → **Install → Edit mcp.json** (the file is `~/.lmstudio/mcp.json` on macOS/Linux, `%USERPROFILE%\.lmstudio\mcp.json` on Windows):
+In the app: **Program** tab → **Install → Edit mcp.json**.
+
+The file is `~/.lmstudio/mcp.json` on macOS/Linux, `%USERPROFILE%\.lmstudio\mcp.json` on Windows:
 
 ```json
 {
@@ -537,7 +557,9 @@ llmscribe read-many src/auth/service.py src/api/login.py
 
 ### Dependencies
 
-Inspect the dependency relationships around a file. LLMScribe identifies local dependencies, external dependencies, unresolved dependencies, and the files that depend on this file.
+Inspect the dependency relationships around a file.
+
+LLMScribe identifies local dependencies, external dependencies, unresolved dependencies, and the files that depend on this file.
 
 ```python
 project_dependencies("src/auth/service.py")
@@ -612,7 +634,9 @@ llmscribe dependencies src/auth/service.py --json
 
 ## Configuration
 
-LLMScribe runs entirely on your machine and needs no configuration. Two optional environment variables restrict which directories the MCP server may read:
+LLMScribe runs entirely on your machine and needs no configuration.
+
+Two optional environment variables restrict which directories the MCP server may read:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
@@ -639,17 +663,62 @@ except LLMScribeError as err:      # err.code is a stable machine-readable code
 
 ## Behavior reference
 
-**Ignore rules.** Defaults (`.git`, `node_modules`, `venv`, `dist`, `build`, `.env`, `*.log`, …), the root `.gitignore` and nested `.gitignore` files are applied with real Git semantics (wildcards, directories, `!` negation, root-anchored patterns). Hidden files are included unless ignored; symlinks are never followed or listed.
+### Ignore rules
 
-**Supported text files.** Known source/config/doc extensions plus names such as `Dockerfile`, `Makefile`, `LICENSE`, `.gitignore`. Other files appear in the tree but cannot be read or searched.
+Defaults (`.git`, `node_modules`, `venv`, `dist`, `build`, `.env`, `*.log`, …), the root `.gitignore` and nested `.gitignore` files are applied with real Git semantics: wildcards, directories, `!` negation, and root-anchored patterns.
 
-**Limits** (single source: `llmscribe.core.limits`): 400,000 content characters per overview/read_many, 50 files per `read_many`, 1,000 search matches, 20,000 map entries, 2 MiB per file, 200,000 diff characters, 100,000 scanned entries. Anything cut is reported (`truncated`, `truncation_note`, `omitted_files`).
+Hidden files are included unless ignored.
 
-**Errors.** Every failure has a stable code: `invalid_argument`, `invalid_path`, `file_not_found`, `unsupported_file_type`, `binary_file`, `file_too_large`, `read_error`, `not_a_repository`, `git_unavailable`, `unsupported_operation`, `internal_error`. JSON: `{"ok": false, "tool": "...", "error": {"code": "...", "message": "..."}}`.
+Symlinks are never followed or listed.
 
-**Dependencies.** Python, JavaScript/TypeScript, Java, Go, Rust, C/C++. Each reference is `local`, `stdlib`, `external` (not in the repository, assumed third-party) or `unresolved` (relative/local reference that matches nothing); `used_by` lists reverse dependencies.
+### Supported text files
 
-**Git diff (local).** Runs `git` with an argument list, a 30 s timeout, a minimal environment, and without external diff/textconv drivers.
+Known source, config and doc extensions, plus names such as `Dockerfile`, `Makefile`, `LICENSE` and `.gitignore`.
+
+Other files appear in the tree, but cannot be read or searched.
+
+### Limits
+
+One source of truth: `llmscribe.core.limits`.
+
+- 400,000 content characters per `project_overview` / `read_many`
+- 50 files per `read_many`
+- 1,000 search matches
+- 20,000 map entries
+- 2 MiB per file
+- 200,000 diff characters
+- 100,000 scanned entries
+
+Anything cut is reported: `truncated`, `truncation_note`, `omitted_files`.
+
+### Errors
+
+Every failure has a stable, machine-readable code:
+
+`invalid_argument` · `invalid_path` · `file_not_found` · `unsupported_file_type` · `binary_file` · `file_too_large` · `read_error` · `not_a_repository` · `git_unavailable` · `unsupported_operation` · `internal_error`
+
+JSON errors look like this:
+
+```json
+{"ok": false, "tool": "...", "error": {"code": "...", "message": "..."}}
+```
+
+### Dependencies
+
+Supported languages: Python, JavaScript/TypeScript, Java, Go, Rust, and C/C++.
+
+Each reference is classified as one of:
+
+- `local` — resolved to a file or directory inside the project
+- `stdlib` — part of the language's standard library
+- `external` — not in the project, assumed third-party
+- `unresolved` — a relative or local-looking reference that matches nothing
+
+`used_by` lists the reverse dependencies.
+
+### Git diff
+
+Runs `git` with an argument list, a 30 s timeout, a minimal environment, and without external diff/textconv drivers.
 
 ### Migration notes
 
@@ -729,7 +798,9 @@ LLMScribe intentionally stays simple. The goal is not to make the repository "sm
 
 ## Open Source
 
-LLMScribe is open source under the **Apache License 2.0**. Inspect the source, modify it, and build your own integrations. There is no hosted service and no telemetry — it reads your files, and nothing leaves your machine.
+LLMScribe is open source under the **Apache License 2.0**. Inspect the source, modify it, and build your own integrations.
+
+There is no hosted service and no telemetry. It reads your files, and nothing leaves your machine.
 
 ---
 
@@ -746,7 +817,9 @@ LLMScribe is open source under the **Apache License 2.0**. Inspect the source, m
 
 ## Contributing
 
-Contributions are welcome. If you want to improve repository extraction, search, dependency analysis, interfaces, integrations, or documentation, check the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md) before opening a pull request.
+Contributions are welcome — whether that is repository extraction, search, dependency analysis, interfaces, integrations or documentation.
+
+Check the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md) before opening a pull request.
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
   <img alt="Contributors" src="https://contrib.rocks/image?repo=AMRITO-KUNDU/llmscribe"/>
@@ -756,7 +829,9 @@ Contributions are welcome. If you want to improve repository extraction, search,
 
 ## License
 
-LLMScribe is licensed under the **Apache License 2.0**. See the [LICENSE](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE) file for details.
+LLMScribe is licensed under the **Apache License 2.0**.
+
+See the [LICENSE](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE) file for details.
 
 <div align="center">
 
