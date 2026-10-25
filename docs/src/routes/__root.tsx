@@ -51,6 +51,7 @@ export const Route = createRootRoute({
       { property: "og:image", content: OG_IMAGE },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
+      { property: "og:image:type", content: "image/png" },
       {
         property: "og:image:alt",
         content: `${APP_NAME} — turn any repository into structured, LLM-ready context`,
@@ -59,6 +60,7 @@ export const Route = createRootRoute({
       { name: "twitter:title", content: TAGLINE },
       { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: OG_IMAGE },
+      { name: "twitter:image:alt", content: `${APP_NAME} — turn any repository into structured, LLM-ready context` },
     ],
     links: [
       { rel: "canonical", href: SITE_URL },
