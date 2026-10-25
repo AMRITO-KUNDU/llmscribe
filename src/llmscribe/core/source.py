@@ -1,9 +1,9 @@
-"""Repository sources: one interface over a local directory or an in-memory snapshot.
+"""Repository sources: one interface over a local project directory.
 
 Every deterministic operation (map, overview, search, read, dependencies) is
-written once against ``RepositorySource``. ``LocalRepository`` walks a directory;
-``MemoryRepository`` serves a pre-loaded file set (used for GitHub archives).
-A new provider only has to implement ``scan``, ``info`` and ``read_bytes``.
+written once against ``RepositorySource``. ``LocalRepository`` walks a
+directory on disk; a new provider only has to implement ``scan``, ``info`` and
+``read_bytes``.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import stat
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Mapping
+from typing import Iterable
 from urllib.parse import unquote
 
 from .errors import LLMScribeError
@@ -72,7 +72,7 @@ def normalize_rel_path(raw: str) -> str:
 class RepositorySource(ABC):
     """Read-only view of a repository."""
 
-    kind = "local"  # "local" or "github"
+    kind = "local"
     name: str
     logical_path: str  # identifies the repository in output envelopes
 
@@ -208,71 +208,4 @@ class LocalRepository(RepositorySource):
             raise LLMScribeError("read_error", f"Cannot read '{rel}': {exc.strerror or 'error'}.") from exc
         if len(data) > MAX_FILE_SIZE:
             raise LLMScribeError("file_too_large", f"File exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
-        return data
-
-
-class MemoryRepository(RepositorySource):
-    """A repository whose files are held in memory (e.g. a GitHub archive snapshot).
-
-    ``sizes`` lists every file; ``contents`` holds only the files that may be
-    read (text-like and within ``MAX_FILE_SIZE``).
-    """
-
-    def __init__(
-        self,
-        name: str,
-        logical_path: str,
-        sizes: Mapping[str, int],
-        contents: Mapping[str, bytes],
-        kind: str = "github",
-    ) -> None:
-        self.name = name
-        self.logical_path = logical_path
-        self.kind = kind
-        self.sizes = dict(sizes)
-        self.contents = dict(contents)
-        self._dirs = {p.rpartition("/")[0] for p in self.sizes if "/" in p}
-        for directory in list(self._dirs):
-            while "/" in directory:
-                directory = directory.rpartition("/")[0]
-                self._dirs.add(directory)
-        self._scan: Scan | None = None
-
-    @property
-    def retained_bytes(self) -> int:
-        return sum(len(v) for v in self.contents.values())
-
-    def _read_gitignore(self, directory: str) -> str | None:
-        data = self.contents.get(f"{directory}/.gitignore" if directory else ".gitignore")
-        if data is None or len(data) > MAX_GITIGNORE_SIZE:
-            return None
-        return data.decode("utf-8", errors="replace")
-
-    def scan(self) -> Scan:
-        if self._scan is not None:
-            return self._scan
-        rules = IgnoreRules(self._read_gitignore)
-        scan = Scan()
-        for directory in sorted(self._dirs):
-            if not rules.is_ignored(directory, True):
-                scan.entries.append(Entry(directory, 0, True))
-        for path in sorted(self.sizes):
-            if not rules.is_ignored(path, False):
-                scan.entries.append(Entry(path, self.sizes[path], False))
-        scan.entries.sort(key=lambda e: e.path)
-        self._scan = scan
-        return scan
-
-    def info(self, rel: str) -> Entry:
-        if rel in self.sizes:
-            return Entry(rel, self.sizes[rel], False)
-        if rel in self._dirs:
-            raise LLMScribeError("invalid_path", f"Path is a directory, not a file: '{rel}'.")
-        raise LLMScribeError("file_not_found", f"File does not exist: '{rel}'.")
-
-    def read_bytes(self, rel: str) -> bytes:
-        self.info(rel)
-        data = self.contents.get(rel)
-        if data is None:
-            raise LLMScribeError("file_too_large", f"File is not available (too large or not text): '{rel}'.")
         return data

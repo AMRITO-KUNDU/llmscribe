@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmscribe"
 dynamic = ["version"]
-description = "Deterministic repository extractor and structured code-access tool for local projects and public GitHub repositories."
+description = "Deterministic project extractor and structured code-access tool for local projects."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
@@ -30,7 +30,6 @@ dependencies = [
     "mcp>=1.9,<3",       # MCP server (llmscribe.mcp)
     "pydantic>=2.0",     # tool parameter schemas (llmscribe.mcp.tools)
     "pathspec>=0.11",    # gitignore semantics (llmscribe.core.tree_builder)
-    "uvicorn>=0.23",     # hosted HTTP transport (llmscribe.mcp.server)
 ]
 
 [project.optional-dependencies]

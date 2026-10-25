@@ -1,9 +1,9 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "1.2.2",
+  version: "1.3.0",
   tagline: "Deterministic repository extraction and structured code context for developers.",
   description:
-    "LLMScribe provides a lightweight Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn local projects or public GitHub repositories into clean, deterministic, structured context.",
+    "LLMScribe provides a lightweight, local-only Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn a local project into clean, deterministic, structured context.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/llmscribe",
   pypi: "https://pypi.org/project/llmscribe/",
@@ -138,12 +138,10 @@ json_overview = project_overview(path="/path/to/project", format="json")
 json_search = search(query="auth", path="/path/to/project", format="json")
 json_read = read(file_path="src/main.py", path="/path/to/project", format="json")
 json_deps = project_dependencies(file_path="src/main.py", path="/path/to/project", format="json")
-diff_markdown = project_diff(path="/path/to/project", staded=False)`;
+diff_markdown = project_diff(path="/path/to/project", staged=False)`;
 
 // Connection instructions for popular MCP clients. Each entry was verified against
-// the client's official documentation. `local` is the stdio config; the section also
-// shows the hosted remote endpoint (https://llmscribe.onrender.com/mcp).
-export const HOSTED_URL = "https://llmscribe.onrender.com/mcp";
+// the client's official documentation. Every client connects over stdio.
 
 export type ConnectApp = {
   app: string;
@@ -169,10 +167,7 @@ export const CONNECT: ConnectApp[] = [
     app: "Claude Code",
     where: "terminal",
     lang: "bash",
-    config: `claude mcp add llmscribe -- llmscribe-mcp
-# hosted:
-claude mcp add --transport http llmscribe \\
-  https://llmscribe.onrender.com/mcp`,
+    config: `claude mcp add llmscribe -- llmscribe-mcp`,
     note: "Verify with `claude mcp list`.",
   },
   {
@@ -184,7 +179,7 @@ claude mcp add --transport http llmscribe \\
     "llmscribe": { "command": "llmscribe-mcp" }
   }
 }`,
-    note: "Restart Cursor, then Customize → MCPs. Hosted: swap command for \"url\".",
+    note: "Restart Cursor, then Customize → MCPs.",
   },
   {
     app: "VS Code (Copilot)",
@@ -198,7 +193,7 @@ claude mcp add --transport http llmscribe \\
     }
   }
 }`,
-    note: "Uses `servers`, not `mcpServers`. Hosted: { \"type\": \"http\", \"url\": … }.",
+    note: "Uses `servers`, not `mcpServers`.",
   },
   {
     app: "Windsurf (Cascade)",
@@ -209,7 +204,7 @@ claude mcp add --transport http llmscribe \\
     "llmscribe": { "command": "llmscribe-mcp" }
   }
 }`,
-    note: "Windsurf Settings → Cascade → MCP → View Raw Config. Hosted uses `serverUrl`.",
+    note: "Windsurf Settings → Cascade → MCP → View Raw Config.",
   },
   {
     app: "Cline",
@@ -220,7 +215,6 @@ claude mcp add --transport http llmscribe \\
     "llmscribe": { "command": "llmscribe-mcp" }
   }
 }`,
-    note: "Hosted: use the Remote Servers tab, or type `streamableHttp`.",
   },
   {
     app: "Roo Code",
@@ -231,7 +225,6 @@ claude mcp add --transport http llmscribe \\
     "llmscribe": { "command": "llmscribe-mcp" }
   }
 }`,
-    note: "Hosted: type must be `streamable-http` (with a hyphen).",
   },
   {
     app: "LM Studio",
@@ -294,7 +287,6 @@ mcpServers:
     cmd: llmscribe-mcp
     args: []
     timeout: 300`,
-    note: "Hosted: type `streamable_http` with a `uri`.",
   },
   {
     app: "OpenAI Codex CLI",
@@ -302,6 +294,5 @@ mcpServers:
     lang: "toml",
     config: `[mcp_servers.llmscribe]
 command = "llmscribe-mcp"`,
-    note: "Hosted: use `url = \"https://llmscribe.onrender.com/mcp\"`.",
   },
 ];

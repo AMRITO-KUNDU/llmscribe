@@ -13,9 +13,8 @@ const ITEMS = [
       <>
         Run the server locally with <code>llmscribe-mcp</code> and add it to your client's config —
         for example <code>mcpServers</code> in Cursor or Claude Desktop, <code>servers</code> in VS
-        Code, or <code>context_servers</code> in Zed. Or point any remote-capable client at the
-        hosted endpoint <code>https://llmscribe.onrender.com/mcp</code>. Step-by-step setup for 13
-        popular clients is in the{" "}
+        Code, or <code>context_servers</code> in Zed. It runs locally over stdio — nothing is
+        uploaded. Step-by-step setup for 13 popular clients is in the{" "}
         <a
           className="text-primary underline underline-offset-4 hover:no-underline"
           href="#connect"

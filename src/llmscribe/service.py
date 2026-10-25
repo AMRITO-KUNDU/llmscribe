@@ -1,9 +1,9 @@
 """One implementation of every LLMScribe tool, shared by the MCP server and the CLI.
 
-``execute`` resolves a source (local directory or GitHub repository), runs the
-operation and returns a ``ToolResponse``. ``render_json`` / ``render_markdown`` /
-``render_error`` produce the public output, so local and GitHub results always
-have the same schema and the same error contract.
+``execute`` resolves a local project, runs the operation and returns a
+``ToolResponse``. ``render_json`` / ``render_markdown`` / ``render_error``
+produce the public output, so every surface has the same schema and the same
+error contract.
 """
 
 from __future__ import annotations
@@ -26,10 +26,8 @@ from llmscribe.core import (
     read_many_from_source,
     search_source,
 )
-from llmscribe.core.diff import DiffResult, GitStatusEntry
-from llmscribe.core.errors import redact
-from llmscribe.core.limits import MAX_DIFF_CHARS, MAX_SEARCH_RESULTS
-from llmscribe.github.client import fetch_github_diff, fetch_github_snapshot, parse_github_repo, validate_github_ref
+from llmscribe.core.diff import DiffResult
+from llmscribe.core.limits import MAX_SEARCH_RESULTS
 
 logger = logging.getLogger("llmscribe")
 
@@ -44,17 +42,15 @@ TOOLS = (
 )
 
 _SEARCH_LINES_PER_FILE = 10
-_GITHUB_COMPARE_FILE_LIMIT = 300
-_GITHUB_STATUS = {"added": "A", "removed": "D", "modified": "M", "renamed": "R", "copied": "C", "changed": "M"}
 
 
 @dataclass
 class ToolResponse:
-    """A successful tool result in source-independent form."""
+    """A successful tool result."""
 
     tool: str
     path: str
-    source: str  # "local" or "github"
+    source: str  # always "local"
     data: dict[str, Any]
     metadata: dict[str, Any] = field(default_factory=dict)
     text: str = ""  # markdown body
@@ -64,91 +60,26 @@ class ToolResponse:
 
 def open_source(
     path: str | None = None,
-    repo: str | None = None,
-    ref: str | None = None,
     allowed_roots: Sequence[Path] | None = None,
 ) -> RepositorySource:
-    """Resolve ``path`` (local) or ``repo`` (GitHub) to a ``RepositorySource``.
+    """Resolve ``path`` to a local ``RepositorySource``.
 
     ``allowed_roots`` restricts local access (``None`` = unrestricted, empty =
-    local access disabled), which hosted deployments use to avoid exposing the server's disk.
+    local access disabled), which deployments use to limit which directories the
+    server may read.
     """
-    has_path = bool(path and path.strip())
-    has_repo = bool(repo and repo.strip())
-    if has_path and has_repo:
-        raise LLMScribeError("invalid_argument", "Cannot specify both 'path' and 'repo'.")
-    if ref and ref.strip() and not has_repo:
-        raise LLMScribeError("invalid_argument", "'ref' can only be used together with 'repo'.")
-    if has_repo:
-        owner, name = parse_github_repo(repo or "")
-        return fetch_github_snapshot(owner, name, ref)
-    return _open_local(path if has_path else None, allowed_roots)
+    return _open_local(path if path and path.strip() else None, allowed_roots)
 
 
 def _open_local(path: str | None, allowed_roots: Sequence[Path] | None) -> LocalRepository:
     if allowed_roots is not None:
         if not allowed_roots:
-            raise LLMScribeError(
-                "unsupported_operation",
-                "Local paths are disabled on this server. Use the 'repo' argument for GitHub repositories.",
-            )
+            raise LLMScribeError("unsupported_operation", "Local paths are disabled on this server.")
         source = LocalRepository(path)
         if not any(source.root == r or r in source.root.parents for r in allowed_roots):
             raise LLMScribeError("invalid_path", "That path is outside the directories this server may read.")
         return source
     return LocalRepository(path)
-
-
-# --------------------------------------------------------------------------- diff
-
-def _github_diff(repo: str, ref: str | None, staged: bool, commit: str | None, max_chars: int) -> tuple[DiffResult, str]:
-    owner, name = parse_github_repo(repo)
-    if staged:
-        raise LLMScribeError("unsupported_operation", "'staged' is not available for GitHub repositories.")
-    if not commit or not commit.strip():
-        raise LLMScribeError("invalid_argument", "GitHub diffs need 'commit' (the base branch, tag or SHA).")
-    base = validate_github_ref(commit)
-    head = validate_github_ref(ref) if ref and ref.strip() else "HEAD"
-    payload = fetch_github_diff(owner, name, base, head)
-
-    files = [f for f in payload.get("files", []) if isinstance(f, dict) and f.get("filename")]
-    changes: list[GitStatusEntry] = []
-    patches: list[str] = []
-    without_patch = 0
-    for item in files:
-        filename = str(item["filename"])
-        status = _GITHUB_STATUS.get(str(item.get("status", "")), "M")
-        previous = item.get("previous_filename")
-        changes.append(GitStatusEntry(status, filename, str(previous) if previous else None))
-        patch = item.get("patch")
-        if patch:
-            patches.append(f"--- a/{previous or filename}\n+++ b/{filename}\n{patch}")
-        else:
-            without_patch += 1
-    text = "\n\n".join(patches)
-    truncated = len(text) > max_chars
-    if truncated:
-        text = text[:max_chars] + f"\n\n[Diff truncated after {max_chars:,} characters]"
-    notes = []
-    if without_patch:
-        notes.append(f"{without_patch} file(s) have no textual patch (binary or too large).")
-    if len(files) >= _GITHUB_COMPARE_FILE_LIMIT:
-        notes.append(f"GitHub lists at most {_GITHUB_COMPARE_FILE_LIMIT} changed files; the list may be incomplete.")
-    logical = f"github.com/{owner}/{name}" + (f"@{ref.strip()}" if ref and ref.strip() else "")
-    result = DiffResult(
-        root_path=logical,
-        staged=False,
-        commit=base,
-        changed_files=[c.file_path for c in changes],
-        status_lines=[f"{c.status} {c.original_path + ' -> ' if c.original_path else ''}{c.file_path}" for c in changes],
-        changes=changes,
-        diff=text,
-        truncated=truncated,
-        truncation_limit=max_chars,
-        character_count=len(text),
-        note=" ".join(notes),
-    )
-    return result, logical
 
 
 # --------------------------------------------------------------------------- execute
@@ -157,8 +88,6 @@ def execute(
     tool: str,
     *,
     path: str | None = None,
-    repo: str | None = None,
-    ref: str | None = None,
     allowed_roots: Sequence[Path] | None = None,
     query: str | None = None,
     file_path: str | None = None,
@@ -171,17 +100,10 @@ def execute(
         raise LLMScribeError("invalid_argument", f"Unknown tool: '{tool}'.")
 
     if tool == "project_diff":
-        if repo and repo.strip():
-            if path and path.strip():
-                raise LLMScribeError("invalid_argument", "Cannot specify both 'path' and 'repo'.")
-            result, logical = _github_diff(repo, ref, staged, commit, MAX_DIFF_CHARS)
-            return _diff_response(result, logical, "github")
-        if ref and ref.strip():
-            raise LLMScribeError("invalid_argument", "'ref' can only be used together with 'repo'.")
         source = _open_local(path if path and path.strip() else None, allowed_roots)
-        return _diff_response(get_git_diff(source.root, staged=staged, commit=commit), source.logical_path, "local")
+        return _diff_response(get_git_diff(source.root, staged=staged, commit=commit), source.logical_path)
 
-    source = open_source(path, repo, ref, allowed_roots)
+    source = open_source(path, allowed_roots)
     kind = source.kind
     logical = source.logical_path
 
@@ -244,7 +166,7 @@ def execute(
     return ToolResponse(tool, logical, kind, dr.to_dict(), meta, _md_dependencies(dr))
 
 
-def _diff_response(result: DiffResult, logical: str, kind: str) -> ToolResponse:
+def _diff_response(result: DiffResult, logical: str) -> ToolResponse:
     meta = {
         "changed_file_count": len(result.changed_files),
         "character_count": result.character_count,
@@ -252,7 +174,7 @@ def _diff_response(result: DiffResult, logical: str, kind: str) -> ToolResponse:
     }
     if result.note:
         meta["note"] = result.note
-    return ToolResponse("project_diff", logical, kind, result.to_dict(), meta, _md_diff(result))
+    return ToolResponse("project_diff", logical, "local", result.to_dict(), meta, _md_diff(result))
 
 
 # --------------------------------------------------------------------------- markdown bodies
@@ -343,11 +265,11 @@ def _md_diff(result: DiffResult) -> str:
 # --------------------------------------------------------------------------- rendering
 
 def _dumps(payload: dict[str, Any]) -> str:
-    return redact(json.dumps(payload, indent=2, ensure_ascii=False))
+    return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
 def envelope(response: ToolResponse) -> dict[str, Any]:
-    """The JSON success envelope (identical shape for every tool and source)."""
+    """The JSON success envelope (identical shape for every tool)."""
     return {
         "ok": True,
         "tool": response.tool,
@@ -368,18 +290,13 @@ def render_json(response: ToolResponse) -> str:
 
 
 def render_markdown(response: ToolResponse) -> str:
-    return redact(f"### llmscribe: {response.tool}\nPath: {response.path}\n\n{response.text}")
+    return f"### llmscribe: {response.tool}\nPath: {response.path}\n\n{response.text}"
 
 
 def render_error(tool: str, error: LLMScribeError, as_json: bool) -> str:
     if as_json:
         return _dumps(error_envelope(tool, error))
-    return redact(f"### llmscribe: {tool}\nError [{error.code}]: {error.message}")
-
-
-def redact_text(text: str) -> str:
-    """Strip any GitHub token from ``text`` before it is printed."""
-    return redact(text)
+    return f"### llmscribe: {tool}\nError [{error.code}]: {error.message}"
 
 
 def to_error(exc: Exception) -> LLMScribeError:

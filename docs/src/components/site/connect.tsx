@@ -1,18 +1,10 @@
 import { CopyButton } from "@/components/site/copy-button";
-import { CONNECT, HOSTED_URL } from "@/lib/site";
+import { CONNECT } from "@/lib/site";
 
 const LOCAL = `{
   "mcpServers": {
     "llmscribe": {
       "command": "llmscribe-mcp"
-    }
-  }
-}`;
-
-const HOSTED = `{
-  "mcpServers": {
-    "llmscribe": {
-      "url": "${HOSTED_URL}"
     }
   }
 }`;
@@ -26,34 +18,35 @@ export function Connect() {
           Add LLMScribe to the app you already use.
         </h2>
         <p className="mt-4 max-w-2xl text-muted">
-          LLMScribe is a standard MCP server, so every MCP-compatible client can use it. Connect
-          over <span className="text-fg">stdio</span> to run it locally on your machine, or point a
-          client at the <span className="text-fg">hosted</span> endpoint for zero-install access.
+          LLMScribe is a standard MCP server that runs locally over{" "}
+          <span className="text-fg">stdio</span> — no cloud, no network. Install it once with pip,
+          then point your client at the command below.
         </p>
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          <ModeCard
-            label="Hosted"
-            title="Remote HTTP — no install"
-            blurb="Point any client that supports a remote URL at the hosted endpoint. Best for trying it out."
-            command={HOSTED}
-            footer={HOSTED_URL}
-          />
-          <ModeCard
-            label="Local"
-            title="stdio — runs on your machine"
-            blurb="Install once with pip and run the server locally. Best for private code and production."
-            command={LOCAL}
-            footer="pip install llmscribe"
-          />
+        <div className="mt-10 max-w-2xl overflow-hidden rounded-xl border border-border bg-surface">
+          <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+            <div>
+              <p className="font-mono text-xs tracking-widest text-primary uppercase">Local</p>
+              <p className="mt-1 text-sm text-fg">stdio — runs on your machine</p>
+              <p className="mt-2 max-w-md text-sm text-muted">
+                Everything stays local. Your code is never uploaded and no network access is used.
+              </p>
+            </div>
+            <CopyButton text={LOCAL} />
+          </div>
+          <pre className="overflow-x-auto px-5 py-4 font-mono text-sm leading-relaxed text-fg/90">
+            {LOCAL}
+          </pre>
+          <p className="border-t border-border px-5 py-3 font-mono text-xs text-subtle">
+            pip install llmscribe
+          </p>
         </div>
 
         <div className="mt-16">
           <h3 className="text-lg font-medium">Per-app setup</h3>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Each client reads a different configuration file. Copy the block for your tool — swap in
-            the hosted form above if you prefer the remote endpoint. Verified against each tool's
-            official documentation.
+            Each client reads a different configuration file. Copy the block for your tool. Verified
+            against each tool's official documentation.
           </p>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -83,36 +76,5 @@ export function Connect() {
         </div>
       </div>
     </section>
-  );
-}
-
-function ModeCard({
-  label,
-  title,
-  blurb,
-  command,
-  footer,
-}: {
-  label: string;
-  title: string;
-  blurb: string;
-  command: string;
-  footer: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface">
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-        <div>
-          <p className="font-mono text-xs tracking-widest text-primary uppercase">{label}</p>
-          <p className="mt-1 text-sm text-fg">{title}</p>
-          <p className="mt-2 max-w-md text-sm text-muted">{blurb}</p>
-        </div>
-        <CopyButton text={command} />
-      </div>
-      <pre className="overflow-x-auto px-5 py-4 font-mono text-sm leading-relaxed text-fg/90">
-        {command}
-      </pre>
-      <p className="border-t border-border px-5 py-3 font-mono text-xs text-subtle">{footer}</p>
-    </div>
   );
 }

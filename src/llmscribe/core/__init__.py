@@ -33,7 +33,7 @@ from .project import (
     project_overview,
 )
 from .search import SearchMatch, SearchResult, search_project, search_project_simple, search_source
-from .source import Entry, LocalRepository, MemoryRepository, RepositorySource, Scan, normalize_rel_path
+from .source import Entry, LocalRepository, RepositorySource, Scan, normalize_rel_path
 from .tree_builder import DEFAULT_IGNORE, IgnoreMatcher, IgnoreRules, generate_tree, load_gitignore, should_ignore
 
 __all__ = [
@@ -51,7 +51,6 @@ __all__ = [
     "IgnoreRules",
     "LLMScribeError",
     "LocalRepository",
-    "MemoryRepository",
     "ProjectMapResult",
     "ProjectOverviewResult",
     "ReadManyResult",

@@ -1,24 +1,23 @@
 # LLMScribe
 
-> LLMScribe turns a local project or a public GitHub repository into clean, deterministic, structured context: a directory tree plus full file contents, plus search, dependency analysis and Git diffs. No AI, no embeddings, no hidden ranking. Apache-2.0, self-hostable, free forever.
+> LLMScribe turns a local project into clean, deterministic, structured context: a directory tree plus full file contents, plus search, dependency analysis and Git diffs. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
 
 - Website: https://llmscribe.vercel.app
 - GitHub: https://github.com/AMRITO-KUNDU/llmscribe
 - PyPI: https://pypi.org/project/llmscribe/
-- Hosted MCP endpoint: https://llmscribe.onrender.com/mcp
 - Official MCP Registry name: io.github.AMRITO-KUNDU/llmscribe
 - License: Apache-2.0
-- Latest version: 1.2.2
-- Requires: Python 3.10+ (runtime dependencies: mcp, pydantic, pathspec, uvicorn; GUI extras: customtkinter, Pillow)
+- Latest version: 1.3.0
+- Requires: Python 3.10+ (runtime dependencies: mcp, pydantic, pathspec; GUI extras: customtkinter, Pillow)
 
 ## What it is
 
-A deterministic repository extractor and structured code-access tool. It reads a project directory or a public GitHub repository and produces machine-readable output for AI coding agents, code review, documentation and debugging. It deliberately does not generate answers, embeddings or semantic rankings — it provides the data that intelligence needs.
+A deterministic project extractor and structured code-access tool. It reads a local project directory and produces machine-readable output for AI coding agents, code review, documentation and debugging. It deliberately does not generate answers, embeddings or semantic rankings — it provides the data that intelligence needs. It is local-only: nothing is uploaded and no network access is used.
 
 ## Interfaces
 
 - `llmscribe` — scriptable CLI (all commands accept `--json`)
-- `llmscribe-mcp` — MCP server over stdio (or HTTP via `MCP_TRANSPORT=http`)
+- `llmscribe-mcp` — MCP server over stdio
 - `llmscribe-gui` — Tkinter desktop application
 - `llmscribe.core` — importable Python API
 
@@ -40,8 +39,6 @@ pip install llmscribe
 
 ## Use with an MCP client
 
-Local (stdio):
-
 ```json
 {
   "mcpServers": {
@@ -50,24 +47,14 @@ Local (stdio):
 }
 ```
 
-Remote (no install):
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": { "url": "https://llmscribe.onrender.com/mcp" }
-  }
-}
-```
-
 ## Key facts for comparison
 
 - Deterministic: identical input produces identical output
-- Works on local projects and public GitHub repositories without cloning
+- Works on any local project directory; no cloning, no network
 - Respects `.gitignore`; skips build output, dependency directories and binaries
 - Reports truncation explicitly rather than silently cutting content
 - Stable, machine-readable error codes for every failure
 
 ## Not included
 
-No AI-generated answers, no embedding-based search, no semantic ranking, no autonomous coding, no generic Git client.
+No AI-generated answers, no embedding-based search, no semantic ranking, no autonomous coding, no generic Git client, no hosted service.

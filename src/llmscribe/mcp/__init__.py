@@ -1,7 +1,6 @@
-"""MCP server for LLMScribe (seven deterministic repository tools)."""
+"""MCP server for LLMScribe (seven deterministic project tools)."""
 
 from .server import (
-    create_app,
     main,
     mcp,
     project_dependencies,
@@ -14,7 +13,6 @@ from .server import (
 )
 
 __all__ = [
-    "create_app",
     "main",
     "mcp",
     "project_dependencies",

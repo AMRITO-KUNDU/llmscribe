@@ -5,7 +5,7 @@ import appCss from "../styles.css?url";
 
 const APP_NAME = "LLMScribe";
 const DESCRIPTION =
-  "Turn local projects and public GitHub repositories into clean, deterministic, structured context. Open-source Python CLI, MCP server, and GUI — published on PyPI.";
+  "Turn a local project into clean, deterministic, structured context. Open-source Python CLI, MCP server, and GUI — published on PyPI. Runs entirely on your machine.";
 const SITE_URL = "https://llmscribe.vercel.app";
 const OG_IMAGE = `${SITE_URL}/og.png`;
 const TAGLINE = `${APP_NAME} — one file, the whole project`;
@@ -18,7 +18,7 @@ const structuredData = {
   url: SITE_URL,
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Windows, macOS, Linux",
-  softwareVersion: "1.2.2",
+  softwareVersion: "1.3.0",
   license: "https://www.apache.org/licenses/LICENSE-2.0",
   downloadUrl: "https://pypi.org/project/llmscribe/",
   author: {

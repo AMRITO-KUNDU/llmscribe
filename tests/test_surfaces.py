@@ -8,7 +8,7 @@ import pytest
 
 import llmscribe
 from llmscribe import service
-from llmscribe.mcp import asgi, tools
+from llmscribe.mcp import tools
 
 EXPECTED = ["project_dependencies", "project_diff", "project_map", "project_overview", "read", "read_many", "search"]
 
@@ -56,11 +56,17 @@ def test_tools_execute_and_errors(repo):
     assert "Needle" in tools.read("README.md", path=str(repo))
     payload = json.loads(tools.read_many([], path=str(repo), format="json"))
     assert payload["error"]["code"] == "invalid_argument"
-    assert "Error [invalid_argument]" in tools.search("x", path=str(repo), repo="o/r")
-    assert "Error [invalid_argument]" in tools.project_map(format="yaml")
+    assert "Error [invalid_argument]" in tools.search("x", format="yaml")
     assert "legacy" not in tools.project_map(path=str(repo))
     for legacy in ("project_get_file", "project_search", "project_list_files", "project_get_files"):
         assert legacy not in tools.project_map(path=str(repo), format="json")
+
+
+def test_tools_reject_cloud_arguments(repo):
+    # GitHub support was removed: the tools no longer accept repo/ref.
+    for kwargs in ({"repo": "o/r"}, {"ref": "main"}):
+        with pytest.raises(TypeError):
+            tools.project_map(path=str(repo), **kwargs)
 
 
 def test_internal_errors_have_no_traceback(repo, monkeypatch):
@@ -82,12 +88,12 @@ def test_local_path_policy(repo, tmp_path):
 def test_local_roots_env(monkeypatch, tmp_path):
     monkeypatch.delenv("MCP_ALLOW_LOCAL_PATHS", raising=False)
     monkeypatch.delenv("MCP_ALLOWED_ROOTS", raising=False)
-    assert tools.local_roots_from_env(False) is None
-    assert tools.local_roots_from_env(True) == []
+    assert tools.local_roots_from_env() is None  # default: unrestricted
     monkeypatch.setenv("MCP_ALLOWED_ROOTS", str(tmp_path))
-    assert tools.local_roots_from_env(True) == [tmp_path.resolve()]
-    monkeypatch.setenv("MCP_ALLOW_LOCAL_PATHS", "1")
-    assert tools.local_roots_from_env(True) is None
+    assert tools.local_roots_from_env() == [tmp_path.resolve()]
+    monkeypatch.delenv("MCP_ALLOWED_ROOTS", raising=False)
+    monkeypatch.setenv("MCP_ALLOW_LOCAL_PATHS", "0")
+    assert tools.local_roots_from_env() == []  # explicitly disabled
 
 
 def test_mcp_registration_via_public_api():
@@ -106,107 +112,12 @@ def test_mcp_registration_via_public_api():
         return tool.input_schema if hasattr(tool, "input_schema") else tool.inputSchema
 
     assert "query" in schema(by_name["search"])["required"]
-    assert set(schema(by_name["project_diff"])["properties"]) >= {"path", "repo", "ref", "staged", "commit", "format"}
+    assert set(schema(by_name["project_diff"])["properties"]) >= {"path", "staged", "commit", "format"}
     assert schema(by_name["read_many"])["properties"]["file_paths"]["type"] == "array"
-
-
-# ---------------------------------------------------------------- HTTP layer
-async def _call(app, method, path, headers=None, body=b""):
-    sent = []
-
-    async def receive():
-        return {"type": "http.request", "body": body, "more_body": False}
-
-    async def send(message):
-        sent.append(message)
-
-    raw = [(k.encode(), v.encode()) for k, v in (headers or {}).items()]
-    await app({"type": "http", "method": method, "path": path, "headers": raw}, receive, send)
-    return sent[0]["status"], sent[1]["body"], dict(sent[0]["headers"])
-
-
-def _app(**kw):
-    seen = {}
-
-    async def inner(scope, receive, send):
-        seen["path"] = scope["path"]
-        await receive()
-        await send({"type": "http.response.start", "status": 200, "headers": []})
-        await send({"type": "http.response.body", "body": b"mcp"})
-
-    app = asgi.HttpApp(
-        inner, version="9.9.9", backend="test", tools=EXPECTED,
-        allowed_hosts=kw.get("hosts", ["localhost", "localhost:*", "mcp.example.com"]),
-        allowed_origins=kw.get("origins", ["http://localhost:*", "https://claude.ai"]),
-        max_body_bytes=kw.get("max", 100),
-    )
-    return app, seen
-
-
-def run(coro):
-    return asyncio.run(coro)
-
-
-def test_health_info_and_routes():
-    app, _ = _app()
-    status, body, _ = run(_call(app, "GET", "/health"))
-    assert status == 200 and json.loads(body)["tools"] == EXPECTED
-    assert run(_call(app, "HEAD", "/health"))[1] == b""
-    info = json.loads(run(_call(app, "GET", "/info"))[1])
-    assert info["version"] == "9.9.9" and info["tools"] == 7 and info["mcp_endpoint"] == "/mcp"
-    assert run(_call(app, "POST", "/health"))[0] == 405
-    assert run(_call(app, "GET", "/old-endpoint"))[0] == 404
-
-
-def test_mcp_security():
-    app, seen = _app()
-    ok = {"host": "localhost:8000"}
-    assert run(_call(app, "POST", "/mcp", ok))[0] == 200 and seen["path"] == "/"
-    run(_call(app, "POST", "/mcp/x", ok))
-    assert seen["path"] == "/x"
-    assert run(_call(app, "POST", "/mcp", {"host": "evil.com"}))[0] == 421
-    assert run(_call(app, "POST", "/mcp", {"host": "mcp.example.com"}))[0] == 200
-    assert run(_call(app, "POST", "/mcp", {"host": "localhost", "origin": "http://evil.com"}))[0] == 403
-    assert run(_call(app, "POST", "/mcp", {"host": "localhost", "origin": "http://localhost:6274"}))[0] == 200
-    assert run(_call(app, "POST", "/mcp", {"host": "localhost", "origin": "https://claude.ai"}))[0] == 200
-    assert run(_call(app, "POST", "/mcp", {"host": "localhost", "content-length": "5000"}))[0] == 413
-    assert run(_call(app, "POST", "/mcp", {"host": "localhost"}, body=b"x" * 500))[0] == 413
-    assert run(_call(app, "GET", "/health", {"host": "anything.example"}))[0] == 200  # status routes unrestricted
-
-
-def test_wildcards_and_env_config():
-    app, _ = _app(hosts=["*"], origins=["*"])
-    assert run(_call(app, "POST", "/mcp", {"host": "any.host", "origin": "https://any.origin"}))[0] == 200
-    env = {"RENDER_EXTERNAL_HOSTNAME": "svc.onrender.com"}
-    assert asgi.host_allowed("svc.onrender.com", asgi.allowed_hosts_from_env(env))
-    assert asgi.origin_allowed("https://svc.onrender.com", asgi.allowed_origins_from_env(env))
-    assert not asgi.host_allowed("evil.com", asgi.allowed_hosts_from_env({}))
-    assert not asgi.origin_allowed("http://localhost.evil.com", asgi.allowed_origins_from_env({}))
-    assert asgi.allowed_hosts_from_env({"MCP_ALLOWED_HOSTS": "a.com, b.com"}) == ["a.com", "b.com"]
-
-
-def test_lifespan_runs_context():
-    events = []
-
-    class Ctx:
-        async def __aenter__(self):
-            events.append("start")
-
-        async def __aexit__(self, *a):
-            events.append("stop")
-
-    app = asgi.HttpApp(lambda *a: None, version="1", backend="t", tools=[], allowed_hosts=[], allowed_origins=[], lifespan=Ctx)
-    messages = iter([{"type": "lifespan.startup"}, {"type": "lifespan.shutdown"}])
-    sent = []
-
-    async def receive():
-        return next(messages)
-
-    async def send(m):
-        sent.append(m["type"])
-
-    run(app({"type": "lifespan"}, receive, send))
-    assert events == ["start", "stop"] and sent == ["lifespan.startup.complete", "lifespan.shutdown.complete"]
+    # No cloud arguments on any tool.
+    for name in EXPECTED:
+        assert "repo" not in schema(by_name[name])["properties"]
+        assert "ref" not in schema(by_name[name])["properties"]
 
 
 # ---------------------------------------------------------------- repository hygiene
@@ -220,11 +131,16 @@ def test_single_version_source():
     assert "version =" not in (ROOT / "pyproject.toml").read_text().split("[project]")[1].split("[project.optional")[0].replace("dynamic", "")
 
 
-def test_no_secrets_or_legacy_names_in_source():
-    banned = ["project_get_file", "project_search", "project_list_files", "ghp_", "github_pat_", "Authorization: Bearer "]
+def test_no_cloud_code_or_secrets_in_source():
+    banned = ["project_get_file", "project_search", "project_list_files", "ghp_", "github_pat_", "api.github", "zipball", "Authorization: Bearer "]
     for path in (ROOT / "src").rglob("*.py"):
-        if path.name == "errors.py":  # holds the token-redaction patterns
-            continue
         text = path.read_text()
         for word in banned:
-            assert word not in text.replace('"Authorization"', ""), (path, word)
+            assert word not in text, (path, word)
+
+
+def test_cloud_code_removed():
+    assert not (ROOT / "src" / "llmscribe" / "github").exists()
+    assert not (ROOT / "src" / "llmscribe" / "mcp" / "asgi.py").exists()
+    for name in ("Dockerfile", "Procfile", "railway.json", ".dockerignore"):
+        assert not (ROOT / name).exists(), name

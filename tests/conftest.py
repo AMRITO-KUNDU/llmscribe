@@ -1,6 +1,4 @@
-import io
 import subprocess
-import zipfile
 from pathlib import Path
 
 import pytest
@@ -24,33 +22,6 @@ def repo(tmp_path: Path) -> Path:
     (tmp_path / "build/out.py").write_text("ignored")
     (tmp_path / "blob.bin").write_bytes(b"\x00\x01\x02")
     return tmp_path
-
-
-def make_zip(files: dict, prefix: str = "own-repo-abc123/", extra=None) -> bytes:
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(prefix, "")
-        for name, content in files.items():
-            zf.writestr(prefix + name, content)
-        if extra:
-            extra(zf)
-    return buf.getvalue()
-
-
-GITHUB_FILES = {
-    "README.md": "# Demo\nNeedle here\n",
-    "Dockerfile": "FROM scratch\n",
-    ".gitignore": "*.cfg\n!keep.cfg\nbuild/\n/root.txt\n",
-    "src/pkg/__init__.py": "",
-    "src/pkg/a.py": "import os\nimport requests\nfrom . import b\nfrom .missing import z\n",
-    "src/pkg/b.py": "def f():\n    return 'needle'\n",
-    "src/root.txt": "nested file kept",
-    "root.txt": "root ignored",
-    "x.cfg": "ignored",
-    "keep.cfg": "kept",
-    "build/out.py": "ignored",
-    "blob.bin": b"\x00\x01\x02",
-}
 
 
 def git(cwd: Path, *args: str) -> str:

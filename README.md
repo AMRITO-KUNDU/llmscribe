@@ -44,7 +44,7 @@
 
 # **LLMScribe**
 
-**Turn any code repository into clean, structured, deterministic data.** No AI. No embeddings. No hidden ranking. Open source and available as a [free hosted MCP](#mcp).
+**Turn any code repository into clean, structured, deterministic data.** No AI. No embeddings. No hidden ranking. Apache-2.0, and it runs entirely on your machine — no network, no account.
 
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe">
@@ -115,7 +115,7 @@ Install LLMScribe from PyPI:
 pip install llmscribe
 ```
 
-Then point it at any project directory, or (through the MCP tools) at a public GitHub repo. No API key needed.
+Then point it at any project directory on your machine. No API key, no network access, no account.
 
 > The `project_map(...)`, `search(...)`, `read(...)` snippets below show **MCP tool calls**. The same operations are available from the CLI (local directories) and from Python through `llmscribe.core` (see [Python API](#python-api)).
 
@@ -125,9 +125,6 @@ Generate a clean directory tree without file contents. This is the best first st
 
 ```python
 project_map()
-
-# or a public GitHub repo, no clone needed
-project_map(repo="owner/repo")
 ```
 
 <details>
@@ -162,9 +159,6 @@ Search across file paths, file names, file contents, and individual lines. Searc
 
 ```python
 search(query="authentication")
-
-# or a public GitHub repo
-search(query="authentication", repo="owner/repo")
 ```
 
 <details>
@@ -203,9 +197,6 @@ Safely retrieve the contents of a specific file. LLMScribe validates paths and p
 
 ```python
 read(file_path="src/auth/service.py")
-
-# or a public GitHub repo
-read(file_path="src/main.py", repo="owner/repo")
 ```
 
 <details>
@@ -221,8 +212,6 @@ llmscribe read src/auth/service.py
 read
 ```
 </details>
-
-> `path` and `repo` are mutually exclusive. Use `path` for a local project and `repo` for a public GitHub repository.
 
 ---
 
@@ -244,28 +233,9 @@ Instead of throwing an entire repository into a context window, an agent can pro
 
 ### MCP
 
-LLMScribe is a standard Model Context Protocol server, so any MCP-compatible client can use it. There are two ways to connect:
+LLMScribe is a standard Model Context Protocol server that runs locally over stdio, so any MCP-compatible client can use it against a project directory on your machine.
 
-| Mode | Transport | Endpoint / command | Best for |
-| --- | --- | --- | --- |
-| **Hosted** | Streamable HTTP | `https://llmscribe.onrender.com/mcp` | Zero-install experimentation |
-| **Local** | stdio | `llmscribe-mcp` | Private code, production, offline |
-
-> The hosted endpoint is convenient for experimentation. For private code or production workloads, self-host LLMScribe (see [Self-Hosting](#self-hosting)) or run it locally over stdio.
-
-**Hosted (remote HTTP)** — no installation required:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "url": "https://llmscribe.onrender.com/mcp"
-    }
-  }
-}
-```
-
-**Local (stdio)** — runs on your machine:
+**Config** — put this in your client (see the per-app setup below):
 
 ```json
 {
@@ -278,7 +248,7 @@ LLMScribe is a standard Model Context Protocol server, so any MCP-compatible cli
 ```
 
 <details>
-<summary><b>Local: use the Python module instead of the command</b></summary>
+<summary><b>Use the Python module instead of the command</b></summary>
 
 If `llmscribe-mcp` is not on your `PATH`, point the client at the module:
 
@@ -296,7 +266,7 @@ If `llmscribe-mcp` is not on your `PATH`, point the client at the module:
 
 #### Per-app setup
 
-Each client reads a different configuration file. The blocks below were checked against each tool's official documentation. Substitute the hosted or local snippet from above where shown.
+Each client reads a different configuration file. The blocks below were checked against each tool's official documentation.
 
 <details>
 <summary><b>Claude Desktop</b></summary>
@@ -316,7 +286,7 @@ Edit `claude_desktop_config.json` (in the app: **Settings → Developer → Edit
 }
 ```
 
-Fully quit and reopen Claude Desktop after saving. For the **hosted** server, add it as a remote connector from **Settings → Connectors** instead.
+Fully quit and reopen Claude Desktop after saving.
 
 </details>
 
@@ -324,11 +294,7 @@ Fully quit and reopen Claude Desktop after saving. For the **hosted** server, ad
 <summary><b>Claude Code</b></summary>
 
 ```bash
-# Local (stdio)
 claude mcp add llmscribe -- llmscribe-mcp
-
-# Hosted (remote HTTP)
-claude mcp add --transport http llmscribe https://llmscribe.onrender.com/mcp
 ```
 
 Confirm with `claude mcp list`. Add `--scope user` to make it available in every project, or `--scope project` to share it with your team via `.mcp.json`.
@@ -350,7 +316,7 @@ Create `.cursor/mcp.json` in your project (or `~/.cursor/mcp.json` for all proje
 }
 ```
 
-For the **hosted** server, use `"url": "https://llmscribe.onrender.com/mcp"` instead of `command`. Restart Cursor, then check **Customize → MCPs**.
+Restart Cursor, then check **Customize → MCPs**.
 
 </details>
 
@@ -370,7 +336,7 @@ Create `.vscode/mcp.json` in your workspace. Note that VS Code uses `servers`, n
 }
 ```
 
-For the **hosted** server, replace the entry with `{ "type": "http", "url": "https://llmscribe.onrender.com/mcp" }`. Then open Copilot Chat in **Agent** mode and click the tools icon to start the server.
+Then open Copilot Chat in **Agent** mode and click the tools icon to start the server.
 
 </details>
 
@@ -389,7 +355,7 @@ Edit `~/.codeium/mcp_config.json` (in the app: **Windsurf Settings → Cascade �
 }
 ```
 
-For the **hosted** server, use the `serverUrl` field: `{ "serverUrl": "https://llmscribe.onrender.com/mcp" }`. Press the refresh button after saving.
+Press the refresh button after saving.
 
 </details>
 
@@ -408,7 +374,6 @@ Open the Cline panel → **MCP Servers** → **Configure** → **Configure MCP S
 }
 ```
 
-For the **hosted** server, use the **Remote Servers** tab, or `"type": "streamableHttp"` with a `url`.
 
 </details>
 
@@ -427,7 +392,6 @@ Edit the global `mcp_settings.json` (**Edit Global MCP**), or create `.roo/mcp.j
 }
 ```
 
-For the **hosted** server use `"type": "streamable-http"` (with a hyphen) plus a `url`.
 
 </details>
 
@@ -446,7 +410,7 @@ In the app: **Program** tab → **Install → Edit mcp.json** (the file is `~/.l
 }
 ```
 
-LM Studio follows Cursor's `mcp.json` notation. For the **hosted** server, use a `url` field.
+LM Studio follows Cursor's `mcp.json` notation.
 
 </details>
 
@@ -467,7 +431,6 @@ Add to your Zed settings (in the app: **Settings → AI → MCP Servers → Add 
 }
 ```
 
-For the **hosted** server, use `{ "url": "https://llmscribe.onrender.com/mcp" }` instead.
 
 </details>
 
@@ -524,7 +487,6 @@ extensions:
     timeout: 300
 ```
 
-For the **hosted** server, use `type: streamable_http` with a `uri` field.
 
 </details>
 
@@ -538,7 +500,6 @@ Add to `~/.codex/config.toml`:
 command = "llmscribe-mcp"
 ```
 
-For the **hosted** server, use `url = "https://llmscribe.onrender.com/mcp"` instead of `command`.
 
 </details>
 
@@ -649,54 +610,15 @@ llmscribe dependencies src/auth/service.py --json
 
 ---
 
-## Self-Hosting
+## Configuration
 
-Run your own HTTP MCP server for private repositories, teams, internal developer tools, and production applications.
-
-### Run locally
-
-```bash
-pip install llmscribe
-
-MCP_TRANSPORT=http MCP_ALLOW_LOCAL_PATHS=1 llmscribe-mcp
-```
-
-The server will be available at `http://localhost:8000/mcp`, with `GET /health` and `GET /info` for monitoring.
-
-> Over HTTP the `path` argument is **disabled by default** so a hosted server does not expose its own disk. Set `MCP_ALLOW_LOCAL_PATHS=1` to allow any local path (only on a machine you trust), or `MCP_ALLOWED_ROOTS=/srv/a:/srv/b` to allow specific directories. GitHub repositories (`repo=`) always work.
-
-### Docker
-
-```bash
-docker build -t llmscribe-mcp .
-
-docker run -p 8000:8000 -e MCP_ALLOWED_HOSTS="localhost,localhost:*,mcp.example.com" llmscribe-mcp
-```
-
-The image runs `python -m llmscribe.mcp` with `MCP_TRANSPORT=http`, as an unprivileged user, and has a `/health` with a `healthcheck`.
-
-### Railway
-
-```bash
-railway up
-```
-
-### Environment Variables
+LLMScribe runs entirely on your machine and needs no configuration. Two optional environment variables restrict which directories the MCP server may read:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MCP_TRANSPORT` | `stdio` or `http` | `stdio` |
-| `HOST` | HTTP bind address | `0.0.0.0` |
-| `PORT` | HTTP port | `8000` |
-| `MCP_ALLOWED_HOSTS` | Accepted `Host` values for `/mcp` (comma-separated, `host:*` for any port, `*` for any). Default: loopback plus `RENDER_EXTERNAL_HOSTNAME` / `RAILWAY_PUBLIC_DOMAIN` | loopback |
-| `MCP_ALLOWED_ORIGINS` | Accepted `Origin` values for `/mcp` (requests without an `Origin`, i.e. all non-browser clients, are always accepted). Default: loopback, `claude.ai`, the platform hostname; `*` allows any | see left |
-| `MCP_ALLOW_LOCAL_PATHS` | `1` allows any local `path` over HTTP | off |
-| `MCP_ALLOWED_ROOTS` | Directories (separated by `:` / `;`) allowed as `path` over HTTP | none |
-| `GITHUB_TOKEN` / `GH_TOKEN` | Token for private repositories and higher rate limits (sent only to `api.github.com`) | none |
-| `LLMSCRIBE_CACHE_MAX_ENTRIES` | GitHub snapshots kept in memory (`0` disables) | `8` |
-| `LLMSCRIBE_CACHE_TTL_SECONDS` | Snapshot lifetime | `300` |
+| `MCP_ALLOWED_ROOTS` | Directories (separated by `:` on POSIX, `;` on Windows) the tools may read | all paths |
+| `MCP_ALLOW_LOCAL_PATHS` | `0` disables local path access entirely | enabled |
 
-Run a single process (the cache and MCP sessions live in memory). `PORT` without `MCP_TRANSPORT` still selects HTTP for backward compatibility, but set `MCP_TRANSPORT=http` explicitly.
 ---
 
 ## Python API
@@ -721,13 +643,11 @@ except LLMScribeError as err:      # err.code is a stable machine-readable code
 
 **Supported text files.** Known source/config/doc extensions plus names such as `Dockerfile`, `Makefile`, `LICENSE`, `.gitignore`. Other files appear in the tree but cannot be read or searched.
 
-**Limits** (single source: `llmscribe.core.limits`): 400,000 content characters per overview/read_many, 50 files per `read_many`, 1,000 search matches, 20,000 map entries, 2 MiB per file, 200,000 diff characters, 100 MiB archive download, 250 MiB / 100,000 entries per archive. Anything cut is reported (`truncated`, `truncation_note`, `omitted_files`).
+**Limits** (single source: `llmscribe.core.limits`): 400,000 content characters per overview/read_many, 50 files per `read_many`, 1,000 search matches, 20,000 map entries, 2 MiB per file, 200,000 diff characters, 100,000 scanned entries. Anything cut is reported (`truncated`, `truncation_note`, `omitted_files`).
 
-**Errors.** Every failure has a stable code: `invalid_argument`, `invalid_path`, `file_not_found`, `unsupported_file_type`, `binary_file`, `file_too_large`, `read_error`, `repository_not_found`, `not_a_repository`, `repository_too_large`, `github_rate_limited`, `github_auth_required`, `github_unavailable`, `git_unavailable`, `unsupported_operation`, `internal_error`. JSON: `{"ok": false, "tool": "...", "error": {"code": "...", "message": "..."}}`.
+**Errors.** Every failure has a stable code: `invalid_argument`, `invalid_path`, `file_not_found`, `unsupported_file_type`, `binary_file`, `file_too_large`, `read_error`, `not_a_repository`, `git_unavailable`, `unsupported_operation`, `internal_error`. JSON: `{"ok": false, "tool": "...", "error": {"code": "...", "message": "..."}}`.
 
-**Dependencies.** Python, JavaScript/TypeScript, Java, Go, Rust, C/C++. Each reference is `local`, `stdlib`, `external` (not in the repository, assumed third-party) or `unresolved` (relative/local reference that matches nothing); `used_by` lists reverse dependencies. Works identically for local and GitHub sources.
-
-**GitHub.** Public repositories (and private ones with `GITHUB_TOKEN`) are fetched as one zip archive and cached in memory per owner/repo/ref/credential. Nothing is cloned or written to disk. `project_diff` on GitHub uses the compare API and requires `commit` (base) with optional `ref` (head); `staged` is local only.
+**Dependencies.** Python, JavaScript/TypeScript, Java, Go, Rust, C/C++. Each reference is `local`, `stdlib`, `external` (not in the repository, assumed third-party) or `unresolved` (relative/local reference that matches nothing); `used_by` lists reverse dependencies.
 
 **Git diff (local).** Runs `git` with an argument list, a 30 s timeout, a minimal environment, and without external diff/textconv drivers.
 
@@ -736,8 +656,8 @@ except LLMScribeError as err:      # err.code is a stable machine-readable code
 - Legacy tool names (`project_get_file`, `project_get_files`, `project_search`, `project_list_files`) are gone; use `read`, `read_many`, `search`.
 - Error code `path_traversal` is now `invalid_path`; `not_text_file` is `unsupported_file_type`.
 - `project_dependencies` results: `all_local_files`/`all_external_deps`/`all_unresolved` were replaced by `used_by` and per-category lists (`stdlib_dependencies` added).
-- `llmscribe.core` functions raise `LLMScribeError` (not `FileNotFoundError`) for a bad root; the dependency-provider classes and `llmscribe.github.provider` helpers were removed.
-- Over HTTP, local `path` access now requires `MCP_ALLOW_LOCAL_PATHS` or `MCP_ALLOWED_ROOTS`.
+- `llmscribe.core` functions raise `LLMScribeError` (not `FileNotFoundError`) for a bad root.
+- **1.3.0:** the online GitHub source was removed — LLMScribe is now local-only. The `repo` and `ref` arguments, the in-memory snapshot cache, the `llmscribe.github` package, and the hosted HTTP transport are gone. Point the tools at a local `path`.
 
 ---
 
@@ -748,11 +668,9 @@ All interfaces share one core engine, so behavior stays consistent everywhere.
 ```text
                          Repository
                              │
-               ┌─────────────┴─────────────┐
-               │                           │
-          Local Project               GitHub Repo
-               │                           │
-               └─────────────┬─────────────┘
+                             ▼
+                        Local Project
+                             │
                              ▼
                      LLMScribe Core
                              │
@@ -809,11 +727,9 @@ LLMScribe intentionally stays simple. The goal is not to make the repository "sm
 
 ---
 
-## Open Source vs Hosted
+## Open Source
 
-LLMScribe is open source under the **Apache License 2.0**. Run it locally, inspect the source, modify it, self-host it, and build your own integrations.
-
-The hosted MCP endpoint provides a convenient zero-install option for trying it out, while the open-source project gives you complete control.
+LLMScribe is open source under the **Apache License 2.0**. Inspect the source, modify it, and build your own integrations. There is no hosted service and no telemetry — it reads your files, and nothing leaves your machine.
 
 ---
 
@@ -823,7 +739,6 @@ The hosted MCP endpoint provides a convenient zero-install option for trying it 
 - **GitHub:** https://github.com/AMRITO-KUNDU/llmscribe
 - **PyPI:** https://pypi.org/project/llmscribe/
 - **Official MCP Registry:** https://registry.modelcontextprotocol.io/?q=llmscribe (`io.github.AMRITO-KUNDU/llmscribe`)
-- **Public MCP:** https://llmscribe.onrender.com/mcp
 - **Issues:** https://github.com/AMRITO-KUNDU/llmscribe/issues
 - **Contributing:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md
 

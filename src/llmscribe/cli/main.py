@@ -30,9 +30,9 @@ def _emit(tool: str, command: str, as_json: bool, **kwargs: Any) -> int:
     if as_json:
         payload = service.envelope(response)
         payload["command"] = command
-        print(service.redact_text(json.dumps(payload, indent=2, ensure_ascii=False)))
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
-        print(service.redact_text(response.text))
+        print(response.text)
     return 0
 
 
