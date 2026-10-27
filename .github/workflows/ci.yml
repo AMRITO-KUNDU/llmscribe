@@ -44,5 +44,5 @@ jobs:
           /tmp/smoke/bin/llmscribe version
           /tmp/smoke/bin/llmscribe --help
           /tmp/smoke/bin/python -m llmscribe version
-          /tmp/smoke/bin/python -c "import llmscribe.mcp as m, asyncio; names=sorted(t.name for t in asyncio.run(m.mcp.list_tools())); print(names); assert len(names)==8"
+          /tmp/smoke/bin/python -c "import llmscribe.mcp as m, asyncio; names=sorted(t.name for t in asyncio.run(m.mcp.list_tools())); print(names); assert len(names)==7"
           test -x /tmp/smoke/bin/llmscribe-mcp

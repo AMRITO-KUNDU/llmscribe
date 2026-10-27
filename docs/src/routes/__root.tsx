@@ -18,7 +18,7 @@ const structuredData = {
   url: SITE_URL,
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Windows, macOS, Linux",
-  softwareVersion: "1.4.0",
+  softwareVersion: "1.3.0",
   license: "https://www.apache.org/licenses/LICENSE-2.0",
   downloadUrl: "https://pypi.org/project/llmscribe/",
   author: {

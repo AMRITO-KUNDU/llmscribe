@@ -113,7 +113,6 @@ What users keep reporting:
 | [**Read Many**](#read-many) | Retrieve multiple files in a single operation |
 | [**Dependencies**](#dependencies) | See what a file depends on and what depends on it |
 | [**Diff**](#diff) | Inspect Git status and unified diffs |
-| [**Impact**](#impact) | See which files a change affects, through reverse dependencies |
 | [**Overview**](#overview) | Export the complete structure and supported file contents |
 
 ---
@@ -534,7 +533,6 @@ read
 read_many
 project_dependencies
 project_diff
-project_impact
 ```
 
 ---
@@ -597,33 +595,6 @@ llmscribe diff
 
 This lets applications and agents understand not only the current repository, but also **what changed**.
 
-### Impact
-
-Find every file a change actually touches — including files whose text never changed.
-
-```bash
-llmscribe impact
-llmscribe impact src/auth/service.py
-llmscribe impact --staged
-```
-
-Give it the changed files, or omit them to use the current Git diff.
-
-It walks the **reverse** dependency graph, transitively: a change to a shared utility puts its callers in scope, and their callers after that. Each result carries the chain that links it back, so an agent can see *why* a file is in scope.
-
-```text
-### Changed
-- src/utils/format.py
-
-### Affected
-- src/api/render.py (depth 1)
-  src/utils/format.py -> src/api/render.py
-- src/app/routes.py (depth 2)
-  src/utils/format.py -> src/api/render.py -> src/app/routes.py
-```
-
-Files outside the import graph — config, docs, data — are listed separately rather than silently dropped, because the import graph cannot see them.
-
 ### Overview
 
 Generate a complete project snapshot containing the directory structure, supported text file contents, and structured project information.
@@ -652,8 +623,6 @@ llmscribe read src/auth/service.py
 llmscribe read-many src/auth/service.py src/api/login.py
 llmscribe dependencies src/auth/service.py
 llmscribe diff
-llmscribe impact
-llmscribe impact --staged
 
 # machine-readable output
 llmscribe map --json

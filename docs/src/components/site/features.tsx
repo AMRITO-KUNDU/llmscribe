@@ -1,21 +1,16 @@
-import { AppWindow, FileCode2, FolderX, Bot, GitBranch, ShieldCheck, Network } from "lucide-react";
+import { AppWindow, FileCode2, FolderX, Bot, GitBranch, ShieldCheck } from "lucide-react";
 import { EXTENSIONS, IGNORED } from "@/lib/site";
 
 const FEATURES = [
   {
     icon: Bot,
     title: "MCP Server for AI Agents",
-    body: "Built-in Model Context Protocol server featuring 8 composable tools (overview, map, search, batch read, dependencies, diff and impact) with structured JSON envelopes.",
+    body: "Built-in Model Context Protocol server featuring 7 composable tools (overview, map, search, batch file read, and git diff) with structured JSON envelopes.",
   },
   {
     icon: GitBranch,
     title: "Git Status & Diff",
     body: "Inspect modified files and unified diffs directly via project_diff tool, supporting staged, unstaged, and specific commit comparisons.",
-  },
-  {
-    icon: Network,
-    title: "Change Impact Analysis",
-    body: "project_impact walks reverse dependencies transitively: change a shared utility and its callers — and their callers — come into scope, each with the chain that links it back.",
   },
   {
     icon: AppWindow,

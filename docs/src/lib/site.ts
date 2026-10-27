@@ -1,6 +1,6 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "1.4.0",
+  version: "1.3.0",
   tagline: "Deterministic repository extraction and structured code context for developers.",
   description:
     "LLMScribe provides a lightweight, local-only Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn a local project into clean, deterministic, structured context.",
@@ -128,7 +128,7 @@ export const SAMPLE_JSON = `{
 
 export const PYTHON_API = `from pathlib import Path
 from llmscribe.core import project_map, project_overview, search, read_file, read_files, analyze_dependencies, get_git_diff
-from llmscribe.mcp.server import project_map, project_overview, search, read, read_many, project_dependencies, project_diff, project_impact
+from llmscribe.mcp.server import project_map, project_overview, search, read, read_many, project_dependencies, project_diff
 
 # 1. Direct Python Core Usage
 text = project_overview(Path("/path/to/project"))
@@ -138,8 +138,7 @@ json_overview = project_overview(path="/path/to/project", format="json")
 json_search = search(query="auth", path="/path/to/project", format="json")
 json_read = read(file_path="src/main.py", path="/path/to/project", format="json")
 json_deps = project_dependencies(file_path="src/main.py", path="/path/to/project", format="json")
-diff_markdown = project_diff(path="/path/to/project", staged=False)
-impact = project_impact(path="/path/to/project", format="json")`;
+diff_markdown = project_diff(path="/path/to/project", staged=False)`;
 
 // Connection instructions for popular MCP clients. Each entry was verified against
 // the client's official documentation. Every client connects over stdio.

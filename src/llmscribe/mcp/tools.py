@@ -132,25 +132,6 @@ def project_diff(
     return _run("project_diff", format, path=path, staged=staged, commit=commit)
 
 
-def project_impact(
-    file_paths: Annotated[
-        Optional[list[str]],
-        Field(description="Files to treat as changed. Omit to use the current Git diff."),
-    ] = None,
-    path: PathArg = None,
-    staged: Annotated[bool, Field(description="Seed from staged changes (only when file_paths is omitted).")] = False,
-    commit: Annotated[Optional[str], Field(description="Seed from changes against this revision.")] = None,
-    format: FormatArg = "markdown",
-) -> str:
-    """Files affected by a change, found through reverse dependencies, transitively.
-
-    Give it the changed files, or omit them to use the current Git diff. Returns every
-    file that imports a changed file, directly or through a chain, with the path that
-    links it back. Config, docs and data files are reported as outside the import graph.
-    """
-    return _run("project_impact", format, path=path, file_paths=file_paths, staged=staged, commit=commit)
-
-
 TOOL_FUNCTIONS = {
     "project_map": project_map,
     "project_overview": project_overview,
@@ -159,5 +140,4 @@ TOOL_FUNCTIONS = {
     "read_many": read_many,
     "project_dependencies": project_dependencies,
     "project_diff": project_diff,
-    "project_impact": project_impact,
 }
