@@ -7,7 +7,7 @@
 - PyPI: https://pypi.org/project/llmscribe/
 - Official MCP Registry name: io.github.AMRITO-KUNDU/llmscribe
 - License: Apache-2.0
-- Latest version: 1.3.0
+- Latest version: 1.4.0
 - Requires: Python 3.10+ (runtime dependencies: mcp, pydantic, pathspec; GUI extras: customtkinter, Pillow)
 
 ## What it is
@@ -36,6 +36,7 @@ pip install llmscribe
 - `read_many` — retrieve multiple files in one call, with per-file errors
 - `project_dependencies` — local, stdlib, external and unresolved dependencies, plus reverse dependencies
 - `project_diff` — Git status and unified diffs
+- `project_impact` — files affected by a change, via transitive reverse dependencies
 
 ## Use with an MCP client
 

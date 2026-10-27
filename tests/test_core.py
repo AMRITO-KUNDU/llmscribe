@@ -7,6 +7,7 @@ from llmscribe.core import (
     LLMScribeError,
     LocalRepository,
     analyze_dependencies,
+    analyze_impact,
     decode_text,
     get_git_diff,
     normalize_rel_path,
@@ -273,3 +274,56 @@ def test_diff_truncation_and_weird_branch(tmp_path):
 def test_local_repository_isolated_scan_cached(repo):
     source = LocalRepository(repo)
     assert source.scan() is source.scan()
+
+
+# ---------------------------------------------------------------- impact
+
+def _chain(root):
+    (root / "pkg").mkdir()
+    (root / "pkg/__init__.py").write_text("")
+    (root / "pkg/c.py").write_text("VALUE = 1\n")             # shared utility
+    (root / "pkg/b.py").write_text("from .c import VALUE\n")   # direct caller
+    (root / "pkg/a.py").write_text("from .b import VALUE\n")   # caller of the caller
+
+
+def test_impact_is_transitive(tmp_path):
+    _chain(tmp_path)
+    result = analyze_impact(["pkg/c.py"], tmp_path)
+    by_path = {entry.file_path: entry for entry in result.affected}
+    assert by_path["pkg/b.py"].depth == 1
+    # the whole point: a file that never mentions c.py is still in scope
+    assert by_path["pkg/a.py"].depth == 2
+    assert by_path["pkg/a.py"].via == ["pkg/c.py", "pkg/b.py", "pkg/a.py"]
+    assert result.not_in_graph == [] and not result.truncated
+
+
+def test_impact_batches_seeds(tmp_path):
+    _chain(tmp_path)
+    (tmp_path / "pkg/other.py").write_text("")
+    result = analyze_impact(["pkg/c.py", "pkg/other.py"], tmp_path)
+    paths = [entry.file_path for entry in result.affected]
+    assert paths.count("pkg/b.py") == 1          # no duplicate entries
+    assert "pkg/other.py" not in paths           # a seed is not its own dependent
+
+
+def test_impact_reports_non_code_seeds_instead_of_raising(tmp_path):
+    _chain(tmp_path)
+    (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n")
+    result = analyze_impact(["pkg/c.py", "pyproject.toml"], tmp_path)
+    assert result.not_in_graph == ["pyproject.toml"]
+    assert "outside the import graph" in result.note
+    assert [entry.file_path for entry in result.affected] == ["pkg/b.py", "pkg/a.py"]
+
+
+def test_impact_depth_limit_truncates(tmp_path):
+    _chain(tmp_path)
+    result = analyze_impact(["pkg/c.py"], tmp_path, max_depth=1)
+    assert [entry.file_path for entry in result.affected] == ["pkg/b.py"]
+    assert result.truncated and "stopped at depth" in result.note
+
+
+def test_impact_without_seeds(tmp_path):
+    _chain(tmp_path)
+    result = analyze_impact([], tmp_path)
+    assert result.changed == [] and result.affected == []
+    assert "No changed files" in result.note

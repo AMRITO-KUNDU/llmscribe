@@ -21,6 +21,7 @@ from typing import Any, Callable
 
 from .errors import LLMScribeError
 from .file_ops import load_text
+from .limits import MAX_IMPACT_DEPTH, MAX_IMPACT_FILES
 from .source import LocalRepository, RepositorySource, normalize_rel_path
 
 PY_EXT = {".py"}
@@ -586,3 +587,139 @@ def analyze_source_dependencies(source: RepositorySource, file_path: str) -> Dep
 def analyze_dependencies(file_path: str, root: Path | None = None) -> DependencyResult:
     """Analyze a file of a local project. See ``analyze_source_dependencies``."""
     return analyze_source_dependencies(LocalRepository(root), file_path)
+
+
+# --------------------------------------------------------------------------- impact
+
+@dataclass
+class ImpactEntry:
+    """One file pulled into scope by a change, plus the chain that links it back."""
+
+    file_path: str
+    depth: int  # 1 = imports a changed file directly
+    via: list[str] = field(default_factory=list)  # [changed_file, ..., file_path]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"file_path": self.file_path, "depth": self.depth, "via": self.via}
+
+
+@dataclass
+class ImpactResult:
+    """Files affected by a change, found through reverse dependencies (transitively)."""
+
+    root_path: str
+    changed: list[str] = field(default_factory=list)
+    affected: list[ImpactEntry] = field(default_factory=list)
+    not_in_graph: list[str] = field(default_factory=list)
+    max_depth: int = MAX_IMPACT_DEPTH
+    truncated: bool = False
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "root_path": self.root_path,
+            "changed": self.changed,
+            "affected": [entry.to_dict() for entry in self.affected],
+            "not_in_graph": self.not_in_graph,
+            "max_depth": self.max_depth,
+            "truncated": self.truncated,
+            "note": self.note,
+        }
+
+
+def _reverse_graph(source: RepositorySource) -> tuple[dict[str, set[str]], set[str]]:
+    """Map each local file to the files that import it (direct edges only).
+
+    Built in one pass: every supported file is parsed once, so a closure over many
+    seeds costs the same as a single forward analysis.
+    """
+    ctx = _Context(source)
+    reverse: dict[str, set[str]] = {}
+    analysable: set[str] = set()
+    for candidate in ctx.files:
+        if PurePosixPath(candidate).suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        analysable.add(candidate)
+        for dep in _analyze_file(ctx, candidate).dependencies:
+            if not dep.is_local or not dep.resolved_path:
+                continue
+            path = dep.resolved_path
+            if path.endswith("/"):
+                # directory-level import (Go package, Java wildcard, namespace): its direct children
+                for member in ctx.files:
+                    if member.startswith(path) and "/" not in member[len(path):]:
+                        reverse.setdefault(member, set()).add(candidate)
+            else:
+                reverse.setdefault(path, set()).add(candidate)
+    return reverse, analysable
+
+
+def analyze_source_impact(
+    source: RepositorySource,
+    changed_paths: list[str],
+    max_depth: int = MAX_IMPACT_DEPTH,
+    max_files: int = MAX_IMPACT_FILES,
+) -> ImpactResult:
+    """Return every file that (transitively) imports one of ``changed_paths``.
+
+    This is the reverse-dependency closure: a change to a shared utility pulls in
+    callers whose text never changed. Files outside the import graph (config, docs,
+    data) are reported in ``not_in_graph`` rather than raising.
+    """
+    result = ImpactResult(root_path=source.logical_path, max_depth=max_depth)
+    seeds: list[str] = []
+    for raw in changed_paths or []:
+        rel = normalize_rel_path(raw)
+        if rel not in seeds:
+            seeds.append(rel)
+    result.changed = seeds
+    if not seeds:
+        result.note = "No changed files were supplied."
+        return result
+
+    reverse, analysable = _reverse_graph(source)
+    result.not_in_graph = sorted(seed for seed in seeds if seed not in analysable)
+
+    seen: set[str] = set(seeds)
+    queue: list[tuple[str, int, list[str]]] = [(seed, 0, [seed]) for seed in seeds if seed in analysable]
+    head = 0
+    while head < len(queue):
+        path, depth, via = queue[head]
+        head += 1
+        if depth >= max_depth:
+            if reverse.get(path):
+                result.truncated = True
+            continue
+        for caller in sorted(reverse.get(path, ())):
+            if caller in seen:
+                continue
+            if len(result.affected) >= max_files:
+                result.truncated = True
+                queue = queue[:head]
+                break
+            seen.add(caller)
+            chain = [*via, caller]
+            result.affected.append(ImpactEntry(caller, depth + 1, chain))
+            queue.append((caller, depth + 1, chain))
+
+    result.affected.sort(key=lambda entry: (entry.depth, entry.file_path))
+    notes: list[str] = []
+    if result.truncated:
+        notes.append(f"Impact search stopped at depth {max_depth} or {max_files:,} files.")
+    if result.not_in_graph:
+        notes.append(
+            f"{len(result.not_in_graph)} changed file(s) are outside the import graph "
+            "(config, docs, data) and cannot be traced to callers."
+        )
+    result.note = " ".join(notes)
+    return result
+
+
+def analyze_impact(
+    changed_paths: list[str],
+    root: Path | None = None,
+    max_depth: int = MAX_IMPACT_DEPTH,
+    max_files: int = MAX_IMPACT_FILES,
+) -> ImpactResult:
+    """Analyze a local project. See ``analyze_source_impact``."""
+    return analyze_source_impact(LocalRepository(root), changed_paths, max_depth, max_files)

@@ -63,9 +63,9 @@ export function Interfaces() {
           <TabsContent value="mcp">
             <InterfaceCard
               title="llmscribe-mcp (For AI Agents)"
-              blurb="Model Context Protocol (MCP) server providing 7 tools for AI coding tools. Setup for 13 popular clients — Cursor, Claude Desktop, Claude Code, VS Code, Windsurf, Cline, Roo Code, LM Studio, Zed, Continue, JetBrains, Goose, and Codex CLI — is in the Connect section."
+              blurb="Model Context Protocol (MCP) server providing 8 tools for AI coding tools. Setup for 13 popular clients — Cursor, Claude Desktop, Claude Code, VS Code, Windsurf, Cline, Roo Code, LM Studio, Zed, Continue, JetBrains, Goose, and Codex CLI — is in the Connect section."
               command={MCP_CONFIG}
-              extra="Provides project_map, project_overview, search, read, read_many, project_dependencies, and project_diff."
+              extra="Provides project_map, project_overview, search, read, read_many, project_dependencies, project_diff, and project_impact."
             />
           </TabsContent>
 
@@ -102,7 +102,7 @@ export function Interfaces() {
           <TabsContent value="cli">
             <InterfaceCard
               title="llmscribe"
-              blurb="Modern command-line interface with 7 core commands matching MCP capabilities."
+              blurb="Modern command-line interface with 8 core commands matching MCP capabilities."
               command={CLI}
               extra="All commands support --json for machine-readable output"
             />

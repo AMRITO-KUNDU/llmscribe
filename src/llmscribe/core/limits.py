@@ -21,5 +21,9 @@ MAX_FILE_SIZE = 2 * 1024 * 1024  # larger files are never read, searched or pars
 MAX_REPOSITORY_FILES = 100_000  # files + directories scanned in one project
 MAX_GITIGNORE_SIZE = 1024 * 1024  # a .gitignore larger than this is ignored
 
+# --- Impact analysis (reverse-dependency closure) -------------------------
+MAX_IMPACT_DEPTH = 10  # how many import hops to follow from a changed file
+MAX_IMPACT_FILES = 2_000  # affected files returned by one project_impact call
+
 # --- Timeouts (seconds) ----------------------------------------------------
 GIT_TIMEOUT = 30

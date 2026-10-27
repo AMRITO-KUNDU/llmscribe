@@ -10,7 +10,16 @@ import llmscribe
 from llmscribe import service
 from llmscribe.mcp import tools
 
-EXPECTED = ["project_dependencies", "project_diff", "project_map", "project_overview", "read", "read_many", "search"]
+EXPECTED = [
+    "project_dependencies",
+    "project_diff",
+    "project_impact",
+    "project_map",
+    "project_overview",
+    "read",
+    "read_many",
+    "search",
+]
 
 
 def cli(*args, cwd=None):
@@ -43,6 +52,13 @@ def test_cli_errors_and_exit_codes(repo, tmp_path):
     assert cli("diff", "--path", str(repo), "--json").returncode == 1  # not a git repo
     empty = json.loads(cli("search", "zzzzqq", "--path", str(repo), "--json").stdout)
     assert empty["data"]["match_count"] == 0
+
+
+def test_cli_impact(repo):
+    payload = json.loads(cli("impact", "src/pkg/b.py", "--path", str(repo), "--json").stdout)
+    assert payload["ok"] is True and payload["tool"] == "project_impact"
+    affected = [entry["file_path"] for entry in payload["data"]["affected"]]
+    assert "src/pkg/a.py" in affected  # a.py imports b.py, so it is in scope
 
 
 # ---------------------------------------------------------------- MCP tools (SDK-free)

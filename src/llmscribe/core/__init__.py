@@ -9,8 +9,12 @@ from .dependencies import (
     Dependency,
     DependencyResult,
     FileDependencies,
+    ImpactEntry,
+    ImpactResult,
     analyze_dependencies,
+    analyze_impact,
     analyze_source_dependencies,
+    analyze_source_impact,
 )
 from .diff import DiffResult, GitStatusEntry, get_git_diff
 from .errors import ERROR_CODES, LLMScribeError
@@ -45,6 +49,8 @@ __all__ = [
     "DiffResult",
     "Entry",
     "FileDependencies",
+    "ImpactEntry",
+    "ImpactResult",
     "FileReadResult",
     "GitStatusEntry",
     "IgnoreMatcher",
@@ -59,7 +65,9 @@ __all__ = [
     "SearchMatch",
     "SearchResult",
     "analyze_dependencies",
+    "analyze_impact",
     "analyze_source_dependencies",
+    "analyze_source_impact",
     "decode_text",
     "extract_contents",
     "generate_tree",

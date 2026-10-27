@@ -19,6 +19,7 @@ from llmscribe.core import (
     LocalRepository,
     RepositorySource,
     analyze_source_dependencies,
+    analyze_source_impact,
     get_git_diff,
     map_source,
     overview_source,
@@ -39,6 +40,7 @@ TOOLS = (
     "read_many",
     "project_dependencies",
     "project_diff",
+    "project_impact",
 )
 
 _SEARCH_LINES_PER_FILE = 10
@@ -107,6 +109,22 @@ def execute(
     kind = source.kind
     logical = source.logical_path
 
+    if tool == "project_impact":
+        seeds = list(file_paths or [])
+        if not seeds:
+            seeds = get_git_diff(source.root, staged=staged, commit=commit).changed_files
+        ir = analyze_source_impact(source, seeds)
+        meta = {
+            "changed_count": len(ir.changed),
+            "affected_count": len(ir.affected),
+            "not_in_graph_count": len(ir.not_in_graph),
+            "max_depth": ir.max_depth,
+            "truncated": ir.truncated,
+        }
+        if ir.note:
+            meta["note"] = ir.note
+        return ToolResponse(tool, logical, kind, ir.to_dict(), meta, _md_impact(ir))
+
     if tool == "project_map":
         pm = map_source(source)
         meta = {"file_count": pm.file_count, "character_count": pm.character_count, "truncated": pm.truncated}
@@ -153,6 +171,9 @@ def execute(
         if rm.truncated:
             meta["truncation_note"] = rm.truncation_note
         return ToolResponse(tool, logical, kind, rm.to_dict(), meta, _md_read_many(rm))
+
+    if tool != "project_dependencies":
+        raise LLMScribeError("invalid_argument", f"Unknown tool: '{tool}'.")
 
     dr = analyze_source_dependencies(source, file_path or "")
     fd = dr.file_dependencies
@@ -248,6 +269,31 @@ def _md_dependencies(dr: Any) -> str:
     if len(lines) == 1:
         lines.append("\nNo dependencies and no dependents found.")
     return "\n".join(lines)
+
+
+def _md_impact(ir: Any) -> str:
+    parts = ["### Changed"]
+    parts.append("\n".join(f"- {p}" for p in ir.changed) if ir.changed else "No changed files.")
+
+    if ir.not_in_graph:
+        parts.append(
+            "Outside the import graph (config, docs, data — no callers to trace):\n"
+            + "\n".join(f"- {p}" for p in ir.not_in_graph)
+        )
+
+    parts.append("### Affected")
+    if ir.affected:
+        entries = []
+        for entry in ir.affected:
+            chain = " -> ".join(entry.via)
+            entries.append(f"- {entry.file_path} (depth {entry.depth})\n  {chain}")
+        parts.append("\n\n".join(entries))
+    else:
+        parts.append("No file imports the changed files.")
+
+    if ir.note:
+        parts.append(f"Note: {ir.note}")
+    return "\n\n".join(parts)
 
 
 def _md_diff(result: DiffResult) -> str:
