@@ -7,7 +7,7 @@ const APP_NAME = "LLMScribe";
 const DESCRIPTION =
   "Turn a local project into clean, deterministic, structured context. Open-source Python CLI, MCP server, and GUI — published on PyPI. Runs entirely on your machine.";
 const SITE_URL = "https://llmscribe.vercel.app";
-const OG_IMAGE = `${SITE_URL}/og.png`;
+const OG_IMAGE = `${SITE_URL}/og.png?v=2`;
 const TAGLINE = `${APP_NAME} — one file, the whole project`;
 
 const structuredData = {
