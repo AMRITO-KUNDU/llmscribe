@@ -811,7 +811,13 @@ There is no hosted service and no telemetry. It reads your files, and nothing le
 - **PyPI:** https://pypi.org/project/llmscribe/
 - **Official MCP Registry:** https://registry.modelcontextprotocol.io/?q=llmscribe (`io.github.AMRITO-KUNDU/llmscribe`)
 - **Issues:** https://github.com/AMRITO-KUNDU/llmscribe/issues
+- **Changelog:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CHANGELOG.md
 - **Contributing:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md
+- **Vision:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md
+- **Governance:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md
+- **Code of Conduct:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CODE_OF_CONDUCT.md
+- **Accessibility:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/ACCESSIBILITY.md
+- **Security:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SECURITY.md
 
 ---
 
@@ -819,7 +825,12 @@ There is no hosted service and no telemetry. It reads your files, and nothing le
 
 Contributions are welcome — whether that is repository extraction, search, dependency analysis, interfaces, integrations or documentation.
 
-Check the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md) before opening a pull request.
+Start with the [vision](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md), which sets out what is in scope and what deliberately is not, then the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md).
+
+- A first response within about **7 days** — this is a part-time project, and pinging a quiet thread is welcome.
+- Issues labelled **`good first issue`** are scoped to be self-contained.
+- Questions are best asked in an [issue](https://github.com/AMRITO-KUNDU/llmscribe/issues), so the next person can find the answer.
+- LLMScribe is maintained by [@AMRITO-KUNDU](https://github.com/AMRITO-KUNDU); [GOVERNANCE.md](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md) describes how decisions are made.
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
   <img alt="Contributors" src="https://contrib.rocks/image?repo=AMRITO-KUNDU/llmscribe"/>

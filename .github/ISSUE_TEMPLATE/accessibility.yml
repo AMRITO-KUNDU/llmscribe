@@ -1,0 +1,52 @@
+name: Accessibility barrier
+description: Report something that is unusable with assistive technology, keyboard only, or at high zoom.
+title: "[a11y]: "
+labels: ["accessibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Accessibility reports are treated as
+        bugs, not feature requests — see [ACCESSIBILITY.md](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/ACCESSIBILITY.md)
+        for what is already known to be missing.
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      options:
+        - Website (llmscribe.vercel.app)
+        - Desktop GUI (llmscribe-gui)
+        - CLI (llmscribe)
+        - MCP server (llmscribe-mcp)
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: barrier
+    attributes:
+      label: What is the barrier?
+      description: What were you trying to do, and what stopped you?
+    validations:
+      required: true
+  - type: input
+    id: assistive-tech
+    attributes:
+      label: Assistive technology and version
+      description: For example NVDA 2024.4, VoiceOver on macOS 15, or "keyboard only".
+      placeholder: "NVDA 2024.4 on Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Is there a workaround?
+      description: Anything that let you complete the task — useful even if it's awkward.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked ACCESSIBILITY.md and this isn't already listed as a known limitation.
+          required: true
