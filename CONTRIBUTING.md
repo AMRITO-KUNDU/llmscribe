@@ -6,6 +6,10 @@ Two short documents explain the project before you invest time: [VISION.md](VISI
 covers what is in scope and what deliberately is not, and [GOVERNANCE.md](GOVERNANCE.md)
 covers how decisions are made.
 
+Participation is covered by the [Code of Conduct](CODE_OF_CONDUCT.md), which applies in
+all project spaces. For security issues, follow [SECURITY.md](SECURITY.md) rather than
+opening a public issue.
+
 ## What kinds of contributions are welcome
 
 - **Bug reports** — use the issue form and include the version and interface.

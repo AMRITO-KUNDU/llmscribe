@@ -1,6 +1,8 @@
 # LLMScribe site
 
-Marketing/docs site for LLMScribe, a Python CLI/GUI/MCP tool that turns a project folder into one clean text file for AI tools to read.
+Marketing and documentation site for LLMScribe — a local-only Python CLI, MCP server and
+desktop GUI that turns a project directory into clean, deterministic context for AI
+coding agents.
 
 ## Scripts
 

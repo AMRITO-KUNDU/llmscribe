@@ -812,6 +812,7 @@ There is no hosted service and no telemetry. It reads your files, and nothing le
 - **Official MCP Registry:** https://registry.modelcontextprotocol.io/?q=llmscribe (`io.github.AMRITO-KUNDU/llmscribe`)
 - **Issues:** https://github.com/AMRITO-KUNDU/llmscribe/issues
 - **Changelog:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CHANGELOG.md
+- **Support:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SUPPORT.md
 - **Contributing:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md
 - **Vision:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md
 - **Governance:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md

@@ -1,6 +1,3 @@
-# DirScribe outputs
-project_overview.txt
-
 # Python
 __pycache__/
 *.py[cod]
@@ -34,7 +31,6 @@ dist/
 release/
 
 # Test / tooling caches
-.pytest_cache/
 .tox/
 .nox/
 .htmlcov/

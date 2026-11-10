@@ -36,6 +36,22 @@ Responsible for scope, code review, releases, security reports and conduct.
 Discussion happens in issues and pull requests, in public, by default. If a decision is
 made somewhere private, the reasoning is written back into the relevant issue.
 
+## Maintainer availability and boundaries
+
+This is a part-time, unpaid project. To keep it sustainable — and to make the answer
+predictable rather than personal — here is what to expect:
+
+- **Response window:** about 7 days for a first reply. Silence is not rejection; ping the thread.
+- **Not offered:** paid support, consulting, private debugging of your project, or a
+  guaranteed date for any fix.
+- **What gets prioritised:** security and correctness first, then work that fits
+  [VISION.md](VISION.md), then everything else.
+- **Saying no is normal.** A closed issue or an unmerged pull request is a decision about
+  scope or timing, not a judgement of the work.
+
+If the project grows past what one person can carry, this section changes first — before
+anything else does.
+
 ## Releases
 
 - [Semantic Versioning](https://semver.org/). Breaking changes bump the major version.

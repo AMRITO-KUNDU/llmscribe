@@ -11,7 +11,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - `CODE_OF_CONDUCT.md`, GitHub issue forms, a pull request template and `ACCESSIBILITY.md`.
 - `VISION.md` — what the project is for, and what is explicitly out of scope.
-- `GOVERNANCE.md` — roles, how decisions are made, how to become a maintainer.
+- `GOVERNANCE.md` — roles, how decisions are made, maintainer boundaries, and how to
+  become a maintainer.
+- `SUPPORT.md` — where to ask for what, and what support actually looks like.
 - This changelog.
 - Dependabot configuration and a CodeQL code-scanning workflow.
 - A dedicated accessibility issue template.
@@ -26,6 +28,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The website now declares the `.ico` favicon and an `apple-touch-icon`, so browsers
   that ignore SVG favicons (notably Safari) show an icon.
+- `CODE_OF_CONDUCT.md` now names who receives a report, and gives an independent route
+  for a report about the maintainer.
+- Removed a stale `DirScribe` ignore rule and a duplicate cache rule from `.gitignore`.
 
 ## [1.3.0] — 2026-10-25
 

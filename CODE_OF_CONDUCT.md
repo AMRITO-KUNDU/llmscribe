@@ -55,16 +55,23 @@ officially representing the project in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the maintainer privately:
+reported privately to the maintainer, who receives all reports:
 
 - via GitHub, to [@AMRITO-KUNDU](https://github.com/AMRITO-KUNDU), or
 - by email, to the address listed on that GitHub profile.
 
 Please do not open a public issue to report a Code of Conduct concern.
 
-All complaints will be reviewed and investigated promptly and fairly. The
-maintainer is obligated to respect the privacy and security of the reporter of
-any incident.
+### If your report is about the maintainer
+
+A single-maintainer project has an obvious conflict here: the person who would review
+the report is the person it concerns. In that case, please use
+[GitHub's abuse reporting flow](https://github.com/contact/report-abuse) instead, so the
+report is not reviewed by the person it is about.
+
+All other complaints will be reviewed and investigated promptly and fairly. The
+maintainer is obligated to respect the privacy and security of the reporter of any
+incident.
 
 ## Enforcement Guidelines
 
