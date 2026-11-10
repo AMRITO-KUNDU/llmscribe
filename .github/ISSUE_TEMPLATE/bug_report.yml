@@ -1,0 +1,73 @@
+name: Bug report
+description: Something isn't working as documented.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report.
+
+        **Please don't paste private source code.** A minimal example or a made-up
+        reproduction is enough — it's the shape of the input that matters, not the contents.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. run `llmscribe map --path ~/some/project`
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which interface?
+      options:
+        - CLI (llmscribe)
+        - MCP server (llmscribe-mcp)
+        - Desktop GUI (llmscribe-gui)
+        - Python API (llmscribe.core)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: LLMScribe version
+      description: The output of `llmscribe version`.
+      placeholder: "1.3.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python version and OS
+      placeholder: "3.12.2 on Ubuntu 24.04"
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output or error
+      description: |
+        Paste the relevant output. Error codes are stable and documented, so the code
+        alone is often enough to diagnose a failure.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: I removed any private code, paths or secrets from what I pasted.
+          required: true

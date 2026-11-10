@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SECURITY.md
+    about: Please report security issues privately rather than as a public issue.
+  - name: Usage question
+    url: https://github.com/AMRITO-KUNDU/llmscribe#readme
+    about: The README covers installation, every tool, and per-app MCP setup.

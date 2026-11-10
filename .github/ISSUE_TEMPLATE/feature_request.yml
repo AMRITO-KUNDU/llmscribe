@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest an improvement or a new capability.
+title: "[feat]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LLMScribe is deliberately small: deterministic, local-only, no AI, no ranking,
+        no hosted service. Proposals that add inference, embeddings or a remote backend
+        are out of scope — see the README for the reasoning.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation, not just the solution you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Including anything you can do today with the existing tools.
+    validations:
+      required: false
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where would this live?
+      options:
+        - Core (llmscribe.core)
+        - CLI (llmscribe)
+        - MCP server (llmscribe-mcp)
+        - Desktop GUI (llmscribe-gui)
+        - Docs / website
+    validations:
+      required: true
