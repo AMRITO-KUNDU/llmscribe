@@ -44,11 +44,19 @@
 
 # **LLMScribe**
 
-**Turn any code repository into clean, structured, deterministic data.**
+**Turn any local code repository into clean, structured, deterministic context for AI
+coding agents.**
+
+One core, four surfaces — an MCP server, a CLI, a desktop GUI and a Python API. All of
+them read your project from disk, and the same input always produces the same bytes.
 
 No AI. No embeddings. No hidden ranking.
 
 Apache-2.0, and it runs entirely on your machine — no network, no account.
+
+**Works with** Cursor, Claude Code, Claude Desktop, Codex, VS Code, Windsurf, Zed,
+Cline, Continue, JetBrains and LM Studio — any MCP client — plus `pip install` and a
+standalone Windows EXE.
 
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe">
@@ -59,7 +67,8 @@ Apache-2.0, and it runs entirely on your machine — no network, no account.
 
 ## The problem
 
-Your agent does not have an intelligence problem. It has a **retrieval** problem.
+Your agent does not have an intelligence problem. It has a **retrieval** problem — and
+no model upgrade fixes a context window filled with the wrong files.
 
 On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output, zero score.
 
@@ -613,7 +622,7 @@ map → search → read
 
 ## CLI
 
-Every command can return machine-readable JSON with `--json`, which makes the CLI a building block for scripts, automation, and developer tools.
+Every command can return machine-readable JSON with `--json` (`-j`), which makes the CLI a building block for scripts, automation, and developer tools.
 
 ```bash
 llmscribe map
@@ -629,6 +638,33 @@ llmscribe map --json
 llmscribe search "auth" --json
 llmscribe dependencies src/auth/service.py --json
 ```
+
+**Paths are flexible.** Every command takes an optional directory, so `--path` is never required:
+
+```bash
+llmscribe .                       # map the current directory
+llmscribe ./src                   # map a specific directory
+llmscribe map ./src               # the same thing, spelled out
+llmscribe search "auth" ./src     # search inside a directory
+```
+
+**Aliases** for the verbs you already type:
+
+| Alias | Command |
+|-------|---------|
+| `ls` | `map` |
+| `tree` | `overview` |
+| `grep`, `find` | `search` |
+| `cat` | `read` |
+| `deps` | `dependencies` |
+
+`read` accepts several files and switches to a batch read automatically:
+
+```bash
+llmscribe cat src/main.py src/util.py
+```
+
+`llmscribe -V` prints the version.
 
 ---
 
