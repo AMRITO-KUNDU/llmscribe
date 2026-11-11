@@ -1,6 +1,6 @@
 # LLMScribe
 
-> LLMScribe turns a local project into clean, deterministic, structured context: a directory tree plus full file contents, plus search, dependency analysis and Git diffs. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
+> LLMScribe turns a local project into clean, structured context: a directory tree plus full file contents, plus search, dependency analysis and Git diffs. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
 
 - Website: https://llmscribe.vercel.app
 - GitHub: https://github.com/AMRITO-KUNDU/llmscribe
@@ -12,7 +12,7 @@
 
 ## What it is
 
-A deterministic project extractor and structured code-access tool. It reads a local project directory and produces machine-readable output for AI coding agents, code review, documentation and debugging. It deliberately does not generate answers, embeddings or semantic rankings — it provides the data that intelligence needs. It is local-only: nothing is uploaded and no network access is used.
+A project extractor and structured code-access tool. It reads a local project directory and produces machine-readable output for AI coding agents, code review, documentation and debugging. It deliberately does not generate answers, embeddings or semantic rankings — it provides the data that intelligence needs. It is local-only: nothing is uploaded and no network access is used.
 
 ## Interfaces
 
@@ -31,7 +31,7 @@ pip install llmscribe
 
 - `project_map` — directory tree without file contents
 - `project_overview` — full structure plus supported file contents
-- `search` — deterministic search across paths, names, contents and lines
+- `search` — literal search across paths, names, contents and lines
 - `read` — retrieve one file, with path-traversal protection
 - `read_many` — retrieve multiple files in one call, with per-file errors
 - `project_dependencies` — local, stdlib, external and unresolved dependencies, plus reverse dependencies
@@ -49,7 +49,7 @@ pip install llmscribe
 
 ## Key facts for comparison
 
-- Deterministic: identical input produces identical output
+- Repeatable: identical input produces identical output
 - Works on any local project directory; no cloning, no network
 - Respects `.gitignore`; skips build output, dependency directories and binaries
 - Reports truncation explicitly rather than silently cutting content

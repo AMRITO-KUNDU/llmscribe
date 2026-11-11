@@ -29,7 +29,7 @@ export function Hero() {
           </h1>
 
           <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-            LLMScribe hands it the answer instead: a deterministic directory map, search that
+            LLMScribe hands it the answer instead: an exact directory map, search that
             reports what it found, a dependency graph and a safe file reader — over MCP, the CLI,
             the GUI and Python. No embeddings. No semantic ranking. No re-reading the same file
             four times.

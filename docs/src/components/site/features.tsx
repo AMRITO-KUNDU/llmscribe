@@ -24,7 +24,7 @@ const FEATURES = [
   },
   {
     icon: ShieldCheck,
-    title: "Deterministic Size Guards",
+    title: "Predictable Size Guards",
     body: "Enforces 50-file batch caps, 400k character content limits, 200k diff character caps, and 13 closed, standardized error codes.",
   },
   {

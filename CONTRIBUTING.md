@@ -18,7 +18,7 @@ opening a public issue.
 - **New capabilities that fit [VISION.md](VISION.md)** — please open an issue first.
 
 Not accepted: AI features, embeddings or ranking, hosted services, and anything that
-makes output non-deterministic. VISION.md explains why for each.
+makes output change between runs. VISION.md explains why for each.
 
 ## What to expect from a review
 

@@ -45,7 +45,7 @@ def _path_option(parser: argparse.ArgumentParser) -> None:
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmscribe",
-        description="LLMScribe — deterministic repository data for humans, agents and LLM applications.",
+        description="LLMScribe — repository data for humans, agents and LLM applications.",
         epilog="Examples:\n  llmscribe map\n  llmscribe search \"auth\" --json\n  llmscribe read src/main.py\n"
         "  llmscribe dependencies src/main.py\n  llmscribe diff --staged",
         formatter_class=argparse.RawDescriptionHelpFormatter,

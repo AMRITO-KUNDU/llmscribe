@@ -1,6 +1,6 @@
 """LLMScribe MCP server.
 
-Runs the seven deterministic project tools over the Model Context Protocol on
+Runs the seven project tools over the Model Context Protocol on
 stdio, so local clients such as Claude Desktop and Cursor can use them against a
 local project directory.
 

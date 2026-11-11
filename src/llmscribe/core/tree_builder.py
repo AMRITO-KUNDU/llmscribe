@@ -123,7 +123,7 @@ def should_ignore(path: Path, ignore_patterns: Iterable[str], root: Path | None 
 
 
 def render_tree(name: str, entries: Iterable[tuple[str, bool]]) -> str:
-    """Render ``(relative_posix_path, is_dir)`` entries as a deterministic tree."""
+    """Render ``(relative_posix_path, is_dir)`` entries as a stable tree."""
     root: dict = {}
     for rel, is_dir in entries:
         node = root

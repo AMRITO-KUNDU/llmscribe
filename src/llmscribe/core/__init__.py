@@ -1,4 +1,4 @@
-"""Core LLMScribe functionality: deterministic repository data.
+"""Core LLMScribe functionality: repository data.
 
 Everything here works on a ``RepositorySource`` (a local directory or an
 in-memory snapshot) and returns plain dataclasses with ``to_dict()``.

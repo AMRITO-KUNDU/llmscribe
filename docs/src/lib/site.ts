@@ -1,9 +1,9 @@
 export const SITE = {
   name: "LLMScribe",
   version: "1.3.0",
-  tagline: "Deterministic repository extraction and structured code context for developers.",
+  tagline: "Repository extraction and structured code context for developers.",
   description:
-    "LLMScribe provides a lightweight, local-only Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn a local project into clean, deterministic, structured context.",
+    "LLMScribe provides a lightweight, local-only Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn a local project into clean, structured context.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/llmscribe",
   pypi: "https://pypi.org/project/llmscribe/",

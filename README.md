@@ -44,7 +44,7 @@
 
 # **LLMScribe**
 
-**Turn any local code repository into clean, structured, deterministic context for AI
+**Turn any local code repository into clean, structured context for AI
 coding agents.**
 
 One core, four surfaces — an MCP server, a CLI, a desktop GUI and a Python API. All of
@@ -94,7 +94,7 @@ What users keep reporting:
 | The failure | What LLMScribe does |
 | --- | --- |
 | Reads 200 files to change one line | `project_map` returns the whole tree with contents excluded, before a single file is read |
-| Re-reads the same files in a loop | Output is deterministic — same input, same bytes, every run |
+| Re-reads the same files in a loop | Same input, same bytes, every run |
 | Misses the file that actually mattered | `project_dependencies` resolves local, stdlib, external and unresolved imports, plus reverse dependencies |
 | Search returns nothing when the text exists | `search` returns path, line, matched text and match type, or a stable error code — never a silent empty |
 | Stale fixtures read as current truth | Nothing is inferred, embedded or ranked; you get the files as they are, plus a Git diff |
@@ -176,7 +176,7 @@ src/
 
 Search across file paths, file names, file contents, and individual lines.
 
-Search is intentionally deterministic: LLMScribe does not try to guess what you meant.
+Search is intentionally literal: LLMScribe does not try to guess what you meant.
 
 ```python
 search(query="authentication")
@@ -799,7 +799,7 @@ LLMScribe intentionally stays simple. The goal is not to make the repository "sm
 **We provide**
 
 - Repository extraction
-- Deterministic search
+- Literal search
 - Structured project data
 - File retrieval
 - Dependency information

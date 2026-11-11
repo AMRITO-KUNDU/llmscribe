@@ -1,7 +1,7 @@
 # LLMScribe site
 
 Marketing and documentation site for LLMScribe — a local-only Python CLI, MCP server and
-desktop GUI that turns a project directory into clean, deterministic context for AI
+desktop GUI that turns a project directory into clean, structured context for AI
 coding agents.
 
 ## Scripts

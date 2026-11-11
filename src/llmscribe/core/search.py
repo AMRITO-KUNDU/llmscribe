@@ -1,4 +1,4 @@
-"""Deterministic substring search over filenames and file contents."""
+"""Substring search over filenames and file contents."""
 
 from __future__ import annotations
 

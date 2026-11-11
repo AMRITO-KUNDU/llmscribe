@@ -1,4 +1,4 @@
-"""MCP server for LLMScribe (seven deterministic project tools)."""
+"""MCP server for LLMScribe (seven project tools)."""
 
 from .server import (
     main,

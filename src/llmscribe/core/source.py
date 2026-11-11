@@ -1,6 +1,6 @@
 """Repository sources: one interface over a local project directory.
 
-Every deterministic operation (map, overview, search, read, dependencies) is
+Every read-only operation (map, overview, search, read, dependencies) is
 written once against ``RepositorySource``. ``LocalRepository`` walks a
 directory on disk; a new provider only has to implement ``scan``, ``info`` and
 ``read_bytes``.

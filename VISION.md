@@ -1,6 +1,6 @@
 # Vision
 
-LLMScribe exists to give AI coding agents **structured, deterministic access to a
+LLMScribe exists to give AI coding agents **structured, repeatable access to a
 codebase** — and nothing else.
 
 ## The problem it solves
@@ -16,7 +16,7 @@ rely on it, and a human can audit it.
 
 ## What is in scope
 
-- Deterministic extraction: trees, file contents, search, dependencies, diffs.
+- Repeatable extraction: trees, file contents, search, dependencies, diffs.
 - A local-first design: your code is read from disk and never uploaded.
 - One core with several surfaces: CLI, MCP server, desktop GUI, Python API.
 - Doing a few things precisely, with explicit limits and stable error codes.
@@ -41,7 +41,7 @@ These come up often. They are not "not yet" — they are decisions:
 
 A feature request is evaluated against four questions:
 
-1. Does it stay deterministic — same input, same output?
+1. Does it stay repeatable — same input, same output?
 2. Does it work entirely locally?
 3. Does it remove a step the agent or user would otherwise do by hand?
 4. Can it be expressed with the existing limits and error model, without a new concept?

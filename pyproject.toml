@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmscribe"
 dynamic = ["version"]
-description = "Deterministic project extractor and structured code-access tool for local projects."
+description = "Project extractor and structured code-access tool for local projects."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

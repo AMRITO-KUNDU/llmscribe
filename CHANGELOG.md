@@ -23,6 +23,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Redesigned the social preview card (`og.png`) in the project's own type
   (Instrument Serif and IBM Plex) with a framed composition and a project-tree motif.
 - `og:image` is versioned (`?v=2`) so crawlers refetch instead of serving a cached image.
+- Removed the word "deterministic" throughout the README, website, package metadata
+  and docstrings. The guarantee is unchanged and now stated plainly: same input,
+  same bytes, every run.
 
 ### Fixed
 
@@ -82,7 +85,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [1.0.0] — 2026-08-24
 
 Initial public release: CLI, MCP server, desktop GUI and Python API over a
-deterministic project walk.
+repeatable project walk.
 
 [Unreleased]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.2.1...v1.3.0

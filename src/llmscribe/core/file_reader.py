@@ -51,7 +51,7 @@ def is_text_file(path: Path | PurePosixPath | str) -> bool:
 
 
 def decode_text(data: bytes, display_path: str = "file") -> tuple[str, str]:
-    """Decode ``data`` deterministically and return ``(text, encoding)``.
+    """Decode ``data`` the same way every time and return ``(text, encoding)``.
 
     Order: UTF-16/UTF-8 BOM, strict UTF-8, then cp1252 (with replacement for
     the few undefined bytes). Data containing NUL bytes (without a UTF-16 BOM)

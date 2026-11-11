@@ -38,7 +38,7 @@ def test_nested_gitignore(repo):
     assert "src/secret_a.py" not in files and "secret_b.py" in files
 
 
-def test_map_is_deterministic(repo):
+def test_map_is_repeatable(repo):
     assert project_map(repo).to_dict() == project_map(repo).to_dict()
 
 
@@ -139,7 +139,7 @@ def test_decode_text_invalid_bytes():
     assert enc == "cp1252" and text.startswith("abc")
 
 
-def test_search_is_deterministic_and_complete(repo):
+def test_search_is_repeatable_and_complete(repo):
     first = search_project("needle", repo)
     assert first.to_dict() == search_project("needle", repo).to_dict()
     kinds = [(m.file_path, m.match_type) for m in first.matches]

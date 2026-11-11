@@ -1,4 +1,4 @@
-"""LLMScribe — deterministic repository extraction and contextual code access."""
+"""LLMScribe — repository extraction and contextual code access."""
 
 from __future__ import annotations
 

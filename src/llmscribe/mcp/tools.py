@@ -84,7 +84,7 @@ def search(
     path: PathArg = None,
     format: FormatArg = "markdown",
 ) -> str:
-    """Deterministic substring search over file names and file contents.
+    """Substring search over file names and file contents.
 
     Results are ordered by path then line number and limited to 1,000 matches.
     Binary and oversized files are skipped. This is plain text matching, not semantic search.

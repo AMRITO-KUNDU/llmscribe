@@ -33,7 +33,7 @@ const ANSWERS = [
   },
   {
     problem: "Re-reads the same files in a loop",
-    answer: "Output is deterministic. Same input, same bytes, every run.",
+    answer: "Same input, same bytes, every run.",
   },
   {
     problem: "Misses the file that actually mattered",

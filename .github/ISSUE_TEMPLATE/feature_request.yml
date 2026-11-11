@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        LLMScribe is deliberately small: deterministic, local-only, no AI, no ranking,
+        LLMScribe is deliberately small: repeatable, local-only, no AI, no ranking,
         no hosted service. Proposals that add inference, embeddings or a remote backend
         are out of scope — see the README for the reasoning.
   - type: textarea
