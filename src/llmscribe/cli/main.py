@@ -11,20 +11,9 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
 from typing import Any
 
 from llmscribe import __version__, service
-
-# Familiar verbs map onto the canonical commands.
-ALIASES = {
-    "ls": "map",
-    "tree": "overview",
-    "grep": "search",
-    "find": "search",
-    "cat": "read",
-    "deps": "dependencies",
-}
 
 
 def _emit(tool: str, command: str, as_json: bool, **kwargs: Any) -> int:
@@ -49,147 +38,102 @@ def _emit(tool: str, command: str, as_json: bool, **kwargs: Any) -> int:
 
 
 def _path_option(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("-p", "--path", help="Project directory (default: current directory)")
-    parser.add_argument("-j", "--json", action="store_true", help="Print one machine-readable JSON document")
-
-
-def _path_positional(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "path_pos",
-        nargs="?",
-        metavar="PATH",
-        help="Project directory (default: current directory)",
-    )
-
-
-def _command_names() -> set[str]:
-    return {
-        "map", "overview", "search", "read", "read-many", "dependencies", "diff", "version",
-        *ALIASES,
-    }
-
-
-def _rewrite_path_only(argv: list[str]) -> list[str]:
-    """`llmscribe .` or `llmscribe ./src` means `llmscribe map <path>`."""
-    if not argv or argv[0].startswith("-"):
-        return argv
-    if argv[0] in _command_names():
-        return argv
-    if Path(argv[0]).is_dir():
-        return ["map", *argv]
-    return argv
+    parser.add_argument("--path", help="Project directory (default: current directory)")
+    parser.add_argument("--json", action="store_true", help="Print one machine-readable JSON document")
 
 
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmscribe",
         description="LLMScribe — deterministic repository data for humans, agents and LLM applications.",
-        epilog="Examples:\n"
-        "  llmscribe                      show this help\n"
-        "  llmscribe .                    map the current directory\n"
-        "  llmscribe map ./src            map a specific directory\n"
-        "  llmscribe search \"auth\" .      search inside a directory\n"
-        "  llmscribe read a.py b.py       read several files at once\n"
-        "  llmscribe diff --staged --json\n"
-        "\nAliases: ls=map, tree=overview, grep/find=search, cat=read, deps=dependencies\n"
-        "Any command takes an optional PATH, so --path is never required.",
+        epilog="Examples:\n  llmscribe map\n  llmscribe search \"auth\" --json\n  llmscribe read src/main.py\n"
+        "  llmscribe dependencies src/main.py\n  llmscribe diff --staged",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("-V", "--version", action="version", version=f"llmscribe version {__version__}")
     sub = parser.add_subparsers(dest="command")
 
-    p = sub.add_parser("map", aliases=["ls"], help="Show project structure")
-    _path_positional(p)
-    _path_option(p)
+    for name, help_text in (("map", "Show project structure"), ("overview", "Tree plus file contents")):
+        _path_option(sub.add_parser(name, help=help_text))
 
-    p = sub.add_parser("overview", aliases=["tree"], help="Tree plus file contents")
-    _path_positional(p)
-    _path_option(p)
-
-    p = sub.add_parser("search", aliases=["grep", "find"], help="Search file names and contents")
+    p = sub.add_parser("search", help="Search file names and contents")
     p.add_argument("query")
-    _path_positional(p)
     _path_option(p)
 
-    p = sub.add_parser("read", aliases=["cat"], help="Read one or more files")
-    p.add_argument("files", nargs="+", metavar="FILE")
+    p = sub.add_parser("read", help="Read one file")
+    p.add_argument("file_path")
     _path_option(p)
 
     p = sub.add_parser("read-many", help="Read several files")
-    p.add_argument("files", nargs="+", metavar="FILE")
+    p.add_argument("file_paths", nargs="+")
     _path_option(p)
 
-    p = sub.add_parser("dependencies", aliases=["deps"], help="Show a file's dependencies and dependents")
+    p = sub.add_parser("dependencies", help="Show a file's dependencies and dependents")
     p.add_argument("file_path")
-    _path_positional(p)
     _path_option(p)
 
     p = sub.add_parser("diff", help="Show git status and diff")
     p.add_argument("--staged", action="store_true", help="Staged changes only")
     p.add_argument("--commit", help="Compare the working tree with this revision")
-    _path_positional(p)
     _path_option(p)
 
     sub.add_parser("version", help="Show version")
     return parser
 
 
-def _detach_stdout() -> None:
-    """Point stdout at /dev/null so interpreter shutdown cannot raise again."""
-    try:
-        devnull = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(devnull, sys.stdout.fileno())
-    except (OSError, ValueError):
-        pass
-
-
-def _dispatch(args: argparse.Namespace, command: str) -> int:
-    common = {"path": args.path or getattr(args, "path_pos", None)}
-    as_json = args.json
-
-    if command == "map":
-        return _emit("project_map", "map", as_json, **common)
-    if command == "overview":
-        return _emit("project_overview", "overview", as_json, **common)
-    if command == "search":
-        return _emit("search", "search", as_json, query=args.query, **common)
-    if command == "read":
-        if len(args.files) == 1:
-            return _emit("read", "read", as_json, file_path=args.files[0], **common)
-        return _emit("read_many", "read", as_json, file_paths=args.files, **common)
-    if command == "read-many":
-        return _emit("read_many", "read-many", as_json, file_paths=args.files, **common)
-    if command == "dependencies":
-        return _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
-    return _emit("project_diff", "diff", as_json, staged=args.staged, commit=args.commit, **common)
-
-
 def main(argv: list[str] | None = None) -> None:
+    """Entry point: run the CLI, exiting quietly if the reader closes the pipe."""
+    try:
+        _main(argv)
+    except BrokenPipeError:
+        # e.g. `llmscribe overview . | head` - the reader went away. Detach stdout so
+        # interpreter shutdown cannot raise again, then exit cleanly.
+        try:
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+        except (OSError, ValueError):
+            pass
+        sys.exit(0)
+
+
+def _main(argv: list[str] | None = None) -> None:
     for stream in (sys.stdout, sys.stderr):
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
         except (AttributeError, ValueError):
             pass
 
-    raw = list(sys.argv[1:] if argv is None else argv)
     parser = create_parser()
-    args = parser.parse_args(_rewrite_path_only(raw))
-
-    command = ALIASES.get(args.command, args.command)
-    if not command:
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as exc:  # argparse: 0 for --help, 2 for usage errors
+        raise exc
+    if not args.command:
         parser.print_help()
         return
-    if command == "version":
+    if args.command == "version":
         print(f"llmscribe version {__version__}")
         return
 
+    common = {"path": args.path}
+    as_json = args.json
+    if args.command == "map":
+        code = _emit("project_map", "map", as_json, **common)
+    elif args.command == "overview":
+        code = _emit("project_overview", "overview", as_json, **common)
+    elif args.command == "search":
+        code = _emit("search", "search", as_json, query=args.query, **common)
+    elif args.command == "read":
+        code = _emit("read", "read", as_json, file_path=args.file_path, **common)
+    elif args.command == "read-many":
+        code = _emit("read_many", "read-many", as_json, file_paths=args.file_paths, **common)
+    elif args.command == "dependencies":
+        code = _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
+    else:
+        code = _emit("project_diff", "diff", as_json, staged=args.staged, commit=args.commit, **common)
     try:
-        code = _dispatch(args, command)
         sys.stdout.flush()
     except BrokenPipeError:
-        # The reader closed the pipe (e.g. `llmscribe overview | head`): exit quietly.
-        _detach_stdout()
-        sys.exit(0)
+        sys.stderr.close()
     sys.exit(code)
 
 

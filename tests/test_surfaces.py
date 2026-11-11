@@ -45,32 +45,11 @@ def test_cli_errors_and_exit_codes(repo, tmp_path):
     assert empty["data"]["match_count"] == 0
 
 
-def test_cli_is_flexible(repo):
-    # aliases resolve to the canonical command
-    alias = json.loads(cli("ls", "--path", str(repo), "--json").stdout)
-    assert alias["tool"] == "project_map"
-
-    # a positional path instead of --path
-    positional = json.loads(cli("map", str(repo), "--json").stdout)
-    assert positional["tool"] == "project_map" and positional["ok"] is True
-
-    # a bare directory means "map that directory"
-    shorthand = json.loads(cli(str(repo), "--json").stdout)
-    assert shorthand["tool"] == "project_map" and shorthand["command"] == "map"
-
-    # read takes several files and becomes a batch read
-    batch = json.loads(cli("cat", "README.md", "src/pkg/a.py", "--path", str(repo), "--json").stdout)
-    assert batch["tool"] == "read_many" and batch["data"]["file_count"] == 2
-
-    # --version matches the version subcommand
-    assert cli("-V").stdout.strip() == f"llmscribe version {llmscribe.__version__}"
-
-
 @pytest.mark.skipif(sys.platform == "win32", reason="relies on a POSIX shell pipeline")
 def test_cli_pipes_cleanly(repo):
     # `llmscribe overview . | head` must not dump a BrokenPipeError traceback
     proc = subprocess.run(
-        f'"{sys.executable}" -m llmscribe overview "{repo}" | head -2',
+        f'"{sys.executable}" -m llmscribe overview --path "{repo}" | head -2',
         shell=True,
         capture_output=True,
         text=True,

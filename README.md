@@ -613,7 +613,7 @@ map → search → read
 
 ## CLI
 
-Every command can return machine-readable JSON with `--json` (`-j`), which makes the CLI a building block for scripts, automation, and developer tools.
+Every command can return machine-readable JSON with `--json`, which makes the CLI a building block for scripts, automation, and developer tools.
 
 ```bash
 llmscribe map
@@ -629,33 +629,6 @@ llmscribe map --json
 llmscribe search "auth" --json
 llmscribe dependencies src/auth/service.py --json
 ```
-
-**Paths are flexible.** Every command takes an optional directory, so `--path` is never required:
-
-```bash
-llmscribe .                       # map the current directory
-llmscribe ./src                   # map a specific directory
-llmscribe map ./src               # the same thing, spelled out
-llmscribe search "auth" ./src     # search inside a directory
-```
-
-**Aliases** for the verbs you already type:
-
-| Alias | Command |
-|-------|---------|
-| `ls` | `map` |
-| `tree` | `overview` |
-| `grep`, `find` | `search` |
-| `cat` | `read` |
-| `deps` | `dependencies` |
-
-`read` accepts several files and switches to a batch read automatically:
-
-```bash
-llmscribe cat src/main.py src/util.py
-```
-
-`llmscribe -V` prints the version.
 
 ---
 

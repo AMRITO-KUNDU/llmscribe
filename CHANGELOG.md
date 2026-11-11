@@ -23,10 +23,6 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Redesigned the social preview card (`og.png`) in the project's own type
   (Instrument Serif and IBM Plex) with a framed composition and a project-tree motif.
 - `og:image` is versioned (`?v=2`) so crawlers refetch instead of serving a cached image.
-- The CLI is more flexible. Every command takes an optional positional directory
-  (`llmscribe map ./src`, `llmscribe .`), familiar aliases exist (`ls`, `tree`,
-  `grep`/`find`, `cat`, `deps`), `read` accepts several files and batch-reads them, and
-  `-V`/`--version` plus `-j`/`-p` short flags were added.
 
 ### Fixed
 
