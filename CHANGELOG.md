@@ -35,6 +35,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `CODE_OF_CONDUCT.md` now names who receives a report, and gives an independent route
   for a report about the maintainer.
 - Removed a stale `DirScribe` ignore rule and a duplicate cache rule from `.gitignore`.
+- Piping the CLI into a program that stops early (`llmscribe overview . | head`) no longer
+  dumps a `BrokenPipeError` traceback; it exits quietly with status 0.
 
 ## [1.3.0] — 2026-10-25
 

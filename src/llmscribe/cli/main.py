@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -133,6 +134,36 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _detach_stdout() -> None:
+    """Point stdout at /dev/null so interpreter shutdown cannot raise again."""
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+    except (OSError, ValueError):
+        pass
+
+
+def _dispatch(args: argparse.Namespace, command: str) -> int:
+    common = {"path": args.path or getattr(args, "path_pos", None)}
+    as_json = args.json
+
+    if command == "map":
+        return _emit("project_map", "map", as_json, **common)
+    if command == "overview":
+        return _emit("project_overview", "overview", as_json, **common)
+    if command == "search":
+        return _emit("search", "search", as_json, query=args.query, **common)
+    if command == "read":
+        if len(args.files) == 1:
+            return _emit("read", "read", as_json, file_path=args.files[0], **common)
+        return _emit("read_many", "read", as_json, file_paths=args.files, **common)
+    if command == "read-many":
+        return _emit("read_many", "read-many", as_json, file_paths=args.files, **common)
+    if command == "dependencies":
+        return _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
+    return _emit("project_diff", "diff", as_json, staged=args.staged, commit=args.commit, **common)
+
+
 def main(argv: list[str] | None = None) -> None:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -152,31 +183,13 @@ def main(argv: list[str] | None = None) -> None:
         print(f"llmscribe version {__version__}")
         return
 
-    common = {"path": args.path or getattr(args, "path_pos", None)}
-    as_json = args.json
-
-    if command == "map":
-        code = _emit("project_map", "map", as_json, **common)
-    elif command == "overview":
-        code = _emit("project_overview", "overview", as_json, **common)
-    elif command == "search":
-        code = _emit("search", "search", as_json, query=args.query, **common)
-    elif command == "read":
-        if len(args.files) == 1:
-            code = _emit("read", "read", as_json, file_path=args.files[0], **common)
-        else:
-            code = _emit("read_many", "read", as_json, file_paths=args.files, **common)
-    elif command == "read-many":
-        code = _emit("read_many", "read-many", as_json, file_paths=args.files, **common)
-    elif command == "dependencies":
-        code = _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
-    else:
-        code = _emit("project_diff", "diff", as_json, staged=args.staged, commit=args.commit, **common)
-
     try:
+        code = _dispatch(args, command)
         sys.stdout.flush()
     except BrokenPipeError:
-        sys.stderr.close()
+        # The reader closed the pipe (e.g. `llmscribe overview | head`): exit quietly.
+        _detach_stdout()
+        sys.exit(0)
     sys.exit(code)
 
 

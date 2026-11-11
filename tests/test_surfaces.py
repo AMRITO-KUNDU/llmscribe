@@ -66,6 +66,19 @@ def test_cli_is_flexible(repo):
     assert cli("-V").stdout.strip() == f"llmscribe version {llmscribe.__version__}"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="relies on a POSIX shell pipeline")
+def test_cli_pipes_cleanly(repo):
+    # `llmscribe overview . | head` must not dump a BrokenPipeError traceback
+    proc = subprocess.run(
+        f'"{sys.executable}" -m llmscribe overview "{repo}" | head -2',
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    assert "Traceback" not in proc.stderr
+    assert "BrokenPipeError" not in proc.stderr
+
+
 # ---------------------------------------------------------------- MCP tools (SDK-free)
 def test_tool_names_and_functions():
     assert sorted(tools.TOOL_FUNCTIONS) == EXPECTED == sorted(service.TOOLS)
