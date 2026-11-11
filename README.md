@@ -796,6 +796,10 @@ All interfaces share one core engine, so behavior stays consistent everywhere.
 
 LLMScribe intentionally stays simple. The goal is not to make the repository "smarter." The goal is to make the repository **accessible to software**.
 
+One consequence is worth stating precisely: LLMScribe is **deterministic** — the same
+input produces the same bytes on every run. An agent can rely on what it learned last
+turn, and you can diff two runs of the same command and see only what actually changed.
+
 **We provide**
 
 - Repository extraction

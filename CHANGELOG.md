@@ -23,9 +23,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Redesigned the social preview card (`og.png`) in the project's own type
   (Instrument Serif and IBM Plex) with a framed composition and a project-tree motif.
 - `og:image` is versioned (`?v=2`) so crawlers refetch instead of serving a cached image.
-- Removed the word "deterministic" throughout the README, website, package metadata
-  and docstrings. The guarantee is unchanged and now stated plainly: same input,
-  same bytes, every run.
+- Removed the word "deterministic" from the README, website, package metadata and
+  docstrings, where it had become filler. It now appears exactly once, in the
+  Philosophy section, stating the guarantee next to its plain-English form:
+  same input, same bytes, every run.
 
 ### Fixed
 
