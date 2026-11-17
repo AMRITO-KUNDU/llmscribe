@@ -106,39 +106,55 @@ ${SAMPLE_CONTENTS}
 export const SAMPLE_JSON = `{
   "ok": true,
   "tool": "project_overview",
+  "source": "local",
   "path": "/path/to/project",
   "data": {
-    "tree": "my-project/\n├── src\n│   └── main.py\n└── README.md\n",
+    "root_path": "/path/to/project",
+    "tree": "my-project/\\n├── src\\n│   └── main.py\\n└── README.md",
     "files": [
       {
-        "path": "src/main.py",
-        "content": "def hello():\n    print(\\"Hello world\\")\n"
+        "path": "README.md",
+        "content": "# my-project\\n"
       },
       {
-        "path": "README.md",
-        "content": "# my-project\n"
+        "path": "src/main.py",
+        "content": "def hello():\\n    print(\\"Hello world\\")\\n"
       }
-    ]
+    ],
+    "file_count": 2,
+    "character_count": 101,
+    "truncated": false,
+    "truncation_note": "",
+    "truncation_limit": 400000,
+    "omitted_files": [],
+    "skipped_files": [],
+    "skipped_count": 0,
+    "warnings": []
   },
   "metadata": {
     "file_count": 2,
-    "character_count": 92
-  }
+    "character_count": 101,
+    "truncated": false
+  },
+  "command": "overview"
 }`;
 
-export const PYTHON_API = `from pathlib import Path
-from llmscribe.core import project_map, project_overview, search, read_file, read_files, analyze_dependencies, get_git_diff
-from llmscribe.mcp.server import project_map, project_overview, search, read, read_many, project_dependencies, project_diff
+export const PYTHON_API = `from llmscribe import Repository, LLMScribeError
 
-# 1. Direct Python Core Usage
-text = project_overview(Path("/path/to/project"))
+repo = Repository(".")                      # or Repository("/path/to/project")
 
-# 2. Call MCP tools programmatically (JSON mode or Markdown)
-json_overview = project_overview(path="/path/to/project", format="json")
-json_search = search(query="auth", path="/path/to/project", format="json")
-json_read = read(file_path="src/main.py", path="/path/to/project", format="json")
-json_deps = project_dependencies(file_path="src/main.py", path="/path/to/project", format="json")
-diff_markdown = project_diff(path="/path/to/project", staged=False)`;
+tree = repo.map()                           # directory tree, no file contents
+found = repo.search("auth")                 # literal matches, ordered
+file = repo.read("src/main.py")             # .ok / .error_code, never raises
+
+print(tree.tree)
+print(found.match_count)
+if file.ok:
+    print(file.content)
+
+deps = repo.dependencies("src/main.py")     # raises LLMScribeError
+print(deps.file_dependencies.local_dependencies)
+print(deps.used_by)                         # what imports it`;
 
 // Connection instructions for popular MCP clients. Each entry was verified against
 // the client's official documentation. Every client connects over stdio.

@@ -7,7 +7,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- The website's Python API sample was wrong in three ways: it imported `search` from
+  `llmscribe.core` (a module, not a function), it called `project_overview(path=...,
+  format="json")` with keywords that do not exist, and it referenced
+  `llmscribe.mcp.server` internals. It now shows the `Repository` API, and a test
+  executes the sample straight out of `site.ts` so it cannot rot again.
+- The website's JSON sample was not valid JSON. A `\n` inside a TypeScript template
+  literal becomes a real newline, which is illegal inside a JSON string, and the sample
+  was missing `source`, `command` and most of the `data` fields. It is now generated
+  from an actual envelope.
+- The Python API section and feature card still described `llmscribe.core.writer`.
 
 ## [1.4.1] — 2026-11-17
 

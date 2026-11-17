@@ -30,7 +30,7 @@ const FEATURES = [
   {
     icon: FileCode2,
     title: "Embeddable Python Core",
-    body: "Import llmscribe.core or llmscribe.mcp from Python. Use run(), build_project_summary(), or project_overview() programmatically.",
+    body: "from llmscribe import Repository — one object with map, search, read, dependencies and diff, returning the same dataclasses the CLI and MCP server use.",
   },
 ];
 
