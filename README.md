@@ -879,6 +879,18 @@ Start with the [vision](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISI
 
 ---
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=amrito-kundu%2Fllmscribe&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&legend=top-left" />
+ </picture>
+</a>
+
+---
+
 ## License
 
 LLMScribe is licensed under the **Apache License 2.0**.
