@@ -62,21 +62,23 @@ def _run(tool: str, fmt: str, **kwargs: Any) -> str:
     return service.run(tool, fmt_clean == "json", allowed_roots=_local_roots, **kwargs)
 
 
-def project_map(path: PathArg = None, format: FormatArg = "markdown") -> str:
+def project_map(path: PathArg = None, format: FormatArg = "markdown", depth: int | None = None) -> str:
     """Directory tree and the list of supported text files, without file contents.
 
     Respects default ignores and .gitignore files. Symlinks are not followed.
+    Set ``depth`` to list only the first N levels, like ``tree -L N``.
     """
-    return _run("project_map", format, path=path)
+    return _run("project_map", format, path=path, max_depth=depth)
 
 
-def project_overview(path: PathArg = None, format: FormatArg = "markdown") -> str:
+def project_overview(path: PathArg = None, format: FormatArg = "markdown", depth: int | None = None) -> str:
     """Directory tree plus the contents of supported text files.
 
     Output is capped at 400,000 characters of file content; when capped, the
-    result says so and lists the omitted files.
+    result says so and lists the omitted files. Set ``depth`` to include only
+    files within the first N levels, like ``tree -L N``.
     """
-    return _run("project_overview", format, path=path)
+    return _run("project_overview", format, path=path, max_depth=depth)
 
 
 def search(

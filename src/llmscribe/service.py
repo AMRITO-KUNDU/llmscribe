@@ -94,6 +94,7 @@ def execute(
     file_paths: list[str] | None = None,
     staged: bool = False,
     commit: str | None = None,
+    max_depth: int | None = None,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -108,14 +109,14 @@ def execute(
     logical = source.logical_path
 
     if tool == "project_map":
-        pm = map_source(source)
+        pm = map_source(source, max_depth)
         meta = {"file_count": pm.file_count, "character_count": pm.character_count, "truncated": pm.truncated}
         if pm.truncated:
             meta["truncation_note"] = pm.truncation_note
         return ToolResponse(tool, logical, kind, pm.to_dict(), meta, _md_map(pm))
 
     if tool == "project_overview":
-        ov = overview_source(source)
+        ov = overview_source(source, max_depth=max_depth)
         meta = {"file_count": ov.file_count, "character_count": ov.character_count, "truncated": ov.truncated}
         if ov.truncated:
             meta["truncation_note"] = ov.truncation_note

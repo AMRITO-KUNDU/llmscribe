@@ -13,6 +13,7 @@ const MCP_CONFIG = `{
 }`;
 
 const CLI = `llmscribe map
+llmscribe map --depth 2
 llmscribe overview
 llmscribe search "authentication"
 llmscribe read src/auth/service.py

@@ -9,7 +9,7 @@ from typing import Any
 from .errors import LLMScribeError
 from .file_ops import TRUNCATION_MARKER, load_text
 from .limits import MAX_CONTENT_CHARS, MAX_MAP_ENTRIES
-from .source import LocalRepository, RepositorySource
+from .source import Entry, LocalRepository, RepositorySource
 from .tree_builder import render_tree
 
 MAX_SKIPPED_REPORTED = 100
@@ -77,8 +77,29 @@ class ProjectOverviewResult:
         }
 
 
-def map_source(source: RepositorySource) -> ProjectMapResult:
-    """Build the tree and file list of ``source`` (bounded to ``MAX_MAP_ENTRIES`` entries)."""
+def _depth_of(rel_path: str) -> int:
+    """1 for a top-level entry, 2 for its children, and so on."""
+    return rel_path.count("/") + 1
+
+
+def _limit_depth(entries: list[Entry], max_depth: int | None) -> list[Entry]:
+    """Keep only entries at or above ``max_depth`` (``tree -L`` semantics)."""
+    if max_depth is None:
+        return entries
+    return [entry for entry in entries if _depth_of(entry.path) <= max_depth]
+
+
+def _check_depth(max_depth: int | None) -> None:
+    if max_depth is not None and max_depth < 1:
+        raise LLMScribeError("invalid_argument", "depth must be 1 or greater.")
+
+
+def map_source(source: RepositorySource, max_depth: int | None = None) -> ProjectMapResult:
+    """Build the tree and file list of ``source`` (bounded to ``MAX_MAP_ENTRIES`` entries).
+
+    ``max_depth`` limits the listing to the first *N* levels, like ``tree -L N``.
+    """
+    _check_depth(max_depth)
     scan = source.scan()
     entries = scan.entries
     notes: list[str] = []
@@ -89,6 +110,8 @@ def map_source(source: RepositorySource) -> ProjectMapResult:
         notes.append(f"Listing limited to the first {MAX_MAP_ENTRIES:,} of {len(entries):,} entries.")
         entries = entries[:MAX_MAP_ENTRIES]
         truncated = True
+    entries = _limit_depth(entries, max_depth)
+
     from .file_reader import is_text_file
 
     tree = render_tree(source.name, ((e.path, e.is_dir) for e in entries))
@@ -105,9 +128,13 @@ def map_source(source: RepositorySource) -> ProjectMapResult:
     )
 
 
-def overview_source(source: RepositorySource, max_content_chars: int = MAX_CONTENT_CHARS) -> ProjectOverviewResult:
+def overview_source(
+    source: RepositorySource,
+    max_content_chars: int = MAX_CONTENT_CHARS,
+    max_depth: int | None = None,
+) -> ProjectOverviewResult:
     """Tree plus file contents. Files that cannot be read are listed in ``skipped_files``."""
-    project = map_source(source)
+    project = map_source(source, max_depth)
     result = ProjectOverviewResult(
         root_path=project.root_path,
         tree=project.tree,
@@ -161,21 +188,26 @@ def list_source_files(source: RepositorySource, extension: str | None = None) ->
     return paths
 
 
-def project_map(root: Path | None = None, ignore_patterns: list[str] | None = None) -> ProjectMapResult:
+def project_map(
+    root: Path | None = None,
+    ignore_patterns: list[str] | None = None,
+    max_depth: int | None = None,
+) -> ProjectMapResult:
     """Generate the directory tree and file list of a local project.
 
     Raises ``LLMScribeError`` (``invalid_path``) when ``root`` is not a directory.
     """
-    return map_source(LocalRepository(root, ignore_patterns))
+    return map_source(LocalRepository(root, ignore_patterns), max_depth)
 
 
 def project_overview(
     root: Path | None = None,
     ignore_patterns: list[str] | None = None,
     max_content_chars: int = MAX_CONTENT_CHARS,
+    max_depth: int | None = None,
 ) -> ProjectOverviewResult:
     """Generate the tree plus contents of a local project."""
-    return overview_source(LocalRepository(root, ignore_patterns), max_content_chars)
+    return overview_source(LocalRepository(root, ignore_patterns), max_content_chars, max_depth)
 
 
 def list_files(

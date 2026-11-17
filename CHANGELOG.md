@@ -7,6 +7,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `--depth N` on `map` and `overview` (`max_depth=` in Python, `depth=` over MCP).
+  Limits the listing to the first N path levels, like `tree -L N`. It prunes the tree
+  *and* the file list, so `overview --depth 2` never reads the files it excluded.
+
 ### Fixed
 
 - The website's Python API sample was wrong in three ways: it imported `search` from

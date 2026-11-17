@@ -77,17 +77,26 @@ class Repository:
         """The project directory this repository reads from."""
         return self._root
 
-    def map(self) -> ProjectMapResult:
+    def map(self, *, max_depth: int | None = None) -> ProjectMapResult:
         """The directory tree, without file contents.
 
         Cheapest way to show a project to a model: a few hundred tokens for a whole
-        repository, and enough for most navigation decisions.
+        repository, and enough for most navigation decisions. Pass ``max_depth`` to
+        list only the first N levels, like ``tree -L N``.
         """
-        return project_map(self._root, self._ignore_patterns)
+        return project_map(self._root, self._ignore_patterns, max_depth)
 
-    def overview(self, *, max_content_chars: int = limits.MAX_CONTENT_CHARS) -> ProjectOverviewResult:
-        """The directory tree plus file contents."""
-        return project_overview(self._root, self._ignore_patterns, max_content_chars)
+    def overview(
+        self,
+        *,
+        max_content_chars: int = limits.MAX_CONTENT_CHARS,
+        max_depth: int | None = None,
+    ) -> ProjectOverviewResult:
+        """The directory tree plus file contents.
+
+        ``max_depth`` includes only files within the first N levels.
+        """
+        return project_overview(self._root, self._ignore_patterns, max_content_chars, max_depth)
 
     def search(self, query: str, *, max_results: int = limits.MAX_SEARCH_RESULTS) -> SearchResult:
         """Literal substring search over file names and contents.

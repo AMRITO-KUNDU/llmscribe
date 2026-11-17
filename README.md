@@ -152,14 +152,22 @@ project_map()
 **CLI**
 ```bash
 llmscribe map
+llmscribe map --depth 2          # only the first two levels, like `tree -L 2`
 llmscribe map --json
 ```
 
 **MCP**
 ```text
 project_map
+project_map(depth=2)
 ```
 </details>
+
+`--depth N` (or `max_depth=N` from Python) limits the listing to the first *N* path
+levels. A top-level file is depth 1, so `--depth 2` keeps `a/b.py` and drops
+`a/b/c.py`. It prunes the tree *and* the file list, which means `overview --depth 2`
+never reads the files it excluded — useful for fitting a large repository into a small
+context window.
 
 Output:
 ```text
@@ -632,6 +640,10 @@ llmscribe read src/auth/service.py
 llmscribe read-many src/auth/service.py src/api/login.py
 llmscribe dependencies src/auth/service.py
 llmscribe diff
+
+# only the first two levels (like `tree -L 2`)
+llmscribe map --depth 2
+llmscribe overview --depth 3
 
 # machine-readable output
 llmscribe map --json

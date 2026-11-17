@@ -29,8 +29,8 @@ pip install llmscribe
 
 ## MCP tools exposed
 
-- `project_map` — directory tree without file contents
-- `project_overview` — full structure plus supported file contents
+- `project_map` — directory tree without file contents (`depth=N` limits it to the first N levels)
+- `project_overview` — full structure plus supported file contents (`depth=N` likewise)
 - `search` — literal search across paths, names, contents and lines
 - `read` — retrieve one file, with path-traversal protection
 - `read_many` — retrieve multiple files in one call, with per-file errors

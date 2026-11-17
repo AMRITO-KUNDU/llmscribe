@@ -42,6 +42,15 @@ def _path_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true", help="Print one machine-readable JSON document")
 
 
+def _depth_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--depth",
+        type=int,
+        metavar="N",
+        help="List only the first N levels (like `tree -L N`)",
+    )
+
+
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="llmscribe",
@@ -53,7 +62,9 @@ def create_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
 
     for name, help_text in (("map", "Show project structure"), ("overview", "Tree plus file contents")):
-        _path_option(sub.add_parser(name, help=help_text))
+        p = sub.add_parser(name, help=help_text)
+        _path_option(p)
+        _depth_option(p)
 
     p = sub.add_parser("search", help="Search file names and contents")
     p.add_argument("query")
@@ -115,6 +126,8 @@ def _main(argv: list[str] | None = None) -> None:
         return
 
     common = {"path": args.path}
+    if args.command in ("map", "overview"):
+        common["max_depth"] = args.depth
     as_json = args.json
     if args.command == "map":
         code = _emit("project_map", "map", as_json, **common)
