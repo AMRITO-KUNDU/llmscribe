@@ -78,7 +78,7 @@ export function GuiMock() {
 
           <label className="block">
             <span className="mb-1.5 block font-mono text-xs tracking-wider text-subtle uppercase">
-              Project folder
+              Sample project
             </span>
             <span className="flex h-10 items-center gap-2 rounded-md border border-border bg-input px-2">
               <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg">
@@ -137,7 +137,7 @@ export function GuiMock() {
               disabled={status !== "done"}
               className="flex h-11 items-center justify-center rounded-md border border-border text-xs font-medium text-fg disabled:opacity-40"
             >
-              Open file
+              Download
             </button>
           </div>
 
@@ -146,7 +146,7 @@ export function GuiMock() {
           >
             {status === "idle" && "Ready"}
             {status === "scanning" && "Walking project…"}
-            {status === "done" && "Saved to project_overview.txt"}
+            {status === "done" && "Generated"}
           </p>
         </aside>
 
@@ -160,7 +160,7 @@ export function GuiMock() {
           <div className="min-h-64 flex-1 overflow-auto p-4 sm:p-6">
             {status === "idle" ? (
               <p className="max-w-xs text-sm leading-relaxed text-muted">
-                Select a project folder and press Generate. The output will appear here.
+                Press Generate to preview a sample export from a demo project.
               </p>
             ) : null}
             {status === "scanning" ? (

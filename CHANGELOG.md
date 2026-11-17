@@ -22,6 +22,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The homepage demo worked but read as broken: it told you to "select a project
+  folder" when the folder field is a static sample, reported "Saved to
+  project_overview.txt" when nothing had been saved, and labelled a download button
+  "Open file". The copy now matches what the demo actually does.
 - The website's Python API sample was wrong in three ways: it imported `search` from
   `llmscribe.core` (a module, not a function), it called `project_overview(path=...,
   format="json")` with keywords that do not exist, and it referenced
