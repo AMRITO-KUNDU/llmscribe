@@ -44,15 +44,17 @@
 
 # **LLMScribe**
 
-**Turn any local code repository into clean, structured context for AI
-coding agents.**
+**The filesystem layer AI agents are missing.**
 
-One core, four surfaces — an MCP server, a CLI, a desktop GUI and a Python API. All of
-them read your project from disk, and the same input always produces the same bytes.
+An agent that wants to look at your code has one interface: the shell. `ls`, `find`,
+`grep`, `cat` — built for a human reading a terminal, not for a program building a
+model of a repository.
 
-No AI. No embeddings. No hidden ranking.
+LLMScribe gives it one structured interface instead: the same seven operations, the
+same JSON, the same bytes, on Linux, macOS and Windows.
 
-Apache-2.0, and it runs entirely on your machine — no network, no account.
+No AI. No embeddings. No hidden ranking. Apache-2.0, and it runs entirely on your
+machine — no network, no account.
 
 **Works with** Cursor, Claude Code, Claude Desktop, Codex, VS Code, Windsurf, Zed,
 Cline, Continue, JetBrains and LM Studio — any MCP client — plus `pip install` and a
@@ -65,7 +67,26 @@ standalone Windows EXE.
 
 ---
 
-## The problem
+## The problem: agents drive your OS through a human interface
+
+| What the agent needs | Linux / macOS | Windows |
+| --- | --- | --- |
+| list a directory | `ls -la` | `dir /a` |
+| find files by name | `find . -name '*.py'` | `Get-ChildItem -Recurse -Filter *.py` |
+| search inside files | `grep -rn 'auth' .` | `Select-String -Pattern auth` |
+| read a file | `cat app.py` | `type app.py` |
+| structural diff | `diff -ru old new` | `fc /r` (no recursive equivalent) |
+
+Three things go wrong every time:
+
+- **The output is for eyes, not parsers.** Columns, colour, locale-dependent sort order,
+  and warnings interleaved with results.
+- **The commands are not portable.** An agent that works on your laptop fails in CI, or
+  on a contributor's Windows machine.
+- **The agent has to interpret.** Every one of those returns text it must re-parse, and
+  re-parsing is where it drifts.
+
+## What that costs
 
 Your agent does not have an intelligence problem. It has a **retrieval** problem — and
 no model upgrade fixes a context window filled with the wrong files.

@@ -1,9 +1,9 @@
 export const SITE = {
   name: "LLMScribe",
   version: "1.4.1",
-  tagline: "Repository extraction and structured code context for developers.",
+  tagline: "The filesystem layer AI agents are missing.",
   description:
-    "LLMScribe provides a lightweight, local-only Model Context Protocol server for AI coding agents, a desktop GUI, and a modern command-line interface. Turn a local project into clean, structured context.",
+    "LLMScribe gives AI coding agents one structured interface to a local project: tree, search, read, dependencies and diff. The same JSON on Linux, macOS and Windows. Local-only MCP server, CLI, desktop GUI and Python API.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/llmscribe",
   pypi: "https://pypi.org/project/llmscribe/",

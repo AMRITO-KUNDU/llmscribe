@@ -1,15 +1,21 @@
 # Vision
 
-LLMScribe exists to give AI coding agents **structured, repeatable access to a
-codebase** — and nothing else.
+LLMScribe exists to be **the filesystem layer AI agents are missing** — and nothing else.
 
 ## The problem it solves
 
-An agent's bottleneck is usually not reasoning, it's retrieval. Faced with a large
-project it guesses which files matter, re-reads the same ones, and burns context on
-build output and stale fixtures. LLMScribe replaces that guesswork with a small set
-of tools whose output is predictable: a directory tree, a search that reports what it
-found, a dependency graph, a safe file reader, and a Git diff.
+An agent that wants to look at code has exactly one interface: the shell. `ls`, `find`,
+`grep`, `cat`, `dir`, `Select-String`. Those commands were designed for a human reading
+a terminal. They print columns and colour, they sort differently by locale, they report
+errors on the same stream as results, and they are not the same commands on Linux, macOS
+and Windows.
+
+So the agent spends its budget re-parsing text, and what it learns on your laptop does
+not transfer to CI or to a contributor's Windows machine.
+
+LLMScribe replaces that with one structured interface: a directory tree, a literal
+search that reports what it found, a dependency graph, a safe file reader, and a Git
+diff. Same seven operations, same JSON, same bytes, on every OS.
 
 The same input always produces the same bytes. That is the whole point — an agent can
 rely on it, and a human can audit it.

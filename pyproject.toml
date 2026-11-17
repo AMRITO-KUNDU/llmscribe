@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmscribe"
 dynamic = ["version"]
-description = "Project extractor and structured code-access tool for local projects."
+description = "Structured filesystem access for AI agents - one interface across Linux, macOS and Windows."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

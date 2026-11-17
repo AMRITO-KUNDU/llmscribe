@@ -1,6 +1,6 @@
 # LLMScribe
 
-> LLMScribe turns a local project into clean, structured context: a directory tree plus full file contents, plus search, dependency analysis and Git diffs. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
+> LLMScribe is the filesystem layer AI agents are missing. Agents normally drive the OS through `ls`, `find`, `grep` and `cat` — human-facing, OS-specific, unstructured. LLMScribe replaces that with one structured interface to a local project: directory tree, literal search, file reads, dependency analysis and Git diff. Same JSON on Linux, macOS and Windows. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
 
 - Website: https://llmscribe.vercel.app
 - GitHub: https://github.com/AMRITO-KUNDU/llmscribe

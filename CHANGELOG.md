@@ -7,6 +7,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Repositioned the project around the problem it actually solves: an agent's only
+  interface to a codebase is the shell, and `ls` / `find` / `grep` / `cat` are
+  human-facing, OS-specific and unstructured. The README, website, `llms.txt`, package
+  metadata and VISION.md now lead with that, including a Linux-vs-Windows command table.
+
 ### Added
 
 - `--depth N` on `map` and `overview` (`max_depth=` in Python, `depth=` over MCP).
