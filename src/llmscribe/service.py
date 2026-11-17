@@ -137,8 +137,15 @@ def execute(
         fr = read_from_source(source, file_path or "")
         if not fr.ok:
             raise LLMScribeError(fr.error_code, fr.error_message)
-        meta = {"character_count": fr.character_count, "truncated": fr.truncated, "encoding": fr.encoding}
-        return ToolResponse(tool, logical, kind, fr.to_dict(), meta, f"--- {fr.file_path} ---\n{fr.content}")
+        meta = {
+            "character_count": fr.character_count,
+            "byte_size": fr.byte_size,
+            "line_count": fr.line_count,
+            "truncated": fr.truncated,
+            "encoding": fr.encoding,
+        }
+        header = f"--- {fr.file_path} ({fr.byte_size:,} bytes, {fr.line_count:,} lines) ---"
+        return ToolResponse(tool, logical, kind, fr.to_dict(), meta, f"{header}\n{fr.content}")
 
     if tool == "read_many":
         rm = read_many_from_source(source, list(file_paths or []))
@@ -223,7 +230,10 @@ def _md_read_many(rm: Any) -> str:
     parts = []
     for item in rm.results:
         if item.ok:
-            parts.append(f"--- {item.file_path} ---\n{item.content}")
+            # a stat-style header, so the text output answers "how big / how many
+            # lines" without a second command
+            header = f"--- {item.file_path} ({item.byte_size:,} bytes, {item.line_count:,} lines) ---"
+            parts.append(f"{header}\n{item.content}")
         else:
             parts.append(f"--- {item.file_path} ---\nError [{item.error_code}]: {item.error_message}")
     text = "\n\n".join(parts)

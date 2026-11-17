@@ -32,7 +32,7 @@ pip install llmscribe
 - `project_map` — directory tree without file contents (`depth=N` limits it to the first N levels)
 - `project_overview` — full structure plus supported file contents (`depth=N` likewise)
 - `search` — literal search across paths, names, contents and lines
-- `read` — retrieve one file, with path-traversal protection
+- `read` — retrieve one file, with path-traversal protection (returns byte_size and line_count for the whole file)
 - `read_many` — retrieve multiple files in one call, with per-file errors
 - `project_dependencies` — local, stdlib, external and unresolved dependencies, plus reverse dependencies
 - `project_diff` — Git status and unified diffs

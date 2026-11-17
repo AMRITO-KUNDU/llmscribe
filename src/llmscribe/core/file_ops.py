@@ -26,12 +26,16 @@ class FileReadResult:
     error_message: str = ""
     encoding: str = ""
     truncated: bool = False
+    byte_size: int = 0
+    line_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"file_path": self.file_path, "ok": self.ok}
         if self.ok:
             result["content"] = self.content
             result["character_count"] = self.character_count
+            result["byte_size"] = self.byte_size
+            result["line_count"] = self.line_count
             result["encoding"] = self.encoding
             result["truncated"] = self.truncated
         else:
@@ -110,7 +114,19 @@ def read_from_source(
     except LLMScribeError as exc:
         return _failure(file_path, exc)
     content, truncated = _clip(text, max_content_chars)
-    return FileReadResult(rel, content, len(content), True, encoding=encoding, truncated=truncated)
+    # Line count is of the whole file, not the clipped content, so it answers the
+    # question `wc -l` answers even when the body was cut.
+    line_count = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
+    return FileReadResult(
+        rel,
+        content,
+        len(content),
+        True,
+        encoding=encoding,
+        truncated=truncated,
+        byte_size=source.info(rel).size,
+        line_count=line_count,
+    )
 
 
 def read_many_from_source(

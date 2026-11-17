@@ -86,6 +86,31 @@ Three things go wrong every time:
 - **The agent has to interpret.** Every one of those returns text it must re-parse, and
   re-parsing is where it drifts.
 
+### Proving it, not claiming it
+
+`scripts/cross_platform_check.py` builds a fixed fixture project, runs `map`, `overview`,
+`search`, `read`, `read_many` and `dependencies` over it, scrubs the absolute path, and
+digests each result. The [Cross-platform output](.github/workflows/cross-platform.yml)
+workflow runs that on Ubuntu, macOS and Windows and **fails the build if the digests
+differ**:
+
+```text
+llmscribe <version>
+python 3.12
+map            <sha256>
+map_depth2     <sha256>
+overview       <sha256>
+search         <sha256>
+read           <sha256>
+read_many      <sha256>
+dependencies   <sha256>
+combined       <sha256>   <- must be identical on all three
+```
+
+The fixture is written as bytes, not text, so the files themselves are byte-identical on
+every platform — `write_text` would turn `\n` into `\r\n` on Windows and the comparison
+would be meaningless.
+
 ## What that costs
 
 Your agent does not have an intelligence problem. It has a **retrieval** problem — and
@@ -264,6 +289,15 @@ llmscribe read src/auth/service.py
 read
 ```
 </details>
+
+Every read also reports `byte_size` and `line_count` for the **whole file**, not just the
+part returned — so the agent can answer "how big is this" and "how many lines" without a
+second command, and without being misled when the body was clipped. That is the
+`stat` / `wc -l` / `file` information, in the same shape on every OS.
+
+```json
+{ "file_path": "src/main.py", "byte_size": 2841, "line_count": 96, "character_count": 2841, "truncated": false }
+```
 
 ---
 
