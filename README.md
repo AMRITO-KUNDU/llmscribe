@@ -684,18 +684,38 @@ Two optional environment variables restrict which directories the MCP server may
 ## Python API
 
 ```python
-from pathlib import Path
-from llmscribe.core import project_map, search_project, read_file, read_files, analyze_dependencies, get_git_diff, LLMScribeError
+from llmscribe import Repository, LLMScribeError
 
-root = Path(".")
-print(project_map(root).tree)
-print(search_project("auth", root).to_dict())
-print(read_files(["README.md", "missing.py"], root).to_dict())   # per-file errors, never raises
-try:
-    analyze_dependencies("src/app.py", root)
-except LLMScribeError as err:      # err.code is a stable machine-readable code
-    print(err.code, err.message)
+repo = Repository(".")                  # or Repository(Path("."))
+
+print(repo.map().tree)                  # tree, no file contents
+print(repo.search("auth").match_count)
+
+match = repo.read("src/app.py")         # returns a result, never raises
+if match.ok:
+    print(match.content)
+
+batch = repo.read_many(["README.md", "missing.py"])   # per-file errors, never raises
+print(batch.success_count, batch.error_count)
+
+deps = repo.dependencies("src/app.py")  # raises LLMScribeError
+print(deps.file_dependencies.local_dependencies)
+print(deps.used_by)                     # what imports it
 ```
+
+Two error conventions, and the difference matters:
+
+- `read` and `read_many` **return** results carrying `ok` and `error_code`, so a batch
+  reports per-file failures instead of dying on the first one.
+- `dependencies` and `diff` **raise** `LLMScribeError`, whose `.code` is a stable
+  machine-readable string.
+
+Every method returns the same dataclasses the CLI and MCP server produce, and each one
+has `.to_dict()` for JSON. `llmscribe.core` still exposes the underlying functions if you
+want to call them directly.
+
+Runnable examples live in [`examples/`](examples/): chunking a repo for a RAG pipeline,
+reviewing what a change touches, and a repo summary.
 
 ## Behavior reference
 

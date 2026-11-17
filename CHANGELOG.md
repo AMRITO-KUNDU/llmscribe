@@ -17,6 +17,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - This changelog.
 - Dependabot configuration and a CodeQL code-scanning workflow.
 - A dedicated accessibility issue template.
+- `llmscribe.Repository`: a public Python API. `from llmscribe import Repository` gives
+  one object with `map`, `overview`, `search`, `read`, `read_many`, `dependencies` and
+  `diff`, returning the same dataclasses as the CLI and MCP server. Imported lazily, so
+  `import llmscribe` stays instant.
+- `examples/`: runnable scripts for RAG ingestion, PR review and a repo summary.
 
 ### Changed
 

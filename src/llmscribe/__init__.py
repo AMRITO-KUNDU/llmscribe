@@ -1,7 +1,36 @@
-"""LLMScribe — repository extraction and contextual code access."""
+"""LLMScribe — repository extraction and contextual code access.
+
+The public API is imported lazily so ``import llmscribe`` stays instant (loading
+``llmscribe.core`` costs ~200ms):
+
+    >>> from llmscribe import Repository, LLMScribeError
+"""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 __version__ = "1.3.0"
 
-__all__ = ["__version__"]
+__all__ = ["LLMScribeError", "Repository", "__version__"]
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers and IDEs only
+    from .api import Repository
+    from .core.errors import LLMScribeError
+
+
+def __getattr__(name: str) -> Any:
+    """Resolve the public API on first access (PEP 562)."""
+    if name == "Repository":
+        from .api import Repository
+
+        return Repository
+    if name == "LLMScribeError":
+        from .core.errors import LLMScribeError
+
+        return LLMScribeError
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(__all__)
