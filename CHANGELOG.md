@@ -7,6 +7,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.4.0] — 2026-11-17
+
 ### Added
 
 - `CODE_OF_CONDUCT.md`, GitHub issue forms, a pull request template and `ACCESSIBILITY.md`.
@@ -22,6 +26,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `diff`, returning the same dataclasses as the CLI and MCP server. Imported lazily, so
   `import llmscribe` stays instant.
 - `examples/`: runnable scripts for RAG ingestion, PR review and a repo summary.
+- Centralised versioning: `scripts/sync_version.py` propagates `__version__` to
+  `server.json`, `llms.txt`, `site.ts` and `__root.tsx`, and CI fails if any of them
+  drifts. `pyproject.toml` already read the version dynamically.
 
 ### Changed
 
@@ -93,7 +100,8 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Initial public release: CLI, MCP server, desktop GUI and Python API over a
 repeatable project walk.
 
-[Unreleased]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.0.0...v1.2.0

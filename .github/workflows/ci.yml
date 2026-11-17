@@ -21,6 +21,9 @@ jobs:
       - name: Lint
         if: matrix.python-version == '3.12'
         run: ruff check .
+      - name: Version sync
+        if: matrix.python-version == '3.12'
+        run: python scripts/sync_version.py --check
       - name: Test
         run: python -m pytest
 

@@ -137,6 +137,16 @@ def test_mcp_registration_via_public_api():
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def test_version_is_synced_everywhere():
+    """The version lives in __init__.py; the copies must not drift from it."""
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "sync_version.py"), "--check"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
 def test_single_version_source():
     import re
 
