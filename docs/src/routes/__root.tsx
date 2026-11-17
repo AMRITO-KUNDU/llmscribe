@@ -1,14 +1,16 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
+import { SITE } from "@/lib/site";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "LLMScribe";
-const DESCRIPTION =
-  "Turn a local project into clean, structured context. Open-source Python CLI, MCP server, and GUI — published on PyPI. Runs entirely on your machine.";
+// Derived from SITE, never duplicated: the title and description drifted from the
+// rest of the site once already, and the <title> is the most-read string on it.
+const APP_NAME = SITE.name;
+const DESCRIPTION = SITE.description;
 const SITE_URL = "https://llmscribe.vercel.app";
 const OG_IMAGE = `${SITE_URL}/og.png?v=3`;
-const TAGLINE = `${APP_NAME} — one file, the whole project`;
+const TAGLINE = `${APP_NAME} — ${SITE.tagline}`;
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -54,13 +56,13 @@ export const Route = createRootRoute({
       { property: "og:image:type", content: "image/png" },
       {
         property: "og:image:alt",
-        content: `${APP_NAME} — turn any repository into structured, LLM-ready context`,
+        content: TAGLINE,
       },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: TAGLINE },
       { name: "twitter:description", content: DESCRIPTION },
       { name: "twitter:image", content: OG_IMAGE },
-      { name: "twitter:image:alt", content: `${APP_NAME} — turn any repository into structured, LLM-ready context` },
+      { name: "twitter:image:alt", content: TAGLINE },
     ],
     links: [
       { rel: "canonical", href: SITE_URL },

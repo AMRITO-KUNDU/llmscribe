@@ -88,3 +88,29 @@ def test_site_does_not_show_retired_apis():
     text = SITE_TS.read_text(encoding="utf-8")
     for stale in ("llmscribe.core import", 'format="json"', "build_project_summary"):
         assert stale not in text, f"site.ts still references a retired API: {stale}"
+
+
+def test_root_metadata_derives_from_site():
+    """The <title> and meta description must not be duplicated in __root.tsx.
+
+    They were, and they drifted: the title still claimed "one file, the whole
+    project" long after the product stopped being that.
+    """
+    root = (ROOT / "docs" / "src" / "routes" / "__root.tsx").read_text(encoding="utf-8")
+    assert 'from "@/lib/site"' in root, "__root.tsx must import SITE"
+    assert "SITE.description" in root and "SITE.tagline" in root
+    # no retired positioning copy left behind
+    for retired in (
+        "one file, the whole project",
+        "LLM-ready context",
+        "Turn a local project into clean, structured context",
+    ):
+        assert retired not in root, f"__root.tsx still carries retired copy: {retired!r}"
+
+
+def test_meta_description_fits_a_search_snippet():
+    text = SITE_TS.read_text(encoding="utf-8")
+    match = re.search(r'description:\s*\n?\s*"([^"]+)"', text)
+    assert match, "no description in site.ts"
+    description = match.group(1)
+    assert len(description) <= 160, f"description is {len(description)} chars; Google truncates near 155"

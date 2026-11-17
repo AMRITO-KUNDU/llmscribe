@@ -22,6 +22,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The website's `<title>`, meta description and image alt text were duplicated in
+  `__root.tsx` instead of read from `SITE`, and had drifted: the title still said "one
+  file, the whole project" and the alt text "turn any repository into structured,
+  LLM-ready context", neither of which describes the product. They now derive from
+  `SITE`, the description is 140 characters so Google will not truncate the
+  cross-platform half, and a test names the retired strings so they cannot return.
 - The homepage demo worked but read as broken: it told you to "select a project
   folder" when the folder field is a static sample, reported "Saved to
   project_overview.txt" when nothing had been saved, and labelled a download button

@@ -3,7 +3,7 @@ export const SITE = {
   version: "1.4.1",
   tagline: "The filesystem layer AI agents are missing.",
   description:
-    "LLMScribe gives AI coding agents one structured interface to a local project: tree, search, read, dependencies and diff. The same JSON on Linux, macOS and Windows. Local-only MCP server, CLI, desktop GUI and Python API.",
+    "One structured interface to a local project for AI agents: tree, search, read, dependencies and diff. Same JSON on Linux, macOS and Windows.",
   author: "Amrito Kundu",
   github: "https://github.com/AMRITO-KUNDU/llmscribe",
   pypi: "https://pypi.org/project/llmscribe/",
