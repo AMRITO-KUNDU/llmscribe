@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=84.2.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -27,21 +27,21 @@ classifiers = [
 ]
 # Runtime: every entry is imported by the package.
 dependencies = [
-    "mcp>=1.9,<3",       # MCP server (llmscribe.mcp)
-    "pydantic>=2.0",     # tool parameter schemas (llmscribe.mcp.tools)
-    "pathspec>=0.11",    # gitignore semantics (llmscribe.core.tree_builder)
+    "mcp>=2.3.0,<3",       # MCP server (llmscribe.mcp)
+    "pydantic>=2.14.3",     # tool parameter schemas (llmscribe.mcp.tools)
+    "pathspec>=1.1.1",    # gitignore semantics (llmscribe.core.tree_builder)
 ]
 
 [project.optional-dependencies]
 gui = [
-    "customtkinter>=5.2.0",
-    "Pillow>=10.0.0",
+    "customtkinter>=6.0.0",
+    "Pillow>=12.3.0",
 ]
 dev = [
-    "pytest>=7.4",
-    "ruff>=0.4",
-    "build>=1.0",
-    "twine>=5.0",
+    "pytest>=9.2.0",
+    "ruff>=0.17.5",
+    "build>=1.6.1",
+    "twine>=7.0.0",
 ]
 
 [project.urls]
