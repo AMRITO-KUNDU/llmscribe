@@ -117,6 +117,22 @@ def _first(candidates: list[str], available: set[str], fallback: str) -> str:
     return fallback
 
 
+def _icon_path() -> Path | None:
+    """Locate ``favicon.ico`` in a source checkout or inside a PyInstaller bundle.
+
+    In a one-file build ``__file__`` points into the temporary extraction directory,
+    so the repo-relative path used during development does not exist. PyInstaller sets
+    ``sys._MEIPASS`` to that directory, and the icon is placed there by the
+    ``--add-data`` flag in ``build_exe.py``.
+    """
+    import sys
+
+    default_root = Path(__file__).resolve().parent.parent.parent.parent
+    base = Path(getattr(sys, "_MEIPASS", default_root))
+    candidate = base / "docs" / "public" / "favicon.ico"
+    return candidate if candidate.exists() else None
+
+
 def main() -> None:
     import sys
 
@@ -165,13 +181,13 @@ def main() -> None:
             self.minsize(880, 560)
             self.configure(fg_color=BG)
 
-            # Set window icon
-            try:
-                icon_path = Path(__file__).parent.parent.parent.parent / "docs" / "public" / "favicon.ico"
-                if icon_path.exists():
+            # Set window icon (bundled into the EXE by build_exe.py --add-data)
+            icon_path = _icon_path()
+            if icon_path is not None:
+                try:
                     self.iconbitmap(str(icon_path))
-            except Exception:
-                pass  # Icon is optional, don't fail if it doesn't work
+                except Exception:
+                    pass  # a missing icon must never stop the GUI from starting
 
             self._queue: queue.Queue[_WorkerResult] = queue.Queue()
             self._running = False

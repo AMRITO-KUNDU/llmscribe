@@ -11,6 +11,7 @@ The version is read from the installed/checked-out package, never hard-coded.
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import subprocess
 import sys
@@ -26,19 +27,31 @@ ICON_PATH = ROOT_DIR / "docs" / "public" / "favicon.ico"
 NAME = "LLMScribe-GUI"
 
 
-def build() -> Path:
-    for folder in ("build", "dist"):
-        shutil.rmtree(ROOT_DIR / folder, ignore_errors=True)
-    cmd = [
+def build_command() -> list[str]:
+    """The PyInstaller command line.
+
+    ``--icon`` sets the icon on the .exe file; ``--add-data`` ships the same file
+    inside the bundle so the running window can set its own icon too. The separator
+    differs per platform, hence ``os.pathsep``.
+    """
+    return [
         sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onefile", "--windowed",
         "--name", NAME,
         "--paths", str(ROOT_DIR / "src"),
         "--collect-all", "customtkinter",
         "--exclude-module", "pytest",
+        "--icon", str(ICON_PATH),
+        "--add-data", f"{ICON_PATH}{os.pathsep}docs{os.sep}public",
+        str(ENTRY_POINT),
     ]
-    if ICON_PATH.exists():
-        cmd += ["--icon", str(ICON_PATH)]
-    cmd.append(str(ENTRY_POINT))
+
+
+def build() -> Path:
+    if not ICON_PATH.is_file():
+        raise SystemExit(f"icon missing: {ICON_PATH.relative_to(ROOT_DIR)} (a release must not ship without it)")
+    for folder in ("build", "dist"):
+        shutil.rmtree(ROOT_DIR / folder, ignore_errors=True)
+    cmd = build_command()
     print(f"Building LLMScribe {__version__} GUI executable...")
     subprocess.run(cmd, cwd=ROOT_DIR, check=True)
 

@@ -9,6 +9,21 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Nothing yet.
 
+## [1.4.1] — 2026-11-17
+
+### Fixed
+
+- The Windows GUI executable now carries the brand icon **in the window**, not only on
+  the file. The icon is bundled into the one-file build (`--add-data`) and resolved via
+  `sys._MEIPASS`, which is where PyInstaller unpacks; the old repo-relative path does not
+  exist inside a bundle, so the window silently fell back to the default Tk feather.
+- `docs/public/favicon.ico` is now a real multi-resolution icon (16, 24, 32, 48, 64, 128
+  and 256 px) instead of a single 32px image, so Explorer's large-icon view and the
+  Alt-Tab switcher no longer upscale a small bitmap. This also improves the browser
+  favicon.
+- `build_exe.py` fails the build if the icon is missing, rather than quietly producing an
+  unbranded executable.
+
 ## [1.4.0] — 2026-11-17
 
 ### Added
@@ -100,7 +115,8 @@ Nothing yet.
 Initial public release: CLI, MCP server, desktop GUI and Python API over a
 repeatable project walk.
 
-[Unreleased]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/AMRITO-KUNDU/llmscribe/compare/v1.2.0...v1.2.1
