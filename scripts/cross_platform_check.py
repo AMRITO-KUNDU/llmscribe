@@ -60,7 +60,15 @@ VOLATILE_KEYS = {"modified"}
 def scrub(value: Any, root: Path) -> Any:
     """Replace machine-specific values so only real differences remain."""
     if isinstance(value, str):
-        for form in {str(root), root.as_posix(), str(root).replace("\\", "/")}:
+        forms = {
+            str(root),
+            root.as_posix(),
+            str(root).replace("\\", "/"),
+            str(root.resolve()),
+            root.resolve().as_posix(),
+        }
+        # longest first, so a prefix cannot be replaced before the full path
+        for form in sorted(forms, key=len, reverse=True):
             value = value.replace(form, "<ROOT>")
         return value
     if isinstance(value, list):
@@ -79,7 +87,9 @@ def digest(payload: Any) -> str:
 
 
 def main(argv: list[str]) -> int:
-    base = Path(tempfile.mkdtemp(prefix="llmscribe-xplat-"))
+    # Resolve first. On macOS /var is a symlink to /private/var, so the tool reports a
+    # different absolute path than mkdtemp handed out and the scrub below would miss it.
+    base = Path(tempfile.mkdtemp(prefix="llmscribe-xplat-")).resolve()
     try:
         root = build_fixture(base)
         repo = Repository(root)
