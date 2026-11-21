@@ -111,7 +111,9 @@ def main(argv: list[str]) -> int:
         report = "\n".join(lines) + "\n"
 
         if "--out" in argv:
-            Path(argv[argv.index("--out") + 1]).write_text(report, encoding="utf-8")
+            # newline="\n" matters: on Windows write_text would emit CRLF and every
+            # line of the report would differ from the other runners by one byte.
+            Path(argv[argv.index("--out") + 1]).write_text(report, encoding="utf-8", newline="\n")
         print(report, end="")
         return 0
     finally:
