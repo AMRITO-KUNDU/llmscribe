@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .compress import compress_python, is_compressible
 from .errors import LLMScribeError
 from .file_ops import TRUNCATION_MARKER, load_text
 from .limits import CHARS_PER_TOKEN, MAX_CONTENT_CHARS, MAX_MAP_ENTRIES
@@ -63,9 +64,10 @@ class ProjectOverviewResult:
     skipped_files: list[dict[str, str]] = field(default_factory=list)
     skipped_count: int = 0
     warnings: list[str] = field(default_factory=list)
+    compressed_files: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "root_path": self.root_path,
             "tree": self.tree,
             "files": self.files,
@@ -79,6 +81,9 @@ class ProjectOverviewResult:
             "skipped_count": self.skipped_count,
             "warnings": self.warnings,
         }
+        if self.compressed_files:
+            payload["compressed_files"] = self.compressed_files
+        return payload
 
 
 def _depth_of(rel_path: str) -> int:
@@ -144,6 +149,7 @@ def overview_source(
     max_depth: int | None = None,
     include_sizes: bool = False,
     max_tokens: int | None = None,
+    compress: bool = False,
 ) -> ProjectOverviewResult:
     """Tree plus file contents. Files that cannot be read are listed in ``skipped_files``."""
     if max_tokens is not None:
@@ -178,6 +184,11 @@ def overview_source(
             if len(result.skipped_files) < MAX_SKIPPED_REPORTED:
                 result.skipped_files.append({"path": path, "error_code": exc.code})
             continue
+        if compress and is_compressible(rel):
+            squeezed = compress_python(text)
+            if squeezed is not None:
+                text = squeezed
+                result.compressed_files.append(rel)
         if len(text) > remaining:
             text = text[:remaining] + TRUNCATION_MARKER
             exhausted = True
@@ -227,10 +238,16 @@ def project_overview(
     max_depth: int | None = None,
     include_sizes: bool = False,
     max_tokens: int | None = None,
+    compress: bool = False,
 ) -> ProjectOverviewResult:
     """Generate the tree plus contents of a local project."""
     return overview_source(
-        LocalRepository(root, ignore_patterns), max_content_chars, max_depth, include_sizes, max_tokens
+        LocalRepository(root, ignore_patterns),
+        max_content_chars,
+        max_depth,
+        include_sizes,
+        max_tokens,
+        compress,
     )
 
 

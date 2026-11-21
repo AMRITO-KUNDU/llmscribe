@@ -47,6 +47,14 @@ def _path_option(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _compress_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Reduce Python files to signatures and docstrings, dropping bodies",
+    )
+
+
 def _tokens_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--max-tokens",
@@ -85,6 +93,7 @@ def create_parser() -> argparse.ArgumentParser:
         _depth_option(p)
         _sizes_option(p)
         _tokens_option(p)
+        _compress_option(p)
 
     p = sub.add_parser("search", help="Search file names and contents")
     p.add_argument("query")
@@ -96,6 +105,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--binary",
         action="store_true",
         help="Read any file as base64 with its media type (images, PDFs)",
+    )
+    p.add_argument(
+        "--compress",
+        action="store_true",
+        help="For .py files, return signatures and docstrings only",
     )
     _path_option(p)
 
@@ -155,8 +169,10 @@ def _main(argv: list[str] | None = None) -> None:
         common["max_depth"] = args.depth
         common["include_sizes"] = args.sizes
         common["max_tokens"] = args.max_tokens
+        common["compress"] = args.compress
     if args.command == "read":
         common["binary"] = args.binary
+        common["compress"] = args.compress
     as_json = args.json
     if args.command == "map":
         code = _emit("project_map", "map", as_json, **common)

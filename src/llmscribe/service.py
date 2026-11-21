@@ -100,6 +100,7 @@ def execute(
     include_sizes: bool = False,
     binary: bool = False,
     max_tokens: int | None = None,
+    compress: bool = False,
     redact: bool = True,
 ) -> ToolResponse:
     """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
@@ -116,6 +117,7 @@ def execute(
         include_sizes=include_sizes,
         binary=binary,
         max_tokens=max_tokens,
+        compress=compress,
     )
     return _apply_redaction(response) if redact else response
 
@@ -154,6 +156,7 @@ def _execute_tool(
     include_sizes: bool = False,
     binary: bool = False,
     max_tokens: int | None = None,
+    compress: bool = False,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -176,7 +179,11 @@ def _execute_tool(
 
     if tool == "project_overview":
         ov = overview_source(
-            source, max_depth=max_depth, include_sizes=include_sizes, max_tokens=max_tokens
+            source,
+            max_depth=max_depth,
+            include_sizes=include_sizes,
+            max_tokens=max_tokens,
+            compress=compress,
         )
         meta = {"file_count": ov.file_count, "character_count": ov.character_count, "truncated": ov.truncated}
         if ov.truncated:
@@ -195,7 +202,7 @@ def _execute_tool(
         return ToolResponse(tool, logical, kind, sr.to_dict(), meta, _md_search(sr))
 
     if tool == "read":
-        fr = read_from_source(source, file_path or "", binary=binary)
+        fr = read_from_source(source, file_path or "", binary=binary, compress=compress)
         if not fr.ok:
             raise LLMScribeError(fr.error_code, fr.error_message)
         meta = {
@@ -206,6 +213,8 @@ def _execute_tool(
             "encoding": fr.encoding,
             "modified": fr.modified,
         }
+        if fr.compressed:
+            meta["compressed"] = True
         if fr.media_type:
             meta["media_type"] = fr.media_type
         if fr.media_type:

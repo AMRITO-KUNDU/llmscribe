@@ -98,6 +98,7 @@ def main(argv: list[str]) -> int:
             "map": repo.map().to_dict(),
             "map_depth2": repo.map(max_depth=2).to_dict(),
             "overview": repo.overview().to_dict(),
+            "overview_compressed": repo.overview(compress=True).to_dict(),
             "search": repo.search("auth").to_dict(),
             "read": repo.read("src/main.py").to_dict(),
             "read_many": repo.read_many(["README.md", "src/util.py"]).to_dict(),

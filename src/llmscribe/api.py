@@ -117,6 +117,7 @@ class Repository:
         max_depth: int | None = None,
         include_sizes: bool = False,
         max_tokens: int | None = None,
+        compress: bool = False,
         redact: bool = True,
     ) -> ProjectOverviewResult:
         """The directory tree plus file contents.
@@ -124,7 +125,13 @@ class Repository:
         ``max_depth`` includes only files within the first N levels.
         """
         overview = project_overview(
-            self._root, self._ignore_patterns, max_content_chars, max_depth, include_sizes, max_tokens
+            self._root,
+            self._ignore_patterns,
+            max_content_chars,
+            max_depth,
+            include_sizes,
+            max_tokens,
+            compress,
         )
         if redact:
             for entry in overview.files:
@@ -158,6 +165,7 @@ class Repository:
         *,
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
         binary: bool = False,
+        compress: bool = False,
         redact: bool = True,
     ) -> FileReadResult:
         """Read one file.
@@ -165,7 +173,7 @@ class Repository:
         Returns a result with ``ok`` and ``error_code`` rather than raising, so check
         ``ok`` before using ``content``.
         """
-        result = read_file(str(file_path), self._root, max_content_chars, binary)
+        result = read_file(str(file_path), self._root, max_content_chars, binary, compress)
         if redact and not result.media_type:
             _mask(result, "content")
         return result

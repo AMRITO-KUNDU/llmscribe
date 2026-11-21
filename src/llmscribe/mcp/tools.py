@@ -85,6 +85,10 @@ def project_overview(
         int | None,
         Field(description="Stop after roughly this many tokens (~4 characters each), taking files in path order."),
     ] = None,
+    compress: Annotated[
+        bool,
+        Field(description="Reduce Python files to signatures and docstrings, dropping bodies. Default false."),
+    ] = False,
 ) -> str:
     """Directory tree plus the contents of supported text files.
 
@@ -94,7 +98,13 @@ def project_overview(
     a context budget instead; files are taken in path order, never by relevance.
     """
     return _run(
-        "project_overview", format, path=path, max_depth=depth, include_sizes=sizes, max_tokens=max_tokens
+        "project_overview",
+        format,
+        path=path,
+        max_depth=depth,
+        include_sizes=sizes,
+        max_tokens=max_tokens,
+        compress=compress,
     )
 
 
@@ -119,6 +129,10 @@ def read(
         bool,
         Field(description="Read any file as base64 with its media type (images, PDFs). Default false."),
     ] = False,
+    compress: Annotated[
+        bool,
+        Field(description="For .py files, return signatures and docstrings only. Default false."),
+    ] = False,
 ) -> str:
     """Read one file. Paths cannot leave the root; oversized files are rejected.
 
@@ -126,7 +140,7 @@ def read(
     as base64 with its guessed media type - use it when you specifically need to look
     at an image or a PDF, not to pull binaries into context.
     """
-    return _run("read", format, path=path, file_path=file_path, binary=binary)
+    return _run("read", format, path=path, file_path=file_path, binary=binary, compress=compress)
 
 
 def read_many(

@@ -24,6 +24,7 @@ rely on it, and a human can audit it.
 
 - Repeatable extraction: trees, file contents, search, dependencies, diffs.
 - Masking secrets in everything it returns, by default.
+- Syntactic compression: reducing a Python file to signatures and docstrings.
 - A local-first design: your code is read from disk and never uploaded.
 - One core with several surfaces: CLI, MCP server, desktop GUI, Python API.
 - Doing a few things precisely, with explicit limits and stable error codes.
@@ -58,6 +59,16 @@ Matching is deliberately conservative — high-confidence token shapes only, eac
 fixed replacement, so the output stays repeatable and ordinary code is not mangled. When
 something is masked the result says so, in `metadata.redacted`. Silence would be
 indistinguishable from "no secrets here".
+
+## Compression is syntax, not judgement
+
+`--compress` rewrites a Python file through the standard library parser, keeping
+signatures and docstrings and dropping bodies. It is allowed precisely because it makes
+no decision: the transform is fixed, the output is repeatable, and a file that will not
+parse is returned untouched rather than approximated.
+
+Anything that selects *which* content matters — summarising, ranking, embedding — stays
+out of scope, however much context it would save.
 
 ## Budgets are spent in a fixed order
 

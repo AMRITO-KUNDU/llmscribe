@@ -16,6 +16,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `--compress` reduces Python files to imports, signatures and docstrings, dropping
+  bodies — roughly half the characters on a typical module. Uses the standard library
+  parser, so it is a fixed syntactic transform with no inference and no ranking; files
+  that fail to parse are returned untouched. `compressed_files` reports what was
+  reduced. Python only, by choice: a multi-language parser would add a compiled
+  dependency to a pure-Python package.
 - `--max-tokens N` (`max_tokens=` in Python and MCP) spends a context budget by taking
   files in path order until it runs out — never by relevance, which would be ranking.
   Tokens are estimated at four characters. `0` or negative is rejected as

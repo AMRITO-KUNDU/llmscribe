@@ -151,6 +151,31 @@ What users keep reporting:
 
 ---
 
+## Compression that is not a summary
+
+`--compress` reduces Python files to their API surface — imports, signatures,
+docstrings, class shape — and drops the bodies. On a typical module that is roughly half
+the characters.
+
+It is a **fixed syntactic transform**, not a summary: the standard library parser reads
+the file and re-serialises it. Nothing is inferred, nothing is ranked, and the same file
+always produces the same bytes. That is why it belongs here even though "no AI" is the
+whole point.
+
+Three limits, stated plainly:
+
+- **Python only.** A multi-language parser would mean a compiled dependency in a
+  pure-Python package. Saying "Python only" is more honest than a claim to maintain.
+- **Formatting is normalised.** The file is re-serialised, so `"` may become `'` and
+  blank lines collapse. Compressed output is for reading, not for diffing.
+- **Files that do not parse are left exactly as they are.** Never rewritten.
+
+```bash
+llmscribe overview --compress
+llmscribe read src/service.py --compress
+llmscribe overview --compress --max-tokens 20000
+```
+
 ## Budgets are spent in a fixed order
 
 `--max-tokens N` stops once the content reaches roughly N tokens, taking files in

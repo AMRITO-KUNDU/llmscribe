@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .compress import compress_python, is_compressible
 from .errors import LLMScribeError
 from .file_reader import decode_text, is_text_file
 from .limits import MAX_CONTENT_CHARS, MAX_FILE_SIZE, MAX_READ_MANY_FILES
@@ -33,6 +34,7 @@ class FileReadResult:
     line_count: int = 0
     modified: str = ""
     media_type: str = ""
+    compressed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"file_path": self.file_path, "ok": self.ok}
@@ -42,6 +44,8 @@ class FileReadResult:
             result["byte_size"] = self.byte_size
             result["line_count"] = self.line_count
             result["modified"] = self.modified
+            if self.compressed:
+                result["compressed"] = True
             if self.media_type:
                 # binary payload: content is base64, not text
                 result["media_type"] = self.media_type
@@ -128,6 +132,7 @@ def read_from_source(
     file_path: str,
     max_content_chars: int = MAX_CONTENT_CHARS,
     binary: bool = False,
+    compress: bool = False,
 ) -> FileReadResult:
     """Read one file from any source. Never raises for per-file problems.
 
@@ -142,6 +147,12 @@ def read_from_source(
         rel, text, encoding = load_text(source, file_path)
     except LLMScribeError as exc:
         return _failure(file_path, exc)
+    was_compressed = False
+    if compress and is_compressible(rel):
+        squeezed = compress_python(text)
+        if squeezed is not None:
+            text, was_compressed = squeezed, True
+
     content, truncated = _clip(text, max_content_chars)
     # Line count is of the whole file, not the clipped content, so it answers the
     # question `wc -l` answers even when the body was cut.
@@ -157,6 +168,7 @@ def read_from_source(
         byte_size=entry.size,
         line_count=line_count,
         modified=_iso_utc(entry.mtime),
+        compressed=was_compressed,
     )
 
 
@@ -239,13 +251,14 @@ def read_file(
     root: Path | None = None,
     max_content_chars: int = MAX_CONTENT_CHARS,
     binary: bool = False,
+    compress: bool = False,
 ) -> FileReadResult:
     """Read one file below ``root`` (default: current directory)."""
     try:
         source = LocalRepository(root)
     except LLMScribeError as exc:
         return _failure(file_path, exc)
-    return read_from_source(source, file_path, max_content_chars, binary)
+    return read_from_source(source, file_path, max_content_chars, binary, compress)
 
 
 def read_files(
