@@ -42,10 +42,34 @@ from .core import (
     project_overview,
     read_file,
     read_files,
+    redact_text,
     search_project,
 )
 
 __all__ = ["Repository"]
+
+
+def _mask(obj: object, field_name: str) -> list[str]:
+    """Mask one string field in place and return the kinds found.
+
+    Handles both dataclass results and the plain dicts that overview returns.
+    """
+    if isinstance(obj, dict):
+        value = obj.get(field_name)
+        if not isinstance(value, str) or not value:
+            return []
+        masked, kinds = redact_text(value)
+        if kinds:
+            obj[field_name] = masked
+        return kinds
+
+    value = getattr(obj, field_name, None)
+    if not isinstance(value, str) or not value:
+        return []
+    masked, kinds = redact_text(value)
+    if kinds:
+        setattr(obj, field_name, masked)
+    return kinds
 
 
 class Repository:
@@ -92,23 +116,40 @@ class Repository:
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
         max_depth: int | None = None,
         include_sizes: bool = False,
+        redact: bool = True,
     ) -> ProjectOverviewResult:
         """The directory tree plus file contents.
 
         ``max_depth`` includes only files within the first N levels.
         """
-        return project_overview(
+        overview = project_overview(
             self._root, self._ignore_patterns, max_content_chars, max_depth, include_sizes
         )
+        if redact:
+            for entry in overview.files:
+                if isinstance(entry, dict):
+                    _mask(entry, "content")
+        return overview
 
-    def search(self, query: str, *, max_results: int = limits.MAX_SEARCH_RESULTS) -> SearchResult:
+    def search(
+        self,
+        query: str,
+        *,
+        max_results: int = limits.MAX_SEARCH_RESULTS,
+        redact: bool = True,
+    ) -> SearchResult:
         """Literal substring search over file names and contents.
 
         Not a ranked or fuzzy search: results are ordered, and every match reports
         its path, line number and matched text. An empty result means the string is
         genuinely absent.
         """
-        return search_project(query, self._root, max_results, self._ignore_patterns)
+        found = search_project(query, self._root, max_results, self._ignore_patterns)
+        if redact:
+            for match in found.matches:
+                _mask(match, "line_content")
+                _mask(match, "matched_text")
+        return found
 
     def read(
         self,
@@ -116,13 +157,17 @@ class Repository:
         *,
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
         binary: bool = False,
+        redact: bool = True,
     ) -> FileReadResult:
         """Read one file.
 
         Returns a result with ``ok`` and ``error_code`` rather than raising, so check
         ``ok`` before using ``content``.
         """
-        return read_file(str(file_path), self._root, max_content_chars, binary)
+        result = read_file(str(file_path), self._root, max_content_chars, binary)
+        if redact and not result.media_type:
+            _mask(result, "content")
+        return result
 
     def read_many(
         self,
@@ -130,13 +175,18 @@ class Repository:
         *,
         max_files: int = limits.MAX_READ_MANY_FILES,
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
+        redact: bool = True,
     ) -> ReadManyResult:
         """Read several files in one call.
 
         Per-file failures are reported in ``results`` and counted in ``error_count``;
         a missing file never aborts the batch.
         """
-        return read_files([str(p) for p in file_paths], self._root, max_files, max_content_chars)
+        batch = read_files([str(p) for p in file_paths], self._root, max_files, max_content_chars)
+        if redact:
+            for item in batch.results:
+                _mask(item, "content")
+        return batch
 
     def dependencies(self, file_path: str | Path) -> DependencyResult:
         """What a file imports, and what imports it.
@@ -152,10 +202,14 @@ class Repository:
         staged: bool = False,
         commit: str | None = None,
         max_diff_chars: int = limits.MAX_DIFF_CHARS,
+        redact: bool = True,
     ) -> DiffResult:
         """Git status and diff for this repository.
 
         Raises :class:`~llmscribe.core.errors.LLMScribeError` when the directory is
         not a Git repository.
         """
-        return get_git_diff(self._root, staged, commit, max_diff_chars)
+        result = get_git_diff(self._root, staged, commit, max_diff_chars)
+        if redact:
+            _mask(result, "diff")
+        return result

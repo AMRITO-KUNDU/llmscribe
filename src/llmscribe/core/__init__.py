@@ -32,6 +32,7 @@ from .project import (
     project_map,
     project_overview,
 )
+from .redact import redact_text, redact_value
 from .search import SearchMatch, SearchResult, search_project, search_project_simple, search_source
 from .source import Entry, LocalRepository, RepositorySource, Scan, normalize_rel_path
 from .tree_builder import DEFAULT_IGNORE, IgnoreMatcher, IgnoreRules, generate_tree, load_gitignore, should_ignore
@@ -77,6 +78,8 @@ __all__ = [
     "read_files",
     "read_from_source",
     "read_many_from_source",
+    "redact_text",
+    "redact_value",
     "search_project",
     "search_project_simple",
     "search_source",

@@ -16,6 +16,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Secrets are masked before they reach a model.** `core/redact.py` recognises AWS,
+  GitHub, Slack, Stripe, Google and OpenAI key shapes, JWTs, bearer headers, credentials
+  in connection strings, private-key blocks and `password = "..."` assignments, replacing
+  each with a fixed `[REDACTED:<kind>]` marker. Applied at one choke point in
+  `service.execute` so every tool is covered, and in the Python API. On by default,
+  including for MCP clients; `--no-redact` / `redact=False` opts out. The result reports
+  what was masked in `metadata.redacted` rather than masking silently.
 - `map --sizes` / `include_sizes=True` adds each file's byte size to the listing, which
   is what `list_directory_with_sizes` gives you in the official filesystem server.
   Opt-in, so the default output is unchanged.

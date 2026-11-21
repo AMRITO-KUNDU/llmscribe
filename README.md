@@ -151,6 +151,26 @@ What users keep reporting:
 
 ---
 
+## Secrets are masked before they leave
+
+This tool exists to put your code in front of a model, which makes it the last place a
+credential should pass through untouched. Every result is scrubbed first — file contents,
+search hits, diffs — and the result tells you what it masked:
+
+```json
+{ "content": "API_KEY = \"[REDACTED:openai_key]\"", "metadata": { "redacted": ["openai_key"] } }
+```
+
+Detected shapes include AWS keys, GitHub and Slack tokens, Stripe and Google keys, JWTs,
+`Authorization: Bearer` headers, credentials inside connection strings, private-key
+blocks, and `password = "..."` assignments. Matching is conservative on purpose:
+high-confidence token shapes with fixed replacements, so ordinary code is left alone and
+output stays repeatable.
+
+On by default everywhere, including the MCP server. `--no-redact` (CLI) or
+`redact=False` (Python) turns it off when you need the raw text. An agent cannot: one
+that can see raw secrets will eventually read one.
+
 ## Where this fits
 
 There is already a filesystem MCP server — `@modelcontextprotocol/server-filesystem`.

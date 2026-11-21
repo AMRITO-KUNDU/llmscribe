@@ -23,6 +23,7 @@ rely on it, and a human can audit it.
 ## What is in scope
 
 - Repeatable extraction: trees, file contents, search, dependencies, diffs.
+- Masking secrets in everything it returns, by default.
 - A local-first design: your code is read from disk and never uploaded.
 - One core with several surfaces: CLI, MCP server, desktop GUI, Python API.
 - Doing a few things precisely, with explicit limits and stable error codes.
@@ -42,6 +43,21 @@ These come up often. They are not "not yet" — they are decisions:
 - **Being a general Git client.** `project_diff` reports status and diffs; it is not
   a replacement for `git`.
 - **Multi-repository or monorepo-wide orchestration.** One project directory per call.
+
+## Secrets are masked by default
+
+LLMScribe's job is to put code in front of a model, which makes it the last place a
+credential should pass unmasked. A hardcoded key in `src/config.py` would otherwise
+travel to whatever provider the agent is talking to.
+
+So redaction is **on by default** on every surface, including the MCP server. There is a
+`--no-redact` escape hatch on the CLI and `redact=False` in the Python API, but an agent
+cannot turn it off: a model that can see raw secrets will eventually read one.
+
+Matching is deliberately conservative — high-confidence token shapes only, each with a
+fixed replacement, so the output stays repeatable and ordinary code is not mangled. When
+something is masked the result says so, in `metadata.redacted`. Silence would be
+indistinguishable from "no secrets here".
 
 ## How a proposal is judged
 

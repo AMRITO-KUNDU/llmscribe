@@ -157,6 +157,10 @@ def test_single_version_source():
 def test_no_cloud_code_or_secrets_in_source():
     banned = ["project_get_file", "project_search", "project_list_files", "ghp_", "github_pat_", "api.github", "zipball", "Authorization: Bearer "]
     for path in (ROOT / "src").rglob("*.py"):
+        # core/redact.py exists to detect these strings, so it necessarily contains
+        # them. Every other module must stay clean.
+        if path.name == "redact.py":
+            continue
         text = path.read_text()
         for word in banned:
             assert word not in text, (path, word)

@@ -40,6 +40,11 @@ def _emit(tool: str, command: str, as_json: bool, **kwargs: Any) -> int:
 def _path_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--path", help="Project directory (default: current directory)")
     parser.add_argument("--json", action="store_true", help="Print one machine-readable JSON document")
+    parser.add_argument(
+        "--no-redact",
+        action="store_true",
+        help="Do not mask secrets. They are masked by default, including for MCP clients.",
+    )
 
 
 def _sizes_option(parser: argparse.ArgumentParser) -> None:
@@ -135,7 +140,7 @@ def _main(argv: list[str] | None = None) -> None:
         print(f"llmscribe version {__version__}")
         return
 
-    common = {"path": args.path}
+    common = {"path": args.path, "redact": not args.no_redact}
     if args.command in ("map", "overview"):
         common["max_depth"] = args.depth
         common["include_sizes"] = args.sizes

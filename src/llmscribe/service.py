@@ -24,6 +24,8 @@ from llmscribe.core import (
     overview_source,
     read_from_source,
     read_many_from_source,
+    redact_text,
+    redact_value,
     search_source,
 )
 from llmscribe.core.diff import DiffResult
@@ -85,6 +87,58 @@ def _open_local(path: str | None, allowed_roots: Sequence[Path] | None) -> Local
 # --------------------------------------------------------------------------- execute
 
 def execute(
+    tool: str,
+    *,
+    path: str | None = None,
+    allowed_roots: Sequence[Path] | None = None,
+    query: str | None = None,
+    file_path: str | None = None,
+    file_paths: list[str] | None = None,
+    staged: bool = False,
+    commit: str | None = None,
+    max_depth: int | None = None,
+    include_sizes: bool = False,
+    binary: bool = False,
+    redact: bool = True,
+) -> ToolResponse:
+    """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
+    response = _execute_tool(
+        tool,
+        path=path,
+        allowed_roots=allowed_roots,
+        query=query,
+        file_path=file_path,
+        file_paths=file_paths,
+        staged=staged,
+        commit=commit,
+        max_depth=max_depth,
+        include_sizes=include_sizes,
+        binary=binary,
+    )
+    return _apply_redaction(response) if redact else response
+
+
+def _apply_redaction(response: ToolResponse) -> ToolResponse:
+    """Mask secrets in the structured data and the markdown body.
+
+    One choke point for every tool, so a new tool cannot forget. Binary payloads are
+    skipped: base64 is not text and rewriting it would corrupt the bytes.
+    """
+    if response.data.get("media_type"):
+        return response
+
+    data, data_kinds = redact_value(response.data)
+    text, text_kinds = redact_text(response.text)
+    kinds = sorted(set(data_kinds) | set(text_kinds))
+    if not kinds:
+        return response
+
+    metadata = dict(response.metadata)
+    metadata["redacted"] = kinds
+    return ToolResponse(response.tool, response.path, response.source, data, metadata, text)
+
+
+def _execute_tool(
     tool: str,
     *,
     path: str | None = None,
