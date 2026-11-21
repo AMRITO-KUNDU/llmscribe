@@ -151,6 +151,29 @@ What users keep reporting:
 
 ---
 
+## Where this fits
+
+There is already a filesystem MCP server — `@modelcontextprotocol/server-filesystem`.
+It is a good tool, and it does something this deliberately does not: it **writes**.
+`write_file`, `edit_file`, `move_file`, `create_directory`.
+
+LLMScribe is the read half. Run both if your agent needs to change files as well as
+understand them:
+
+| | server-filesystem | LLMScribe |
+| --- | --- | --- |
+| read / write / move / create | yes | **read only** |
+| binary and media reads | yes | opt-in (`read --binary`) |
+| per-file size and mtime | `get_file_info` | on every read, plus `map --sizes` |
+| `.gitignore`-aware | no | yes, real pathspec semantics |
+| dependency graph (imports **and** `used_by`) | no | yes |
+| git diff and status | no | yes |
+| truncation reported | no | yes, with `omitted_files` |
+
+The trade is deliberate. An agent holding a write-capable filesystem server can delete
+your repository; one holding LLMScribe structurally cannot. That is why `VISION.md` says
+LLMScribe does not edit your code — it is a property, not a missing feature.
+
 ## Feature Overview
 
 **Core Tools**
@@ -199,6 +222,7 @@ project_map()
 ```bash
 llmscribe map
 llmscribe map --depth 2          # only the first two levels, like `tree -L 2`
+llmscribe map --sizes            # add each file's size in bytes
 llmscribe map --json
 ```
 
@@ -282,6 +306,7 @@ read(file_path="src/auth/service.py")
 **CLI**
 ```bash
 llmscribe read src/auth/service.py
+llmscribe read logo.png --binary      # base64 + media type, for images and PDFs
 ```
 
 **MCP**
@@ -290,14 +315,18 @@ read
 ```
 </details>
 
-Every read also reports `byte_size` and `line_count` for the **whole file**, not just the
-part returned — so the agent can answer "how big is this" and "how many lines" without a
+Every read also reports `byte_size`, `line_count` and `modified` (ISO 8601 UTC) for the
+**whole file**, not just the part returned — so the agent can answer "how big is this" and "how many lines" without a
 second command, and without being misled when the body was clipped. That is the
 `stat` / `wc -l` / `file` information, in the same shape on every OS.
 
 ```json
-{ "file_path": "src/main.py", "byte_size": 2841, "line_count": 96, "character_count": 2841, "truncated": false }
+{ "file_path": "src/main.py", "byte_size": 2841, "line_count": 96, "modified": "2026-11-21T04:13:16+00:00", "truncated": false }
 ```
+
+`--binary` is the one way to get a non-text file: `content` becomes base64 and
+`media_type` carries the guessed MIME type. Binaries are still excluded from `overview`
+and `read_many`, so they cannot quietly fill a context window.
 
 ---
 

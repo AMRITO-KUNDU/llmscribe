@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import base64
+import mimetypes
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +31,8 @@ class FileReadResult:
     truncated: bool = False
     byte_size: int = 0
     line_count: int = 0
+    modified: str = ""
+    media_type: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"file_path": self.file_path, "ok": self.ok}
@@ -36,7 +41,13 @@ class FileReadResult:
             result["character_count"] = self.character_count
             result["byte_size"] = self.byte_size
             result["line_count"] = self.line_count
-            result["encoding"] = self.encoding
+            result["modified"] = self.modified
+            if self.media_type:
+                # binary payload: content is base64, not text
+                result["media_type"] = self.media_type
+                result["base64"] = True
+            else:
+                result["encoding"] = self.encoding
             result["truncated"] = self.truncated
         else:
             result["error"] = {"code": self.error_code, "message": self.error_message}
@@ -105,10 +116,28 @@ def _clip(text: str, limit: int) -> tuple[str, bool]:
     return text[:limit] + TRUNCATION_MARKER, True
 
 
+def _iso_utc(epoch: float) -> str:
+    """Modified time as an ISO 8601 UTC string, or '' when the source has none."""
+    if not epoch:
+        return ""
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat(timespec="seconds")
+
+
 def read_from_source(
-    source: RepositorySource, file_path: str, max_content_chars: int = MAX_CONTENT_CHARS
+    source: RepositorySource,
+    file_path: str,
+    max_content_chars: int = MAX_CONTENT_CHARS,
+    binary: bool = False,
 ) -> FileReadResult:
-    """Read one file from any source. Never raises for per-file problems."""
+    """Read one file from any source. Never raises for per-file problems.
+
+    ``binary=True`` skips decoding: ``content`` is base64 and ``media_type`` carries
+    the guessed MIME type. That exists for an explicit request to look at an image or
+    a PDF - binaries stay excluded from overview and read_many, which is where context
+    would otherwise be wasted.
+    """
+    if binary:
+        return _read_binary(source, file_path, max_content_chars)
     try:
         rel, text, encoding = load_text(source, file_path)
     except LLMScribeError as exc:
@@ -117,6 +146,7 @@ def read_from_source(
     # Line count is of the whole file, not the clipped content, so it answers the
     # question `wc -l` answers even when the body was cut.
     line_count = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
+    entry = source.info(rel)
     return FileReadResult(
         rel,
         content,
@@ -124,8 +154,37 @@ def read_from_source(
         True,
         encoding=encoding,
         truncated=truncated,
-        byte_size=source.info(rel).size,
+        byte_size=entry.size,
         line_count=line_count,
+        modified=_iso_utc(entry.mtime),
+    )
+
+
+def _read_binary(source: RepositorySource, raw_path: str, max_content_chars: int) -> FileReadResult:
+    """Read any regular file as base64, regardless of extension."""
+    try:
+        rel = normalize_rel_path(raw_path)
+        entry = source.info(rel)
+    except LLMScribeError as exc:
+        return _failure(raw_path, exc)
+    if entry.size > MAX_FILE_SIZE:
+        return _failure(rel, LLMScribeError("file_too_large", f"File exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'."))
+    try:
+        raw = source.read_bytes(rel)
+    except LLMScribeError as exc:
+        return _failure(rel, exc)
+    encoded = base64.b64encode(raw).decode("ascii")
+    clipped = encoded[:max_content_chars]
+    return FileReadResult(
+        rel,
+        clipped,
+        len(clipped),
+        True,
+        truncated=len(clipped) < len(encoded),
+        byte_size=entry.size,
+        line_count=0,
+        modified=_iso_utc(entry.mtime),
+        media_type=mimetypes.guess_type(rel)[0] or "application/octet-stream",
     )
 
 
@@ -176,14 +235,17 @@ def read_many_from_source(
 
 
 def read_file(
-    file_path: str, root: Path | None = None, max_content_chars: int = MAX_CONTENT_CHARS
+    file_path: str,
+    root: Path | None = None,
+    max_content_chars: int = MAX_CONTENT_CHARS,
+    binary: bool = False,
 ) -> FileReadResult:
     """Read one file below ``root`` (default: current directory)."""
     try:
         source = LocalRepository(root)
     except LLMScribeError as exc:
         return _failure(file_path, exc)
-    return read_from_source(source, file_path, max_content_chars)
+    return read_from_source(source, file_path, max_content_chars, binary)
 
 
 def read_files(

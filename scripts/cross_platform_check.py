@@ -52,8 +52,13 @@ def build_fixture(base: Path) -> Path:
     return root
 
 
+# Fields that legitimately differ per machine or per run. ``modified`` is the file's
+# mtime: the fixture is written fresh on every runner, so the value can never match.
+VOLATILE_KEYS = {"modified"}
+
+
 def scrub(value: Any, root: Path) -> Any:
-    """Replace the machine-specific absolute path so only real differences remain."""
+    """Replace machine-specific values so only real differences remain."""
     if isinstance(value, str):
         for form in {str(root), root.as_posix(), str(root).replace("\\", "/")}:
             value = value.replace(form, "<ROOT>")
@@ -61,7 +66,10 @@ def scrub(value: Any, root: Path) -> Any:
     if isinstance(value, list):
         return [scrub(item, root) for item in value]
     if isinstance(value, dict):
-        return {key: scrub(item, root) for key, item in value.items()}
+        return {
+            key: ("<VOLATILE>" if key in VOLATILE_KEYS and item else scrub(item, root))
+            for key, item in value.items()
+        }
     return value
 
 

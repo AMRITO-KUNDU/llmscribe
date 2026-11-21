@@ -95,6 +95,8 @@ def execute(
     staged: bool = False,
     commit: str | None = None,
     max_depth: int | None = None,
+    include_sizes: bool = False,
+    binary: bool = False,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -109,14 +111,14 @@ def execute(
     logical = source.logical_path
 
     if tool == "project_map":
-        pm = map_source(source, max_depth)
+        pm = map_source(source, max_depth, include_sizes)
         meta = {"file_count": pm.file_count, "character_count": pm.character_count, "truncated": pm.truncated}
         if pm.truncated:
             meta["truncation_note"] = pm.truncation_note
         return ToolResponse(tool, logical, kind, pm.to_dict(), meta, _md_map(pm))
 
     if tool == "project_overview":
-        ov = overview_source(source, max_depth=max_depth)
+        ov = overview_source(source, max_depth=max_depth, include_sizes=include_sizes)
         meta = {"file_count": ov.file_count, "character_count": ov.character_count, "truncated": ov.truncated}
         if ov.truncated:
             meta["truncation_note"] = ov.truncation_note
@@ -134,7 +136,7 @@ def execute(
         return ToolResponse(tool, logical, kind, sr.to_dict(), meta, _md_search(sr))
 
     if tool == "read":
-        fr = read_from_source(source, file_path or "")
+        fr = read_from_source(source, file_path or "", binary=binary)
         if not fr.ok:
             raise LLMScribeError(fr.error_code, fr.error_message)
         meta = {
@@ -143,8 +145,14 @@ def execute(
             "line_count": fr.line_count,
             "truncated": fr.truncated,
             "encoding": fr.encoding,
+            "modified": fr.modified,
         }
-        header = f"--- {fr.file_path} ({fr.byte_size:,} bytes, {fr.line_count:,} lines) ---"
+        if fr.media_type:
+            meta["media_type"] = fr.media_type
+        if fr.media_type:
+            header = f"--- {fr.file_path} ({fr.media_type}, {fr.byte_size:,} bytes, base64) ---"
+        else:
+            header = f"--- {fr.file_path} ({fr.byte_size:,} bytes, {fr.line_count:,} lines) ---"
         return ToolResponse(tool, logical, kind, fr.to_dict(), meta, f"{header}\n{fr.content}")
 
     if tool == "read_many":

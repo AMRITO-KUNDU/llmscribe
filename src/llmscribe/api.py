@@ -77,26 +77,29 @@ class Repository:
         """The project directory this repository reads from."""
         return self._root
 
-    def map(self, *, max_depth: int | None = None) -> ProjectMapResult:
+    def map(self, *, max_depth: int | None = None, include_sizes: bool = False) -> ProjectMapResult:
         """The directory tree, without file contents.
 
         Cheapest way to show a project to a model: a few hundred tokens for a whole
         repository, and enough for most navigation decisions. Pass ``max_depth`` to
         list only the first N levels, like ``tree -L N``.
         """
-        return project_map(self._root, self._ignore_patterns, max_depth)
+        return project_map(self._root, self._ignore_patterns, max_depth, include_sizes)
 
     def overview(
         self,
         *,
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
         max_depth: int | None = None,
+        include_sizes: bool = False,
     ) -> ProjectOverviewResult:
         """The directory tree plus file contents.
 
         ``max_depth`` includes only files within the first N levels.
         """
-        return project_overview(self._root, self._ignore_patterns, max_content_chars, max_depth)
+        return project_overview(
+            self._root, self._ignore_patterns, max_content_chars, max_depth, include_sizes
+        )
 
     def search(self, query: str, *, max_results: int = limits.MAX_SEARCH_RESULTS) -> SearchResult:
         """Literal substring search over file names and contents.
@@ -107,13 +110,19 @@ class Repository:
         """
         return search_project(query, self._root, max_results, self._ignore_patterns)
 
-    def read(self, file_path: str | Path, *, max_content_chars: int = limits.MAX_CONTENT_CHARS) -> FileReadResult:
+    def read(
+        self,
+        file_path: str | Path,
+        *,
+        max_content_chars: int = limits.MAX_CONTENT_CHARS,
+        binary: bool = False,
+    ) -> FileReadResult:
         """Read one file.
 
         Returns a result with ``ok`` and ``error_code`` rather than raising, so check
         ``ok`` before using ``content``.
         """
-        return read_file(str(file_path), self._root, max_content_chars)
+        return read_file(str(file_path), self._root, max_content_chars, binary)
 
     def read_many(
         self,

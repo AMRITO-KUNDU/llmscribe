@@ -31,6 +31,7 @@ class Entry:
     path: str
     size: int = 0
     is_dir: bool = False
+    mtime: float = 0.0
 
 
 @dataclass
@@ -155,7 +156,9 @@ class LocalRepository(RepositorySource):
                         scan.entries.append(Entry(rel, 0, True))
                         pending.append(rel)
                     elif child.is_file(follow_symlinks=False):
-                        scan.entries.append(Entry(rel, child.stat(follow_symlinks=False).st_size, False))
+                        # one stat call carries both size and mtime
+                        st = child.stat(follow_symlinks=False)
+                        scan.entries.append(Entry(rel, st.st_size, False, st.st_mtime))
                 except OSError:
                     scan.warnings.append(f"Could not stat: {rel}")
             if scan.truncated:
@@ -195,7 +198,7 @@ class LocalRepository(RepositorySource):
             raise LLMScribeError("invalid_path", f"Path is a directory, not a file: '{rel}'.")
         if not stat.S_ISREG(st.st_mode):
             raise LLMScribeError("invalid_path", f"Path is not a regular file: '{rel}'.")
-        return Entry(rel, st.st_size, False)
+        return Entry(rel, st.st_size, False, st.st_mtime)
 
     def read_bytes(self, rel: str) -> bytes:
         target = self._checked_path(rel)

@@ -16,6 +16,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `map --sizes` / `include_sizes=True` adds each file's byte size to the listing, which
+  is what `list_directory_with_sizes` gives you in the official filesystem server.
+  Opt-in, so the default output is unchanged.
+- `read` reports `modified` (ISO 8601 UTC) alongside `byte_size` and `line_count`.
+- `read --binary` returns any file as base64 with its guessed `media_type`, for images
+  and PDFs. Binaries stay excluded from `overview` and `read_many`, so the default
+  cannot fill a context window with them.
+- A "Where this fits" section comparing against `@modelcontextprotocol/server-filesystem`
+  and stating plainly that LLMScribe is the read half: it does not write, edit or move,
+  by design.
 - `read` and `read_many` now report `byte_size` and `line_count` for the whole file,
   alongside the content. That is the `stat` / `wc -l` / `file` information in the same
   shape on every OS, and it stays correct when the body is clipped.

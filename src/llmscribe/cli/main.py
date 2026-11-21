@@ -42,6 +42,10 @@ def _path_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true", help="Print one machine-readable JSON document")
 
 
+def _sizes_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--sizes", action="store_true", help="Include each file's size in bytes")
+
+
 def _depth_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--depth",
@@ -65,6 +69,7 @@ def create_parser() -> argparse.ArgumentParser:
         p = sub.add_parser(name, help=help_text)
         _path_option(p)
         _depth_option(p)
+        _sizes_option(p)
 
     p = sub.add_parser("search", help="Search file names and contents")
     p.add_argument("query")
@@ -72,6 +77,11 @@ def create_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("read", help="Read one file")
     p.add_argument("file_path")
+    p.add_argument(
+        "--binary",
+        action="store_true",
+        help="Read any file as base64 with its media type (images, PDFs)",
+    )
     _path_option(p)
 
     p = sub.add_parser("read-many", help="Read several files")
@@ -128,6 +138,9 @@ def _main(argv: list[str] | None = None) -> None:
     common = {"path": args.path}
     if args.command in ("map", "overview"):
         common["max_depth"] = args.depth
+        common["include_sizes"] = args.sizes
+    if args.command == "read":
+        common["binary"] = args.binary
     as_json = args.json
     if args.command == "map":
         code = _emit("project_map", "map", as_json, **common)

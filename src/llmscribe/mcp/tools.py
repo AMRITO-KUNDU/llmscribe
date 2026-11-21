@@ -62,23 +62,33 @@ def _run(tool: str, fmt: str, **kwargs: Any) -> str:
     return service.run(tool, fmt_clean == "json", allowed_roots=_local_roots, **kwargs)
 
 
-def project_map(path: PathArg = None, format: FormatArg = "markdown", depth: int | None = None) -> str:
+def project_map(
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    depth: int | None = None,
+    sizes: bool = False,
+) -> str:
     """Directory tree and the list of supported text files, without file contents.
 
     Respects default ignores and .gitignore files. Symlinks are not followed.
     Set ``depth`` to list only the first N levels, like ``tree -L N``.
     """
-    return _run("project_map", format, path=path, max_depth=depth)
+    return _run("project_map", format, path=path, max_depth=depth, include_sizes=sizes)
 
 
-def project_overview(path: PathArg = None, format: FormatArg = "markdown", depth: int | None = None) -> str:
+def project_overview(
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    depth: int | None = None,
+    sizes: bool = False,
+) -> str:
     """Directory tree plus the contents of supported text files.
 
     Output is capped at 400,000 characters of file content; when capped, the
     result says so and lists the omitted files. Set ``depth`` to include only
     files within the first N levels, like ``tree -L N``.
     """
-    return _run("project_overview", format, path=path, max_depth=depth)
+    return _run("project_overview", format, path=path, max_depth=depth, include_sizes=sizes)
 
 
 def search(
@@ -98,9 +108,18 @@ def read(
     file_path: Annotated[str, Field(description="Path of the file relative to the project root.")],
     path: PathArg = None,
     format: FormatArg = "markdown",
+    binary: Annotated[
+        bool,
+        Field(description="Read any file as base64 with its media type (images, PDFs). Default false."),
+    ] = False,
 ) -> str:
-    """Read one text file. Paths cannot leave the root; binary and oversized files are rejected."""
-    return _run("read", format, path=path, file_path=file_path)
+    """Read one file. Paths cannot leave the root; oversized files are rejected.
+
+    By default only recognised text files are read. Set ``binary`` to fetch any file
+    as base64 with its guessed media type - use it when you specifically need to look
+    at an image or a PDF, not to pull binaries into context.
+    """
+    return _run("read", format, path=path, file_path=file_path, binary=binary)
 
 
 def read_many(
