@@ -81,14 +81,21 @@ def project_overview(
     format: FormatArg = "markdown",
     depth: int | None = None,
     sizes: bool = False,
+    max_tokens: Annotated[
+        int | None,
+        Field(description="Stop after roughly this many tokens (~4 characters each), taking files in path order."),
+    ] = None,
 ) -> str:
     """Directory tree plus the contents of supported text files.
 
     Output is capped at 400,000 characters of file content; when capped, the
     result says so and lists the omitted files. Set ``depth`` to include only
-    files within the first N levels, like ``tree -L N``.
+    files within the first N levels, like ``tree -L N``. Set ``max_tokens`` to stop at
+    a context budget instead; files are taken in path order, never by relevance.
     """
-    return _run("project_overview", format, path=path, max_depth=depth, include_sizes=sizes)
+    return _run(
+        "project_overview", format, path=path, max_depth=depth, include_sizes=sizes, max_tokens=max_tokens
+    )
 
 
 def search(

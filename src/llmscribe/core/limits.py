@@ -6,6 +6,14 @@ so the same operation behaves the same everywhere.
 
 from __future__ import annotations
 
+# --- Token budgeting -------------------------------------------------------
+# A token is estimated at this many characters. It is an approximation, not a
+# tokenizer: exact counts need a model-specific vocabulary, and adding one would make
+# the same file cost a different number of tokens depending on which model you meant.
+# Four characters is close enough for GPT/Claude-family text and, more importantly,
+# it is the same answer on every machine.
+CHARS_PER_TOKEN = 4
+
 # --- Output limits (characters) -------------------------------------------
 MAX_CONTENT_CHARS = 400_000  # total file content returned by one overview/read_many call
 MAX_DIFF_CHARS = 200_000  # diff text returned by one project_diff call

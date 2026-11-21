@@ -99,6 +99,7 @@ def execute(
     max_depth: int | None = None,
     include_sizes: bool = False,
     binary: bool = False,
+    max_tokens: int | None = None,
     redact: bool = True,
 ) -> ToolResponse:
     """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
@@ -114,6 +115,7 @@ def execute(
         max_depth=max_depth,
         include_sizes=include_sizes,
         binary=binary,
+        max_tokens=max_tokens,
     )
     return _apply_redaction(response) if redact else response
 
@@ -151,6 +153,7 @@ def _execute_tool(
     max_depth: int | None = None,
     include_sizes: bool = False,
     binary: bool = False,
+    max_tokens: int | None = None,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -172,7 +175,9 @@ def _execute_tool(
         return ToolResponse(tool, logical, kind, pm.to_dict(), meta, _md_map(pm))
 
     if tool == "project_overview":
-        ov = overview_source(source, max_depth=max_depth, include_sizes=include_sizes)
+        ov = overview_source(
+            source, max_depth=max_depth, include_sizes=include_sizes, max_tokens=max_tokens
+        )
         meta = {"file_count": ov.file_count, "character_count": ov.character_count, "truncated": ov.truncated}
         if ov.truncated:
             meta["truncation_note"] = ov.truncation_note

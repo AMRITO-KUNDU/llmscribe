@@ -8,7 +8,7 @@ from typing import Any
 
 from .errors import LLMScribeError
 from .file_ops import TRUNCATION_MARKER, load_text
-from .limits import MAX_CONTENT_CHARS, MAX_MAP_ENTRIES
+from .limits import CHARS_PER_TOKEN, MAX_CONTENT_CHARS, MAX_MAP_ENTRIES
 from .source import Entry, LocalRepository, RepositorySource
 from .tree_builder import render_tree
 
@@ -143,8 +143,16 @@ def overview_source(
     max_content_chars: int = MAX_CONTENT_CHARS,
     max_depth: int | None = None,
     include_sizes: bool = False,
+    max_tokens: int | None = None,
 ) -> ProjectOverviewResult:
     """Tree plus file contents. Files that cannot be read are listed in ``skipped_files``."""
+    if max_tokens is not None:
+        if max_tokens < 1:
+            raise LLMScribeError("invalid_argument", "max_tokens must be 1 or greater.")
+        # Budget in tokens, spend in characters. Files are consumed in path order,
+        # which is fixed, so the same budget always yields the same set of files.
+        max_content_chars = max_tokens * CHARS_PER_TOKEN
+
     project = map_source(source, max_depth, include_sizes)
     result = ProjectOverviewResult(
         root_path=project.root_path,
@@ -218,10 +226,11 @@ def project_overview(
     max_content_chars: int = MAX_CONTENT_CHARS,
     max_depth: int | None = None,
     include_sizes: bool = False,
+    max_tokens: int | None = None,
 ) -> ProjectOverviewResult:
     """Generate the tree plus contents of a local project."""
     return overview_source(
-        LocalRepository(root, ignore_patterns), max_content_chars, max_depth, include_sizes
+        LocalRepository(root, ignore_patterns), max_content_chars, max_depth, include_sizes, max_tokens
     )
 
 

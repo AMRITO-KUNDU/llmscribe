@@ -47,6 +47,15 @@ def _path_option(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _tokens_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        metavar="N",
+        help="Stop after roughly N tokens (~4 characters each), taking files in path order",
+    )
+
+
 def _sizes_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--sizes", action="store_true", help="Include each file's size in bytes")
 
@@ -75,6 +84,7 @@ def create_parser() -> argparse.ArgumentParser:
         _path_option(p)
         _depth_option(p)
         _sizes_option(p)
+        _tokens_option(p)
 
     p = sub.add_parser("search", help="Search file names and contents")
     p.add_argument("query")
@@ -144,6 +154,7 @@ def _main(argv: list[str] | None = None) -> None:
     if args.command in ("map", "overview"):
         common["max_depth"] = args.depth
         common["include_sizes"] = args.sizes
+        common["max_tokens"] = args.max_tokens
     if args.command == "read":
         common["binary"] = args.binary
     as_json = args.json

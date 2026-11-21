@@ -16,6 +16,10 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `--max-tokens N` (`max_tokens=` in Python and MCP) spends a context budget by taking
+  files in path order until it runs out — never by relevance, which would be ranking.
+  Tokens are estimated at four characters. `0` or negative is rejected as
+  `invalid_argument`. The ordering rule is written into VISION.md so it cannot drift.
 - **Secrets are masked before they reach a model.** `core/redact.py` recognises AWS,
   GitHub, Slack, Stripe, Google and OpenAI key shapes, JWTs, bearer headers, credentials
   in connection strings, private-key blocks and `password = "..."` assignments, replacing

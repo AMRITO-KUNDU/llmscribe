@@ -59,6 +59,21 @@ fixed replacement, so the output stays repeatable and ordinary code is not mangl
 something is masked the result says so, in `metadata.redacted`. Silence would be
 indistinguishable from "no secrets here".
 
+## Budgets are spent in a fixed order
+
+`--max-tokens` fills a context budget by taking files in **path order** until the budget
+is gone. That is the only acceptable rule: the moment files are chosen by relevance,
+likelihood or "importance", the tool is ranking, and ranking is what this project exists
+to avoid.
+
+The consequence is that a budget may cut off a file that mattered. That is a known and
+accepted cost — a predictable wrong answer beats an unpredictable right one, because the
+caller can always raise the budget or read a specific file.
+
+Token counts are estimated at four characters each. An exact count needs a
+model-specific vocabulary, and adding one would make the same file cost different
+amounts depending on which model you meant.
+
 ## How a proposal is judged
 
 A feature request is evaluated against four questions:

@@ -151,6 +151,19 @@ What users keep reporting:
 
 ---
 
+## Budgets are spent in a fixed order
+
+`--max-tokens N` stops once the content reaches roughly N tokens, taking files in
+**path order** until the budget is gone. That is the whole rule, and it is the only
+acceptable one: choose files by relevance and you are ranking, which is the thing this
+project exists not to do.
+
+The cost is honest — a budget can cut off a file that mattered. A predictable wrong
+answer beats an unpredictable right one, because you can always raise the budget or read
+a specific file. Token counts are estimated at four characters each; an exact count needs
+a model-specific vocabulary and would make the same file cost different amounts depending
+on which model you meant.
+
 ## Secrets are masked before they leave
 
 This tool exists to put your code in front of a model, which makes it the last place a
@@ -748,6 +761,9 @@ llmscribe diff
 # only the first two levels (like `tree -L 2`)
 llmscribe map --depth 2
 llmscribe overview --depth 3
+
+# fit a context budget: takes files in path order until it is spent
+llmscribe overview --max-tokens 20000
 
 # machine-readable output
 llmscribe map --json

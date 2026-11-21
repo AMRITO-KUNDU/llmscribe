@@ -116,6 +116,7 @@ class Repository:
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
         max_depth: int | None = None,
         include_sizes: bool = False,
+        max_tokens: int | None = None,
         redact: bool = True,
     ) -> ProjectOverviewResult:
         """The directory tree plus file contents.
@@ -123,7 +124,7 @@ class Repository:
         ``max_depth`` includes only files within the first N levels.
         """
         overview = project_overview(
-            self._root, self._ignore_patterns, max_content_chars, max_depth, include_sizes
+            self._root, self._ignore_patterns, max_content_chars, max_depth, include_sizes, max_tokens
         )
         if redact:
             for entry in overview.files:
