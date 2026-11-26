@@ -458,6 +458,16 @@ LLMScribe is a standard Model Context Protocol server that runs locally over std
 
 Any MCP-compatible client can use it against a project directory on your machine.
 
+> **Install the server first.** The MCP server lives behind an extra so the core package
+> stays at one dependency:
+>
+> ```bash
+> pip install 'llmscribe[server]'
+> ```
+>
+> Without it, `llmscribe-mcp` prints that install line and exits rather than failing with
+> an ImportError.
+
 **Config** — put this in your client (see the per-app setup below):
 
 ```json

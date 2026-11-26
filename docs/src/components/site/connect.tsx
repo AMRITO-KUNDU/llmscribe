@@ -38,7 +38,7 @@ export function Connect() {
             {LOCAL}
           </pre>
           <p className="border-t border-border px-5 py-3 font-mono text-xs text-subtle">
-            pip install llmscribe
+            pip install 'llmscribe[server]'
           </p>
         </div>
 

@@ -38,8 +38,9 @@ makes output change between runs. VISION.md explains why for each.
   pip install -e ".[dev]"
   ```
 
-  This installs the `llmscribe`, `llmscribe-gui`, and `llmscribe-mcp` commands and picks
-  up any code changes immediately, without reinstalling.
+  This installs the `llmscribe` and `llmscribe-mcp` commands and picks up any code
+  changes immediately, without reinstalling. The `dev` extra pulls in `[server]`, because
+  the MCP surface is part of the test suite; the GUI needs `[gui]` as well.
 
 ## Run
 

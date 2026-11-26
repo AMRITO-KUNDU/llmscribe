@@ -39,7 +39,7 @@ jobs:
           python -m pip install --upgrade pip build twine
           python -m build
           python -m twine check dist/*
-      - name: Smoke-test the installed wheel
+      - name: Smoke-test the core wheel (no MCP server)
         run: |
           python -m venv /tmp/smoke
           /tmp/smoke/bin/pip install dist/*.whl
@@ -47,5 +47,16 @@ jobs:
           /tmp/smoke/bin/llmscribe version
           /tmp/smoke/bin/llmscribe --help
           /tmp/smoke/bin/python -m llmscribe version
-          /tmp/smoke/bin/python -c "import llmscribe.mcp as m, asyncio; names=sorted(t.name for t in asyncio.run(m.mcp.list_tools())); print(names); assert len(names)==7"
           test -x /tmp/smoke/bin/llmscribe-mcp
+          # The core install must not pull the MCP server's 155-package tree.
+          /tmp/smoke/bin/python -c "import sys, llmscribe; from llmscribe import Repository, tool_schemas; assert 'mcp' not in sys.modules, 'mcp leaked into core'; assert 'pydantic' not in sys.modules, 'pydantic leaked into core'; assert len(tool_schemas('openai'))==7; print('core-only install ok')"
+          # Without the extra it must explain itself, not traceback.
+          /tmp/smoke/bin/llmscribe-mcp 2>&1 | grep -q "llmscribe\[server\]"
+
+      - name: Smoke-test the server extra
+        run: |
+          WHEEL=$(ls /home/runner/work/*/*/dist/*.whl 2>/dev/null || ls dist/*.whl)
+          /tmp/smoke/bin/pip install "${WHEEL}[server]"
+          cd /tmp
+          /tmp/smoke/bin/python -c "import llmscribe.mcp as m, asyncio; names=sorted(t.name for t in asyncio.run(m.mcp.list_tools())); print(names); assert len(names)==7"
+          /tmp/smoke/bin/python -c "import llmscribe.mcp.tools; print('server extra ok')"
