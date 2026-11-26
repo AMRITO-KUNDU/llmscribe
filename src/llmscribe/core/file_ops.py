@@ -245,8 +245,14 @@ def read_many_from_source(
     file_paths: list[str],
     max_files: int = MAX_READ_MANY_FILES,
     max_content_chars: int = MAX_CONTENT_CHARS,
+    start_line: int | None = None,
+    end_line: int | None = None,
 ) -> ReadManyResult:
-    """Read several files; one bad file never affects the others."""
+    """Read several files; one bad file never affects the others.
+
+    ``start_line``/``end_line`` apply to *every* file in the batch - the useful shape
+    when you want the top of each file rather than all of them.
+    """
     result = ReadManyResult(root_path=source.logical_path, truncation_limit=max_files)
     if not file_paths:
         result.ok = False
@@ -268,7 +274,9 @@ def read_many_from_source(
             result.omitted_files.extend(str(p) for p in batch[index:])
             notes.append(f"Total content capped at {max_content_chars:,} characters.")
             break
-        item = read_from_source(source, raw, max_content_chars=remaining)
+        item = read_from_source(
+            source, raw, max_content_chars=remaining, start_line=start_line, end_line=end_line
+        )
         result.results.append(item)
         if not item.ok:
             result.error_count += 1
@@ -310,6 +318,8 @@ def read_files(
     root: Path | None = None,
     max_files: int = MAX_READ_MANY_FILES,
     max_content_chars: int = MAX_CONTENT_CHARS,
+    start_line: int | None = None,
+    end_line: int | None = None,
 ) -> ReadManyResult:
     """Read several files below ``root``. Always returns a ``ReadManyResult``."""
     try:
@@ -322,4 +332,6 @@ def read_files(
             error_code=exc.code,
             error_message=exc.message,
         )
-    return read_many_from_source(source, file_paths, max_files, max_content_chars)
+    return read_many_from_source(
+        source, file_paths, max_files, max_content_chars, start_line, end_line
+    )

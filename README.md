@@ -96,7 +96,7 @@ It is deliberately **read-only**. An agent holding LLMScribe can understand your
 ```bash
 pip install llmscribe              # core: map, search, read, dependencies, diff
 pip install 'llmscribe[server]'    # adds the MCP server (llmscribe-mcp)
-pip install 'llmscribe[adapters]'  # adds LangChain, PydanticAI and smolagents adapters
+pip install 'llmscribe[adapters]'  # adds LangChain, LlamaIndex, PydanticAI and smolagents adapters
 ```
 
 The core package has a single dependency (`pathspec`). The MCP server and framework adapters are optional extras, so a library user never pays for a protocol server they do not run. If you run `llmscribe-mcp` without the `server` extra, it prints the install command and exits instead of raising an `ImportError`.
@@ -147,12 +147,12 @@ Seven tools, identical across the MCP server, CLI and Python library.
 
 | MCP tool | CLI command | What it does |
 | --- | --- | --- |
-| `project_map` | `llmscribe map` | Directory tree without file contents. Supports `--depth` and `--sizes`. |
-| `project_overview` | `llmscribe overview` | Tree plus supported file contents. Supports `--depth`, `--compress` and `--max-tokens`. |
-| `search` | `llmscribe search` | Literal search across file paths, names, contents and lines. |
-| `read` | `llmscribe read` | One file with `byte_size`, `line_count` and `modified`. `--binary` returns base64; `--lines START:END` reads part of it. |
-| `read_many` | `llmscribe read-many` | Up to 50 files in one call, with per-file errors. |
-| `project_dependencies` | `llmscribe dependencies` | What a file imports and what imports it. |
+| `project_map` | `llmscribe map` (alias `ls`) | Directory tree without file contents. Supports `--depth` and `--sizes`. |
+| `project_overview` | `llmscribe overview` (alias `tree`) | Tree plus supported file contents. Supports `--depth`, `--compress` and `--max-tokens`. |
+| `search` | `llmscribe search` (aliases `grep`, `find`) | Literal search across file paths, names, contents and lines. |
+| `read` | `llmscribe read` (alias `cat`) | One file with `byte_size`, `line_count` and `modified`. `--binary` returns base64; `--lines START:END` reads part of it. |
+| `read_many` | `llmscribe read-many` (alias `cat-many`) | Up to 50 files in one call, with per-file errors. `--lines START:END` applies to every file. |
+| `project_dependencies` | `llmscribe dependencies` (alias `deps`) | What a file imports and what imports it. |
 | `project_diff` | `llmscribe diff` | Git status and unified diffs. |
 
 ---
@@ -578,15 +578,18 @@ result = run["project_map"](depth=2)    # {'ok': True, 'data': {...}, ...}
 
 ### Ready-made adapters
 
-Adapters ship for **LangChain**, **PydanticAI**, **smolagents** and the **Anthropic Messages API** (no SDK needed):
+Adapters ship for **LangChain**, **LlamaIndex**, **PydanticAI**, **smolagents** and the **Anthropic Messages API** (no SDK needed):
 
 ```python
 from llmscribe import Repository
-from llmscribe.adapters import as_langchain_tools, as_anthropic_tools
+from llmscribe.adapters import as_langchain_tools, as_llamaindex_tools, as_anthropic_tools
 
-tools = as_langchain_tools(Repository("."))           # StructuredTool objects
-defs, dispatch = as_anthropic_tools(Repository("."))  # Messages API shape
+tools = as_langchain_tools(Repository("."))            # StructuredTool objects
+tools = as_llamaindex_tools(Repository("."))           # FunctionTool objects
+defs, dispatch = as_anthropic_tools(Repository("."))   # Messages API shape
 ```
+
+Each adapter is exercised against the real framework in CI, on every push.
 
 Each adapter imports its framework lazily and, if it is missing, tells you which `pip` command to run.
 

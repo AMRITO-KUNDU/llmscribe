@@ -242,7 +242,12 @@ def _execute_tool(
         return ToolResponse(tool, logical, kind, fr.to_dict(), meta, f"{header}\n{fr.content}")
 
     if tool == "read_many":
-        rm = read_many_from_source(source, list(file_paths or []))
+        rm = read_many_from_source(
+            source,
+            list(file_paths or []),
+            start_line=start_line,
+            end_line=end_line,
+        )
         if not rm.ok:
             raise LLMScribeError(rm.error_code, rm.error_message)
         meta = {
@@ -252,6 +257,9 @@ def _execute_tool(
             "character_count": rm.character_count,
             "truncated": rm.truncated,
         }
+        if start_line or end_line:
+            meta["line_start"] = start_line or 1
+            meta["line_end"] = end_line
         if rm.truncated:
             meta["truncation_note"] = rm.truncation_note
         return ToolResponse(tool, logical, kind, rm.to_dict(), meta, _md_read_many(rm))
@@ -326,7 +334,10 @@ def _md_read_many(rm: Any) -> str:
         if item.ok:
             # a stat-style header, so the text output answers "how big / how many
             # lines" without a second command
-            header = f"--- {item.file_path} ({item.byte_size:,} bytes, {item.line_count:,} lines) ---"
+            if item.line_start:
+                header = f"--- {item.file_path} (lines {item.line_start}-{item.line_end} of {item.line_count:,}) ---"
+            else:
+                header = f"--- {item.file_path} ({item.byte_size:,} bytes, {item.line_count:,} lines) ---"
             parts.append(f"{header}\n{item.content}")
         else:
             parts.append(f"--- {item.file_path} ---\nError [{item.error_code}]: {item.error_message}")

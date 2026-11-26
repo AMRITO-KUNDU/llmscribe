@@ -9,6 +9,22 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **CLI aliases** for the commands agents reach for out of habit: `ls` (`map`), `tree`
+  (`overview`), `grep` and `find` (`search`), `cat` (`read`), `cat-many` (`read-many`) and
+  `deps` (`dependencies`). An alias is normalised to its canonical command before dispatch,
+  so behaviour is identical — a test compares the JSON output of both.
+- **`read_many` accepts `start_line`/`end_line`**, applied to every file in the batch. The
+  useful shape when you want the top of several large files rather than all of them.
+- A **LlamaIndex adapter** (`as_llamaindex_tools`), completing the set. It builds a
+  callable with a real signature from the tool schema, because LlamaIndex derives its
+  parameters from the signature and a `**kwargs` wrapper would produce a tool that takes
+  nothing.
+- A **CI job that installs every adapter and fails if an adapter test skips**. They were
+  previously skipped silently via `importorskip`, so a framework changing its API would
+  have broken users while CI stayed green.
+
+### Added
+
 - **Line ranges on `read`.** `--lines 200:250` (or `start_line=` / `end_line=` in Python and
   MCP) returns 51 lines of a 5,000-line file instead of all 5,000 — the cheapest way to keep
   a large file out of a context window. 1-based and inclusive; `end_line` may be omitted to

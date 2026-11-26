@@ -10,6 +10,7 @@ from __future__ import annotations
 __all__ = [
     "as_anthropic_tools",
     "as_langchain_tools",
+    "as_llamaindex_tools",
     "as_pydantic_ai_tools",
     "as_smolagents_tools",
 ]
@@ -20,6 +21,7 @@ def __getattr__(name: str):
     mapping = {
         "as_anthropic_tools": ("anthropic", "as_anthropic_tools"),
         "as_langchain_tools": ("langchain", "as_langchain_tools"),
+        "as_llamaindex_tools": ("llamaindex", "as_llamaindex_tools"),
         "as_pydantic_ai_tools": ("pydantic_ai", "as_pydantic_ai_tools"),
         "as_smolagents_tools": ("smolagents", "as_smolagents_tools"),
     }

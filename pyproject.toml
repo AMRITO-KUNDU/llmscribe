@@ -42,10 +42,12 @@ all = [
 ]
 # Agent-framework adapters. Each is optional: importing llmscribe never needs one.
 langchain = ["langchain-core>=0.3"]
+llama-index = ["llama-index-core>=0.11"]
 pydantic-ai = ["pydantic-ai>=0.0.20"]
 smolagents = ["smolagents>=1.0"]
 adapters = [
     "langchain-core>=0.3",
+    "llama-index-core>=0.11",
     "pydantic-ai>=0.0.20",
     "smolagents>=1.0",
 ]

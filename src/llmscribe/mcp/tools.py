@@ -164,9 +164,27 @@ def read_many(
     file_paths: Annotated[list[str], Field(description="Paths relative to the root. At most 50 are processed per call.")],
     path: PathArg = None,
     format: FormatArg = "markdown",
+    start_line: Annotated[
+        int | None,
+        Field(description="First line to return from every file, 1-based."),
+    ] = None,
+    end_line: Annotated[
+        int | None,
+        Field(description="Last line to return from every file, inclusive. Defaults to the end."),
+    ] = None,
 ) -> str:
-    """Read several text files in one call. A bad path yields an error entry; other files are still read."""
-    return _run("read_many", format, path=path, file_paths=file_paths)
+    """Read several text files in one call. A bad path yields an error entry; other files are still read.
+
+    ``start_line``/``end_line`` apply to every file in the batch.
+    """
+    return _run(
+        "read_many",
+        format,
+        path=path,
+        file_paths=file_paths,
+        start_line=start_line,
+        end_line=end_line,
+    )
 
 
 def project_dependencies(

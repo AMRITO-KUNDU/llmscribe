@@ -227,6 +227,8 @@ class Repository:
         *,
         max_files: int = limits.MAX_READ_MANY_FILES,
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
+        start_line: int | None = None,
+        end_line: int | None = None,
         redact: bool = True,
     ) -> ReadManyResult:
         """Read several files in one call.
@@ -234,7 +236,14 @@ class Repository:
         Per-file failures are reported in ``results`` and counted in ``error_count``;
         a missing file never aborts the batch.
         """
-        batch = read_files([str(p) for p in file_paths], self._root, max_files, max_content_chars)
+        batch = read_files(
+            [str(p) for p in file_paths],
+            self._root,
+            max_files,
+            max_content_chars,
+            start_line,
+            end_line,
+        )
         if redact:
             for item in batch.results:
                 _mask(item, "content")

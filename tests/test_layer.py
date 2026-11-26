@@ -154,3 +154,54 @@ def test_smolagents_adapter(project):
     built = as_smolagents_tools(Repository(project))
     assert len(built) == 7
     assert built[0](depth=1)["ok"] is True
+
+
+# ---------------------------------------------------------------- CLI aliases
+@pytest.mark.parametrize(
+    "alias,canonical_args",
+    [
+        ("ls", ["map"]),
+        ("tree", ["overview"]),
+        ("deps", ["dependencies", "a.py"]),
+    ],
+)
+def test_alias_matches_the_canonical_command(project, alias, canonical_args):
+    alias_out = subprocess.run(
+        [sys.executable, "-m", "llmscribe", alias, *canonical_args[1:], "--path", str(project), "--json"],
+        capture_output=True, text=True,
+    )
+    canonical_out = subprocess.run(
+        [sys.executable, "-m", "llmscribe", *canonical_args, "--path", str(project), "--json"],
+        capture_output=True, text=True,
+    )
+    assert alias_out.returncode == 0, alias_out.stderr
+    assert alias_out.stdout == canonical_out.stdout
+
+
+def test_cat_and_grep_aliases(project):
+    cat = subprocess.run(
+        [sys.executable, "-m", "llmscribe", "cat", "a.py", "--path", str(project)],
+        capture_output=True, text=True,
+    )
+    assert cat.returncode == 0 and "x = 1" in cat.stdout
+
+    grep = subprocess.run(
+        [sys.executable, "-m", "llmscribe", "grep", "x", "--path", str(project)],
+        capture_output=True, text=True,
+    )
+    assert grep.returncode == 0 and "a.py" in grep.stdout
+
+
+# ---------------------------------------------------------------- llamaindex
+def test_llamaindex_adapter(project):
+    pytest.importorskip("llama_index.core")
+    from llmscribe.adapters import as_llamaindex_tools
+
+    built = as_llamaindex_tools(Repository(project))
+    assert len(built) == 7
+    assert built[0].metadata.name == "project_map"
+    # the schema must come from the real signature, not an empty **kwargs
+    assert "depth" in built[0].metadata.get_parameters_dict()["properties"]
+    result = built[0].call(depth=1)
+    payload = result.raw_output if hasattr(result, "raw_output") else result
+    assert payload["ok"] is True

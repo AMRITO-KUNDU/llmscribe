@@ -110,3 +110,24 @@ def test_mcp_and_handlers_expose_the_range(big):
 
     handler = Repository(big).handlers()["read"]
     assert handler(file_path="big.py", start_line=1, end_line=5)["data"]["returned_lines"] == 5
+
+
+# ---------------------------------------------------------------- read_many
+def test_read_many_applies_the_range_to_every_file(big):
+    batch = Repository(big).read_many(["big.py", "big.py"], start_line=5, end_line=7)
+    assert [item.returned_lines for item in batch.results] == [3, 3]
+    assert all(item.content.startswith("line5\n") for item in batch.results)
+    assert batch.results[0].line_count == 500
+
+
+def test_read_many_without_a_range_is_unchanged(big):
+    batch = Repository(big).read_many(["big.py"])
+    assert batch.results[0].returned_lines == 0
+    assert "line_start" not in batch.results[0].to_dict()
+
+
+def test_cli_read_many_lines(big):
+    proc = run_cli("read-many", "big.py", "--lines", "5:7", "--path", str(big))
+    assert proc.returncode == 0
+    assert "line5" in proc.stdout and "line8" not in proc.stdout
+    assert "lines 5-7 of 500" in proc.stdout

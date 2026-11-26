@@ -60,3 +60,29 @@ jobs:
           cd /tmp
           /tmp/smoke/bin/python -c "import llmscribe.mcp as m, asyncio; names=sorted(t.name for t in asyncio.run(m.mcp.list_tools())); print(names); assert len(names)==7"
           /tmp/smoke/bin/python -c "import llmscribe.mcp.tools; print('server extra ok')"
+
+  adapters:
+    name: adapters
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Without this job the adapter tests skip silently via importorskip, so a
+      # framework changing its API would break users while CI stayed green.
+      - name: Install with every adapter
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev,adapters]"
+
+      - name: Adapter tests must actually run, not skip
+        run: python -m pytest tests/test_layer.py -q -rs
+
+      - name: Fail if an adapter test skipped
+        run: |
+          python -m pytest tests/test_layer.py -q -rs | tee /tmp/adapters.log
+          if grep -q "SKIPPED" /tmp/adapters.log; then
+            echo "::error::An adapter test skipped, so it is not covered"
+            exit 1
+          fi

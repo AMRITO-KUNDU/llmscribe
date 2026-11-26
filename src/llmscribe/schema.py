@@ -125,6 +125,16 @@ TOOLS: list[dict[str, Any]] = [
             },
             "path": _PATH,
             "format": _FORMAT,
+            "start_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "First line to return from every file, 1-based.",
+            },
+            "end_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Last line to return from every file, inclusive.",
+            },
         },
         "required": ["file_paths"],
     },

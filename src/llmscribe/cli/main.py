@@ -64,6 +64,17 @@ def _tokens_option(parser: argparse.ArgumentParser) -> None:
     )
 
 
+_ALIASES = {
+    "ls": "map",
+    "tree": "overview",
+    "grep": "search",
+    "find": "search",
+    "cat": "read",
+    "cat-many": "read-many",
+    "deps": "dependencies",
+}
+
+
 def _parse_lines(spec: str | None) -> tuple[int | None, int | None]:
     """Parse ``START:END`` into two ints, either of which may be omitted."""
     if not spec:
@@ -100,19 +111,22 @@ def create_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command")
 
-    for name, help_text in (("map", "Show project structure"), ("overview", "Tree plus file contents")):
-        p = sub.add_parser(name, help=help_text)
+    for name, help_text, alias_list in (
+        ("map", "Show project structure", ["ls"]),
+        ("overview", "Tree plus file contents", ["tree"]),
+    ):
+        p = sub.add_parser(name, help=help_text, aliases=alias_list)
         _path_option(p)
         _depth_option(p)
         _sizes_option(p)
         _tokens_option(p)
         _compress_option(p)
 
-    p = sub.add_parser("search", help="Search file names and contents")
+    p = sub.add_parser("search", help="Search file names and contents", aliases=["grep", "find"])
     p.add_argument("query")
     _path_option(p)
 
-    p = sub.add_parser("read", help="Read one file")
+    p = sub.add_parser("read", help="Read one file", aliases=["cat"])
     p.add_argument("file_path")
     p.add_argument(
         "--binary",
@@ -131,11 +145,16 @@ def create_parser() -> argparse.ArgumentParser:
     )
     _path_option(p)
 
-    p = sub.add_parser("read-many", help="Read several files")
+    p = sub.add_parser("read-many", help="Read several files", aliases=["cat-many"])
     p.add_argument("file_paths", nargs="+")
+    p.add_argument(
+        "--lines",
+        metavar="START:END",
+        help="Return only these lines of every file, 1-based and inclusive",
+    )
     _path_option(p)
 
-    p = sub.add_parser("dependencies", help="Show a file's dependencies and dependents")
+    p = sub.add_parser("dependencies", help="Show a file's dependencies and dependents", aliases=["deps"])
     p.add_argument("file_path")
     _path_option(p)
 
@@ -186,6 +205,10 @@ def _main(argv: list[str] | None = None) -> None:
     if not args.command:
         parser.print_help()
         return
+
+    # `llmscribe cat f.py` arrives as command "cat"; every branch below matches the
+    # canonical name, so map the alias back before dispatching.
+    args.command = _ALIASES.get(args.command, args.command)
     if args.command == "version":
         print(f"llmscribe version {__version__}")
         return
@@ -217,7 +240,16 @@ def _main(argv: list[str] | None = None) -> None:
     elif args.command == "read":
         code = _emit("read", "read", as_json, file_path=args.file_path, **common)
     elif args.command == "read-many":
-        code = _emit("read_many", "read-many", as_json, file_paths=args.file_paths, **common)
+        start_line, end_line = _parse_lines(args.lines)
+        code = _emit(
+            "read_many",
+            "read-many",
+            as_json,
+            file_paths=args.file_paths,
+            start_line=start_line,
+            end_line=end_line,
+            **common,
+        )
     elif args.command == "dependencies":
         code = _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
     else:
