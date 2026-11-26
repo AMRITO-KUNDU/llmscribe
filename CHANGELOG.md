@@ -7,6 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Line ranges on `read`.** `--lines 200:250` (or `start_line=` / `end_line=` in Python and
+  MCP) returns 51 lines of a 5,000-line file instead of all 5,000 — the cheapest way to keep
+  a large file out of a context window. 1-based and inclusive; `end_line` may be omitted to
+  read to the end. `line_count` still reports the whole file and `returned_lines` reports the
+  slice, so a caller can tell there is more. Ranges cannot be combined with `--compress`,
+  because compression rewrites the file and line numbers would stop meaning what was asked
+  for — that combination is rejected as `invalid_argument`.
+
 ## [2.0.0] — 2026-11-26
 
 ### Upgrading from 1.x — one command

@@ -101,6 +101,16 @@ TOOLS: list[dict[str, Any]] = [
                 "description": "Return any file as base64 with its media type (images, PDFs).",
             },
             "compress": _COMPRESS,
+            "start_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "First line to return, 1-based. Use with end_line to read part of a large file.",
+            },
+            "end_line": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Last line to return, inclusive. Defaults to the end of the file.",
+            },
         },
         "required": ["file_path"],
     },

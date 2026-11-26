@@ -64,6 +64,19 @@ def _tokens_option(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _parse_lines(spec: str | None) -> tuple[int | None, int | None]:
+    """Parse ``START:END`` into two ints, either of which may be omitted."""
+    if not spec:
+        return None, None
+    first, _, last = spec.partition(":")
+    try:
+        start = int(first) if first.strip() else None
+        end = int(last) if last.strip() else None
+    except ValueError:
+        raise SystemExit(f"llmscribe: error: --lines expects START:END, got {spec!r}") from None
+    return start, end
+
+
 def _sizes_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--sizes", action="store_true", help="Include each file's size in bytes")
 
@@ -110,6 +123,11 @@ def create_parser() -> argparse.ArgumentParser:
         "--compress",
         action="store_true",
         help="For .py files, return signatures and docstrings only",
+    )
+    p.add_argument(
+        "--lines",
+        metavar="START:END",
+        help="Return only these lines, 1-based and inclusive (e.g. 200:250, or 200: for the rest)",
     )
     _path_option(p)
 
@@ -186,6 +204,9 @@ def _main(argv: list[str] | None = None) -> None:
     if args.command == "read":
         common["binary"] = args.binary
         common["compress"] = args.compress
+        start_line, end_line = _parse_lines(args.lines)
+        common["start_line"] = start_line
+        common["end_line"] = end_line
     as_json = args.json
     if args.command == "map":
         code = _emit("project_map", "map", as_json, **common)

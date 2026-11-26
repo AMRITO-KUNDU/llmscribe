@@ -102,6 +102,8 @@ def execute(
     binary: bool = False,
     max_tokens: int | None = None,
     compress: bool = False,
+    start_line: int | None = None,
+    end_line: int | None = None,
     redact: bool = True,
 ) -> ToolResponse:
     """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
@@ -119,6 +121,8 @@ def execute(
         binary=binary,
         max_tokens=max_tokens,
         compress=compress,
+        start_line=start_line,
+        end_line=end_line,
     )
     return _apply_redaction(response) if redact else response
 
@@ -158,6 +162,8 @@ def _execute_tool(
     binary: bool = False,
     max_tokens: int | None = None,
     compress: bool = False,
+    start_line: int | None = None,
+    end_line: int | None = None,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -203,7 +209,9 @@ def _execute_tool(
         return ToolResponse(tool, logical, kind, sr.to_dict(), meta, _md_search(sr))
 
     if tool == "read":
-        fr = read_from_source(source, file_path or "", binary=binary, compress=compress)
+        fr = read_from_source(
+            source, file_path or "", binary=binary, compress=compress, start_line=start_line, end_line=end_line
+        )
         if not fr.ok:
             raise LLMScribeError(fr.error_code, fr.error_message)
         meta = {
@@ -216,10 +224,19 @@ def _execute_tool(
         }
         if fr.compressed:
             meta["compressed"] = True
+        if fr.line_start:
+            meta["line_start"] = fr.line_start
+            meta["line_end"] = fr.line_end
+            meta["returned_lines"] = fr.returned_lines
         if fr.media_type:
             meta["media_type"] = fr.media_type
         if fr.media_type:
             header = f"--- {fr.file_path} ({fr.media_type}, {fr.byte_size:,} bytes, base64) ---"
+        elif fr.line_start:
+            header = (
+                f"--- {fr.file_path} (lines {fr.line_start}-{fr.line_end} "
+                f"of {fr.line_count:,}) ---"
+            )
         else:
             header = f"--- {fr.file_path} ({fr.byte_size:,} bytes, {fr.line_count:,} lines) ---"
         return ToolResponse(tool, logical, kind, fr.to_dict(), meta, f"{header}\n{fr.content}")

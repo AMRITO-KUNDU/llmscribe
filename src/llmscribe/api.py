@@ -205,6 +205,8 @@ class Repository:
         max_content_chars: int = limits.MAX_CONTENT_CHARS,
         binary: bool = False,
         compress: bool = False,
+        start_line: int | None = None,
+        end_line: int | None = None,
         redact: bool = True,
     ) -> FileReadResult:
         """Read one file.
@@ -212,7 +214,9 @@ class Repository:
         Returns a result with ``ok`` and ``error_code`` rather than raising, so check
         ``ok`` before using ``content``.
         """
-        result = read_file(str(file_path), self._root, max_content_chars, binary, compress)
+        result = read_file(
+            str(file_path), self._root, max_content_chars, binary, compress, start_line, end_line
+        )
         if redact and not result.media_type:
             _mask(result, "content")
         return result

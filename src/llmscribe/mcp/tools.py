@@ -133,6 +133,14 @@ def read(
         bool,
         Field(description="For .py files, return signatures and docstrings only. Default false."),
     ] = False,
+    start_line: Annotated[
+        int | None,
+        Field(description="First line to return, 1-based. Use with end_line to read part of a large file."),
+    ] = None,
+    end_line: Annotated[
+        int | None,
+        Field(description="Last line to return, inclusive. Defaults to the end of the file."),
+    ] = None,
 ) -> str:
     """Read one file. Paths cannot leave the root; oversized files are rejected.
 
@@ -140,7 +148,16 @@ def read(
     as base64 with its guessed media type - use it when you specifically need to look
     at an image or a PDF, not to pull binaries into context.
     """
-    return _run("read", format, path=path, file_path=file_path, binary=binary, compress=compress)
+    return _run(
+        "read",
+        format,
+        path=path,
+        file_path=file_path,
+        binary=binary,
+        compress=compress,
+        start_line=start_line,
+        end_line=end_line,
+    )
 
 
 def read_many(

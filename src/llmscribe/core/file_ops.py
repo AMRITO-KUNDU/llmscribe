@@ -35,6 +35,9 @@ class FileReadResult:
     modified: str = ""
     media_type: str = ""
     compressed: bool = False
+    line_start: int = 0
+    line_end: int = 0
+    returned_lines: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"file_path": self.file_path, "ok": self.ok}
@@ -46,6 +49,11 @@ class FileReadResult:
             result["modified"] = self.modified
             if self.compressed:
                 result["compressed"] = True
+            if self.line_start:
+                # present only for a ranged read, so the default shape is unchanged
+                result["line_start"] = self.line_start
+                result["line_end"] = self.line_end
+                result["returned_lines"] = self.returned_lines
             if self.media_type:
                 # binary payload: content is base64, not text
                 result["media_type"] = self.media_type
@@ -133,6 +141,8 @@ def read_from_source(
     max_content_chars: int = MAX_CONTENT_CHARS,
     binary: bool = False,
     compress: bool = False,
+    start_line: int | None = None,
+    end_line: int | None = None,
 ) -> FileReadResult:
     """Read one file from any source. Never raises for per-file problems.
 
@@ -140,6 +150,11 @@ def read_from_source(
     the guessed MIME type. That exists for an explicit request to look at an image or
     a PDF - binaries stay excluded from overview and read_many, which is where context
     would otherwise be wasted.
+
+    ``start_line`` and ``end_line`` are 1-based and inclusive. Asking for lines 200-250
+    of a 5,000-line file returns 51 lines, not 5,000 - the cheapest way to keep a large
+    file out of a context window. ``line_count`` always reports the whole file, so the
+    caller can tell there is more.
     """
     if binary:
         return _read_binary(source, file_path, max_content_chars)
@@ -147,6 +162,31 @@ def read_from_source(
         rel, text, encoding = load_text(source, file_path)
     except LLMScribeError as exc:
         return _failure(file_path, exc)
+    # Whole-file line count, before any range, compression or clipping, so it always
+    # answers the question `wc -l` answers.
+    line_count = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
+
+    ranged = start_line is not None or end_line is not None
+    if ranged and compress:
+        raise LLMScribeError(
+            "invalid_argument",
+            "start_line/end_line cannot be combined with compress: compression rewrites "
+            "the file, so line numbers would no longer refer to what you asked for.",
+        )
+
+    line_start = line_end = returned_lines = 0
+    if ranged:
+        first = 1 if start_line is None else start_line
+        if first < 1:
+            raise LLMScribeError("invalid_argument", "start_line must be 1 or greater.")
+        if end_line is not None and end_line < first:
+            raise LLMScribeError("invalid_argument", "end_line must be greater than or equal to start_line.")
+        lines = text.splitlines(keepends=True)
+        last = len(lines) if end_line is None else end_line
+        selected = lines[first - 1 : last]
+        text = "".join(selected)
+        line_start, line_end, returned_lines = first, last, len(selected)
+
     was_compressed = False
     if compress and is_compressible(rel):
         squeezed = compress_python(text)
@@ -154,9 +194,6 @@ def read_from_source(
             text, was_compressed = squeezed, True
 
     content, truncated = _clip(text, max_content_chars)
-    # Line count is of the whole file, not the clipped content, so it answers the
-    # question `wc -l` answers even when the body was cut.
-    line_count = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
     entry = source.info(rel)
     return FileReadResult(
         rel,
@@ -169,6 +206,9 @@ def read_from_source(
         line_count=line_count,
         modified=_iso_utc(entry.mtime),
         compressed=was_compressed,
+        line_start=line_start,
+        line_end=line_end,
+        returned_lines=returned_lines,
     )
 
 
@@ -252,13 +292,17 @@ def read_file(
     max_content_chars: int = MAX_CONTENT_CHARS,
     binary: bool = False,
     compress: bool = False,
+    start_line: int | None = None,
+    end_line: int | None = None,
 ) -> FileReadResult:
     """Read one file below ``root`` (default: current directory)."""
     try:
         source = LocalRepository(root)
     except LLMScribeError as exc:
         return _failure(file_path, exc)
-    return read_from_source(source, file_path, max_content_chars, binary, compress)
+    return read_from_source(
+        source, file_path, max_content_chars, binary, compress, start_line, end_line
+    )
 
 
 def read_files(
