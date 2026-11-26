@@ -1,351 +1,320 @@
 <!-- mcp-name: io.github.AMRITO-KUNDU/llmscribe -->
-<h3 align="center">
-  <a name="readme-top"></a>
+<a name="readme-top"></a>
+
+<p align="center">
   <img
     src="https://raw.githubusercontent.com/AMRITO-KUNDU/llmscribe/main/docs/public/favicon.svg"
-    height="200"
-    alt="LLMScribe"
+    height="120"
+    alt="LLMScribe logo: read-only MCP server for AI coding agents"
   >
-</h3>
+</p>
 
-<div align="center">
-  <a href="https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/AMRITO-KUNDU/llmscribe" alt="License">
-  </a>
-  <a href="https://pypi.org/project/llmscribe/">
-    <img src="https://img.shields.io/pypi/v/llmscribe" alt="PyPI Version">
-  </a>
-  <a href="https://pepy.tech/project/llmscribe">
-    <img src="https://static.pepy.tech/badge/llmscribe" alt="Downloads">
-  </a>
-  <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
-    <img src="https://img.shields.io/github/contributors/AMRITO-KUNDU/llmscribe.svg" alt="GitHub Contributors">
-  </a>
-  <a href="https://llmscribe.vercel.app">
-    <img src="https://img.shields.io/badge/Visit-llmscribe.vercel.app-orange" alt="Visit llmscribe.vercel.app">
-  </a>
-  <a href="https://registry.modelcontextprotocol.io/?q=llmscribe">
-    <img src="https://img.shields.io/badge/Official%20MCP%20Registry-active-blue" alt="Official MCP Registry">
-  </a>
-</div>
+# LLMScribe: Read-Only MCP Server and Python Library for AI Coding Agents
 
-<div>
-  <p align="center">
-    <a href="https://x.com/amritokundu719">
-      <img src="https://img.shields.io/badge/Follow%20on%20X-000000?style=for-the-badge&logo=x&logoColor=white" alt="Follow on X" />
-    </a>
-    <a href="https://github.com/AMRITO-KUNDU">
-      <img src="https://img.shields.io/badge/Follow%20on%20GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Follow on GitHub" />
-    </a>
-  </p>
-</div>
+<p align="center">
+  <a href="https://pypi.org/project/llmscribe/"><img src="https://img.shields.io/pypi/v/llmscribe" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/llmscribe/"><img src="https://img.shields.io/pypi/pyversions/llmscribe" alt="Supported Python versions"></a>
+  <a href="https://github.com/AMRITO-KUNDU/llmscribe/actions/workflows/cross-platform.yml"><img src="https://github.com/AMRITO-KUNDU/llmscribe/actions/workflows/cross-platform.yml/badge.svg" alt="Cross-platform output check"></a>
+  <a href="https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AMRITO-KUNDU/llmscribe" alt="Apache-2.0 license"></a>
+  <a href="https://registry.modelcontextprotocol.io/?q=llmscribe"><img src="https://img.shields.io/badge/Official%20MCP%20Registry-listed-blue" alt="Listed in the official MCP Registry"></a>
+  <a href="https://github.com/AMRITO-KUNDU/llmscribe/stargazers"><img src="https://img.shields.io/github/stars/AMRITO-KUNDU/llmscribe?style=social" alt="GitHub stars"></a>
+</p>
+
+**LLMScribe gives AI coding agents structured, deterministic access to a local codebase.** It is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server, command-line tool and Python library that returns a project map, literal code search, file contents, a dependency graph and Git diffs as stable JSON, with secrets masked and identical output on Linux, macOS and Windows.
+
+No AI, no embeddings, no ranking, no network access, no account. Licensed under Apache-2.0.
+
+**Works with:** Claude Code, Claude Desktop, Cursor, OpenAI Codex CLI, VS Code (GitHub Copilot), Windsurf, Zed, Cline, Roo Code, Continue, JetBrains IDEs, Goose, LM Studio and any other MCP client. Also available through `pip install`, LangChain, PydanticAI, smolagents, the Anthropic Messages API and a standalone Windows EXE.
+
+[Install](#install) · [Quick start](#quick-start) · [MCP setup](#mcp-server-setup) · [CLI](#cli-reference) · [Python API](#python-library-and-framework-adapters) · [FAQ](#faq) · [Website](https://llmscribe.vercel.app)
 
 ---
 
-# **LLMScribe**
+## Table of contents
 
-**The filesystem layer AI agents are missing.**
-
-An agent that wants to look at your code has one interface: the shell. `ls`, `find`,
-`grep`, `cat` — built for a human reading a terminal, not for a program building a
-model of a repository.
-
-LLMScribe gives it one structured interface instead: the same seven operations, the
-same JSON, the same bytes, on Linux, macOS and Windows.
-
-No AI. No embeddings. No hidden ranking. Apache-2.0, and it runs entirely on your
-machine — no network, no account.
-
-**Works with** Cursor, Claude Code, Claude Desktop, Codex, VS Code, Windsurf, Zed,
-Cline, Continue, JetBrains and LM Studio — any MCP client — plus `pip install` and a
-standalone Windows EXE.
-
-
-<a href="https://github.com/AMRITO-KUNDU/llmscribe">
-  <img src="https://img.shields.io/github/stars/AMRITO-KUNDU/llmscribe.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
-</a>
-
----
-
-## The problem: agents drive your OS through a human interface
-
-| What the agent needs | Linux / macOS | Windows |
-| --- | --- | --- |
-| list a directory | `ls -la` | `dir /a` |
-| find files by name | `find . -name '*.py'` | `Get-ChildItem -Recurse -Filter *.py` |
-| search inside files | `grep -rn 'auth' .` | `Select-String -Pattern auth` |
-| read a file | `cat app.py` | `type app.py` |
-| structural diff | `diff -ru old new` | `fc /r` (no recursive equivalent) |
-
-Three things go wrong every time:
-
-- **The output is for eyes, not parsers.** Columns, colour, locale-dependent sort order,
-  and warnings interleaved with results.
-- **The commands are not portable.** An agent that works on your laptop fails in CI, or
-  on a contributor's Windows machine.
-- **The agent has to interpret.** Every one of those returns text it must re-parse, and
-  re-parsing is where it drifts.
-
-### Proving it, not claiming it
-
-`scripts/cross_platform_check.py` builds a fixed fixture project, runs `map`, `overview`,
-`search`, `read`, `read_many` and `dependencies` over it, scrubs the absolute path, and
-digests each result. The [Cross-platform output](.github/workflows/cross-platform.yml)
-workflow runs that on Ubuntu, macOS and Windows and **fails the build if the digests
-differ**:
-
-```text
-llmscribe <version>
-python 3.12
-map            <sha256>
-map_depth2     <sha256>
-overview       <sha256>
-search         <sha256>
-read           <sha256>
-read_many      <sha256>
-dependencies   <sha256>
-combined       <sha256>   <- must be identical on all three
-```
-
-The fixture is written as bytes, not text, so the files themselves are byte-identical on
-every platform — `write_text` would turn `\n` into `\r\n` on Windows and the comparison
-would be meaningless.
-
-## What that costs
-
-Your agent does not have an intelligence problem. It has a **retrieval** problem — and
-no model upgrade fixes a context window filled with the wrong files.
-
-On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output, zero score.
-
-The same model, given structured code search instead of free-form file reading, finished the same task in **89 seconds** and scored 0.90.
-
-Across another benchmark, Codex CLI completed its entire turn sequence without ever reaching the file that would have solved the task in **27–29% of runs**.
-
-Handed the right context up front, its score nearly doubled.
-
-The bottleneck is not the model. It is what goes into the context window.
-
-What users keep reporting:
-
-- The agent explores 200 files to change one line, and admits it is "looking at unnecessary files"
-- Nine searches and fourteen files to find one constant, because the search itself is not ranked
-- The same files re-read in a loop, with no reasoning between the reads
-- Stale fixtures, mock data and outdated comments read as current truth
-- Search reporting "no matches found" when a plain `grep` finds the text immediately
-- Truncation that hides itself, and build output filling the window with noise
-
-## What LLMScribe does about it
-
-| The failure | What LLMScribe does |
-| --- | --- |
-| Reads 200 files to change one line | `project_map` returns the whole tree with contents excluded, before a single file is read |
-| Re-reads the same files in a loop | Same input, same bytes, every run |
-| Misses the file that actually mattered | `project_dependencies` resolves local, stdlib, external and unresolved imports, plus reverse dependencies |
-| Search returns nothing when the text exists | `search` returns path, line, matched text and match type, or a stable error code — never a silent empty |
-| Stale fixtures read as current truth | Nothing is inferred, embedded or ranked; you get the files as they are, plus a Git diff |
-| Build output and binaries fill the context | Real `.gitignore` semantics; binaries and oversized files are skipped |
-| Context silently truncated | Every cut is reported: `truncated`, `truncation_note`, `omitted_files` |
-
-> The file an agent needs next is usually the one *structurally* related to the file it is already looking at — a dependent, a sibling module, a test fixture. That is a graph question, not a similarity question, which is why LLMScribe ships dependency analysis and a real tree instead of embeddings.
+- [What is LLMScribe?](#what-is-llmscribe)
+- [Features](#features)
+- [Install](#install)
+- [Quick start](#quick-start)
+- [Tools](#tools)
+- [MCP server setup](#mcp-server-setup)
+- [Recommended agent workflow](#recommended-agent-workflow)
+- [Tool details](#tool-details)
+- [CLI reference](#cli-reference)
+- [Token budgets and compression](#token-budgets-and-compression)
+- [Secret redaction](#secret-redaction)
+- [Python library and framework adapters](#python-library-and-framework-adapters)
+- [Configuration](#configuration)
+- [Behavior reference](#behavior-reference)
+- [Comparison](#comparison)
+- [Use cases](#use-cases)
+- [FAQ](#faq)
+- [Architecture](#architecture)
+- [Contributing](#contributing)
+- [Resources](#resources)
+- [License](#license)
 
 ---
 
-## Compression that is not a summary
+## What is LLMScribe?
 
-`--compress` reduces Python files to their API surface — imports, signatures,
-docstrings, class shape — and drops the bodies. On a typical module that is roughly half
-the characters.
+An AI coding agent that wants to understand your repository normally has one interface: the shell. `ls`, `find`, `grep` and `cat` were built for a person reading a terminal, not for a program building a model of a codebase. Their output is formatted for eyes, differs between operating systems, and has to be re-parsed by the agent every time.
 
-It is a **fixed syntactic transform**, not a summary: the standard library parser reads
-the file and re-serialises it. Nothing is inferred, nothing is ranked, and the same file
-always produces the same bytes. That is why it belongs here even though "no AI" is the
-whole point.
+LLMScribe replaces that with seven structured operations that behave the same everywhere:
 
-Three limits, stated plainly:
+1. **Map** the project tree without reading any file.
+2. **Search** paths and contents literally.
+3. **Read** one file or many.
+4. **Trace dependencies** in both directions.
+5. **Diff** against Git.
+6. **Overview** a whole small project in one call.
+7. **Return everything as JSON**, with truncation always reported.
 
-- **Python only.** A multi-language parser would mean a compiled dependency in a
-  pure-Python package. Saying "Python only" is more honest than a claim to maintain.
-- **Formatting is normalised.** The file is re-serialised, so `"` may become `'` and
-  blank lines collapse. Compressed output is for reading, not for diffing.
-- **Files that do not parse are left exactly as they are.** Never rewritten.
+It is deliberately **read-only**. An agent holding LLMScribe can understand your repository but structurally cannot change or delete it.
+
+**Why this matters in practice.** On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output. The same model, given structured code search instead of free-form file reading, finished the same task in **89 seconds** and scored 0.90. Across another benchmark, Codex CLI completed its whole turn sequence without ever reaching the file that would have solved the task in **27–29% of runs**. The bottleneck is not the model. It is what goes into the context window.
+
+## Features
+
+- **Project map**: full directory tree with contents excluded, optionally limited by depth.
+- **Literal code search**: results ordered by path and line, with the matched text and match type. Never a silent empty result.
+- **Safe file reads**: path traversal outside the project is blocked. Every read reports `byte_size`, `line_count` and `modified` for the whole file.
+- **Line ranges**: `--lines 200:250` reads part of a large file instead of all of it.
+- **Batch reads**: `read_many` supports partial success, so one bad path does not fail the request.
+- **Dependency graph**: imports and reverse dependencies (`used_by`) for Python, JavaScript/TypeScript, Java, Go, Rust and C/C++.
+- **Git status and diff**: staged, unstaged and per-commit unified diffs.
+- **Context-window control**: `--depth`, `--max-tokens` and `--compress` fit large repositories into small contexts.
+- **Secret redaction**: API keys, tokens, private keys and connection-string credentials are masked by default.
+- **Real `.gitignore` semantics**: nested files, wildcards, directory rules and `!` negation.
+- **Deterministic output**: same input, same bytes, on every run and every OS.
+- **Local-only**: no network access, no hosted service, no telemetry.
+
+---
+
+## Install
 
 ```bash
-llmscribe overview --compress
-llmscribe read src/service.py --compress
-llmscribe overview --compress --max-tokens 20000
+pip install llmscribe              # core: map, search, read, dependencies, diff
+pip install 'llmscribe[server]'    # adds the MCP server (llmscribe-mcp)
+pip install 'llmscribe[adapters]'  # adds LangChain, PydanticAI and smolagents adapters
 ```
 
-## Budgets are spent in a fixed order
+The core package has a single dependency (`pathspec`). The MCP server and framework adapters are optional extras, so a library user never pays for a protocol server they do not run. If you run `llmscribe-mcp` without the `server` extra, it prints the install command and exits instead of raising an `ImportError`.
 
-`--max-tokens N` stops once the content reaches roughly N tokens, taking files in
-**path order** until the budget is gone. That is the whole rule, and it is the only
-acceptable one: choose files by relevance and you are ranking, which is the thing this
-project exists not to do.
+A standalone Windows EXE is also available from the [Releases page](https://github.com/AMRITO-KUNDU/llmscribe/releases). The desktop GUI ships either as that EXE or as `pip install 'llmscribe[gui]'`, which provides the `llmscribe-gui` command.
 
-The cost is honest — a budget can cut off a file that mattered. A predictable wrong
-answer beats an unpredictable right one, because you can always raise the budget or read
-a specific file. Token counts are estimated at four characters each; an exact count needs
-a model-specific vocabulary and would make the same file cost different amounts depending
-on which model you meant.
-
-## Secrets are masked before they leave
-
-This tool exists to put your code in front of a model, which makes it the last place a
-credential should pass through untouched. Every result is scrubbed first — file contents,
-search hits, diffs — and the result tells you what it masked:
-
-```json
-{ "content": "API_KEY = \"[REDACTED:openai_key]\"", "metadata": { "redacted": ["openai_key"] } }
-```
-
-Detected shapes include AWS keys, GitHub and Slack tokens, Stripe and Google keys, JWTs,
-`Authorization: Bearer` headers, credentials inside connection strings, private-key
-blocks, and `password = "..."` assignments. Matching is conservative on purpose:
-high-confidence token shapes with fixed replacements, so ordinary code is left alone and
-output stays repeatable.
-
-On by default everywhere, including the MCP server. `--no-redact` (CLI) or
-`redact=False` (Python) turns it off when you need the raw text. An agent cannot: one
-that can see raw secrets will eventually read one.
-
-## Use it as a library, not just a server
-
-`pip install llmscribe` installs **one** dependency (`pathspec`). The MCP server lives
-behind an extra, because `mcp` alone pulls in 155 transitive packages and a framework
-author embedding a file reader should not pay for a protocol server they never call:
-
-```bash
-pip install llmscribe            # core: tree, search, read, dependencies, diff
-pip install 'llmscribe[server]'  # + the MCP server (llmscribe-mcp)
-pip install 'llmscribe[adapters]'# + LangChain, PydanticAI and smolagents adapters
-```
-
-Register the tools in a framework that has never heard of LLMScribe:
-
-```python
-from llmscribe import Repository, tool_schemas
-
-schemas = tool_schemas("openai")        # or "anthropic", "mcp", "raw"
-run = Repository(".").handlers()        # tool name -> callable
-
-result = run["project_map"](depth=2)    # {'ok': True, 'data': {...}, ...}
-```
-
-Or skip the plumbing entirely:
-
-```python
-from llmscribe import Repository
-from llmscribe.adapters import as_langchain_tools, as_anthropic_tools
-
-tools = as_langchain_tools(Repository("."))          # StructuredTool objects
-defs, dispatch = as_anthropic_tools(Repository(".")) # Messages API shape
-```
-
-Adapters ship for **LangChain**, **PydanticAI**, **smolagents** and the **Anthropic
-Messages API** (no SDK needed). Each imports its framework lazily and, if it is missing,
-tells you which pip command to run.
-
-Three promises that make it safe to depend on:
-
-- **Handlers never raise.** A missing file comes back as
-  `{"ok": False, "error": {...}}`, so an agent loop is not broken by a bad path.
-- **`path` is not a tool argument.** A bound tool set cannot be repointed at another
-  directory by the model.
-- **`schema_version` is in every JSON envelope.** It changes only for a breaking change
-  to the output contract.
-
-`llmscribe schema --format openai` prints the same definitions from the CLI.
-
-## Where this fits
-
-There is already a filesystem MCP server — `@modelcontextprotocol/server-filesystem`.
-It is a good tool, and it does something this deliberately does not: it **writes**.
-`write_file`, `edit_file`, `move_file`, `create_directory`.
-
-LLMScribe is the read half. Run both if your agent needs to change files as well as
-understand them:
-
-| | server-filesystem | LLMScribe |
-| --- | --- | --- |
-| read / write / move / create | yes | **read only** |
-| binary and media reads | yes | opt-in (`read --binary`) |
-| per-file size and mtime | `get_file_info` | on every read, plus `map --sizes` |
-| `.gitignore`-aware | no | yes, real pathspec semantics |
-| dependency graph (imports **and** `used_by`) | no | yes |
-| git diff and status | no | yes |
-| truncation reported | no | yes, with `omitted_files` |
-
-The trade is deliberate. An agent holding a write-capable filesystem server can delete
-your repository; one holding LLMScribe structurally cannot. That is why `VISION.md` says
-LLMScribe does not edit your code — it is a property, not a missing feature.
-
-## Feature Overview
-
-**Core Tools**
-
-| Feature | Description |
-|---------|-------------|
-| [**Map**](#map) | Generate a clean directory tree without dumping file contents |
-| [**Search**](#search) | Search file paths, file names, file contents, and individual lines |
-| [**Read**](#read) | Safely retrieve a specific file |
-
-**More**
-
-| Feature | Description |
-|---------|-------------|
-| [**Read Many**](#read-many) | Retrieve multiple files in a single operation |
-| [**Dependencies**](#dependencies) | See what a file depends on and what depends on it |
-| [**Diff**](#diff) | Inspect Git status and unified diffs |
-| [**Overview**](#overview) | Export the complete structure and supported file contents |
+Git is only needed for the `diff` tool.
 
 ---
 
-## Quick Start
+## Quick start
 
-Install LLMScribe from PyPI:
+### Use it as an MCP server
+
+```bash
+pip install 'llmscribe[server]'
+claude mcp add llmscribe -- llmscribe-mcp
+```
+
+Then ask your agent to explore the project. Setup for every other client is in [MCP server setup](#mcp-server-setup).
+
+### Use it from the command line
 
 ```bash
 pip install llmscribe
+
+llmscribe map --depth 2              # project tree, two levels deep
+llmscribe search "authentication"    # literal search across paths and contents
+llmscribe read src/auth/service.py   # one file, with size, line count and mtime
+llmscribe dependencies src/auth/service.py --json
 ```
 
-Then point it at any project directory on your machine. No API key, no network access, no account.
+### Use it from Python
 
-> The `project_map(...)`, `search(...)`, `read(...)` snippets below show **MCP tool calls**. The same operations are available from the CLI (local directories) and from Python through `llmscribe.core` (see [Python API](#python-api)).
+```python
+from llmscribe import Repository
+
+repo = Repository(".")
+print(repo.map().tree)
+print(repo.search("auth").match_count)
+```
+
+---
+
+## Tools
+
+Seven tools, identical across the MCP server, CLI and Python library.
+
+| MCP tool | CLI command | What it does |
+| --- | --- | --- |
+| `project_map` | `llmscribe map` | Directory tree without file contents. Supports `--depth` and `--sizes`. |
+| `project_overview` | `llmscribe overview` | Tree plus supported file contents. Supports `--depth`, `--compress` and `--max-tokens`. |
+| `search` | `llmscribe search` | Literal search across file paths, names, contents and lines. |
+| `read` | `llmscribe read` | One file with `byte_size`, `line_count` and `modified`. `--binary` returns base64; `--lines START:END` reads part of it. |
+| `read_many` | `llmscribe read-many` | Up to 50 files in one call, with per-file errors. |
+| `project_dependencies` | `llmscribe dependencies` | What a file imports and what imports it. |
+| `project_diff` | `llmscribe diff` | Git status and unified diffs. |
+
+---
+
+## MCP server setup
+
+LLMScribe is a standard MCP server that runs locally over stdio. Install the server extra first:
+
+```bash
+pip install 'llmscribe[server]'
+```
+
+### Standard `mcpServers` configuration
+
+Most clients accept this block:
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+If `llmscribe-mcp` is not on your `PATH`, call the module instead:
+
+```json
+{
+  "mcpServers": {
+    "llmscribe": {
+      "command": "python",
+      "args": ["-m", "llmscribe.mcp"]
+    }
+  }
+}
+```
+
+Where to put it:
+
+| Client | Where to add it | Notes |
+| --- | --- | --- |
+| **Claude Desktop** | `claude_desktop_config.json` (Settings → Developer → Edit Config). macOS: `~/Library/Application Support/Claude/`. Windows: `%APPDATA%\Claude\`. | Fully quit and reopen after saving. |
+| **Cursor** | `.cursor/mcp.json` in the project, or `~/.cursor/mcp.json` for all projects | Restart, then check Customize → MCPs. |
+| **Windsurf (Cascade)** | `~/.codeium/mcp_config.json` (Settings → Cascade → MCP → View Raw Config) | Press refresh after saving. |
+| **Cline** | MCP Servers → Configure → Configure MCP Servers | |
+| **Roo Code** | Global `mcp_settings.json` (Edit Global MCP) or `.roo/mcp.json` (Edit Project MCP) | |
+| **LM Studio** | `~/.lmstudio/mcp.json` (Windows: `%USERPROFILE%\.lmstudio\mcp.json`). In-app: Program → Install → Edit mcp.json | Follows Cursor's `mcp.json` notation. |
+| **JetBrains IDEs** | Settings → Tools → AI Assistant → Model Context Protocol (MCP) → Add → As JSON | You can also click Import from Claude. |
+
+### Clients with a different format
+
+**Claude Code**
+
+```bash
+claude mcp add llmscribe -- llmscribe-mcp
+```
+
+Confirm with `claude mcp list`. Add `--scope user` to enable it in every project, or `--scope project` to share it with your team through `.mcp.json`.
+
+**VS Code (GitHub Copilot)** uses `servers`, not `mcpServers`. Create `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "llmscribe": {
+      "type": "stdio",
+      "command": "llmscribe-mcp"
+    }
+  }
+}
+```
+
+Open Copilot Chat in Agent mode and click the tools icon to start the server.
+
+**OpenAI Codex CLI**: add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.llmscribe]
+command = "llmscribe-mcp"
+```
+
+**Zed**: add to your settings (or Settings → AI → MCP Servers → Add Server):
+
+```json
+{
+  "context_servers": {
+    "llmscribe": {
+      "command": "llmscribe-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
+```
+
+**Continue**: add to `~/.continue/config.yaml`, or a file under `.continue/mcpServers/`:
+
+```yaml
+name: LLMScribe
+version: 1.0.0
+schema: v1
+mcpServers:
+  - name: LLMScribe
+    command: llmscribe-mcp
+```
+
+**Goose**: add an extension to `~/.config/goose/config.yaml`:
+
+```yaml
+extensions:
+  llmscribe:
+    name: llmscribe
+    enabled: true
+    type: stdio
+    cmd: llmscribe-mcp
+    args: []
+    timeout: 300
+```
+
+The server is also listed in the [official MCP Registry](https://registry.modelcontextprotocol.io/?q=llmscribe) as `io.github.AMRITO-KUNDU/llmscribe`.
+
+---
+
+## Recommended agent workflow
+
+Instead of pushing a whole repository into a context window, let the agent retrieve only what it needs:
+
+```text
+1. project_map()                              what is in this project?
+      ↓
+2. search("authentication")                   where is the relevant code?
+      ↓
+3. read("src/auth/service.py")                what does it say?
+      ↓
+4. project_dependencies("src/auth/service.py")  what does it touch, and what touches it?
+      ↓
+5. read_many([...])                           pull in the related files
+```
+
+For small and medium projects, `project_overview` returns the tree and supported file contents in one call. For large repositories, stay with `map → search → read`.
+
+---
+
+## Tool details
 
 ### Map
 
-Generate a clean directory tree without file contents. This is the best first step when exploring an unfamiliar repository.
+Generates a clean directory tree without file contents. This is the best first step in an unfamiliar repository.
 
-```python
-project_map()
-```
-
-<details>
-<summary><b>CLI / MCP</b></summary>
-
-**CLI**
 ```bash
 llmscribe map
-llmscribe map --depth 2          # only the first two levels, like `tree -L 2`
-llmscribe map --sizes            # add each file's size in bytes
+llmscribe map --depth 2    # first two levels only, like `tree -L 2`
+llmscribe map --sizes      # add each file's size in bytes
 llmscribe map --json
 ```
 
-**MCP**
-```text
-project_map
-project_map(depth=2)
-```
-</details>
+MCP: `project_map` or `project_map(depth=2)`.
 
-`--depth N` (or `max_depth=N` from Python) limits the listing to the first *N* path
-levels. A top-level file is depth 1, so `--depth 2` keeps `a/b.py` and drops
-`a/b/c.py`. It prunes the tree *and* the file list, which means `overview --depth 2`
-never reads the files it excluded — useful for fitting a large repository into a small
-context window.
+`--depth N` (or `max_depth=N` in Python) keeps the first *N* path levels. A top-level file is depth 1, so `--depth 2` keeps `a/b.py` and drops `a/b/c.py`. It prunes both the tree and the file list, so `overview --depth 2` never reads the files it excluded.
 
-Output:
 ```text
 src/
 ├── api/
@@ -358,34 +327,15 @@ src/
 
 ### Search
 
-Search across file paths, file names, file contents, and individual lines.
+Searches file paths, file names, file contents and individual lines. Search is intentionally **literal**: LLMScribe does not guess what you meant.
 
-Search is intentionally literal: LLMScribe does not try to guess what you meant.
-
-```python
-search(query="authentication")
-```
-
-<details>
-<summary><b>CLI / MCP</b></summary>
-
-**CLI**
 ```bash
 llmscribe search "authentication"
 llmscribe search "authentication" --json
 ```
 
-**MCP**
-```text
-search
-```
-</details>
+Each match includes the file path, line number, matching line, matched text and match type (`filename` or `content`). Results are ordered by path then line and capped at 1,000 matches. Binary and oversized files are skipped.
 
-Each match includes the file path, line number, the matching line, the matched text and the match type (`filename` or `content`).
-
-Results are ordered by path then line, and limited to 1,000 matches. Binary and oversized files are skipped.
-
-Output (`--json`, `data.matches`):
 ```json
 [
   {
@@ -400,372 +350,40 @@ Output (`--json`, `data.matches`):
 
 ### Read
 
-Safely retrieve the contents of a specific file. LLMScribe validates paths and prevents path traversal outside the project.
+Retrieves a file. Paths are validated, and traversal outside the project is rejected.
 
-```python
-read(file_path="src/auth/service.py")
-```
-
-<details>
-<summary><b>CLI / MCP</b></summary>
-
-**CLI**
 ```bash
 llmscribe read src/auth/service.py
-llmscribe read logo.png --binary      # base64 + media type, for images and PDFs
+llmscribe read logo.png --binary    # base64 content plus media type
 ```
 
-**MCP**
-```text
-read
-```
-</details>
-
-Every read also reports `byte_size`, `line_count` and `modified` (ISO 8601 UTC) for the
-**whole file**, not just the part returned — so the agent can answer "how big is this" and "how many lines" without a
-second command, and without being misled when the body was clipped. That is the
-`stat` / `wc -l` / `file` information, in the same shape on every OS.
+Every read reports `byte_size`, `line_count` and `modified` (ISO 8601, UTC) for the **whole file**, even when the returned body was clipped. That is the `stat`, `wc -l` and `file` information in one consistent shape on every OS.
 
 ```json
 { "file_path": "src/main.py", "byte_size": 2841, "line_count": 96, "modified": "2026-11-21T04:13:16+00:00", "truncated": false }
 ```
 
-`--binary` is the one way to get a non-text file: `content` becomes base64 and
-`media_type` carries the guessed MIME type. Binaries are still excluded from `overview`
-and `read_many`, so they cannot quietly fill a context window.
+`--binary` is the only way to retrieve a non-text file. `content` becomes base64 and `media_type` carries the guessed MIME type. Binaries are still excluded from `overview` and `read_many`, so they cannot quietly fill a context window.
 
----
-
-## Power Your Agent
-
-Instead of throwing an entire repository into a context window, an agent can progressively retrieve exactly what it needs:
-
-```text
-1. project_map()
-      ↓
-2. search("authentication")
-      ↓
-3. read("src/auth/service.py")
-      ↓
-4. project_dependencies("src/auth/service.py")
-      ↓
-5. read_many([...])
-```
-
-### MCP
-
-LLMScribe is a standard Model Context Protocol server that runs locally over stdio.
-
-Any MCP-compatible client can use it against a project directory on your machine.
-
-> **Install the server first.** The MCP server lives behind an extra so the core package
-> stays at one dependency:
->
-> ```bash
-> pip install 'llmscribe[server]'
-> ```
->
-> Without it, `llmscribe-mcp` prints that install line and exits rather than failing with
-> an ImportError.
-
-**Config** — put this in your client (see the per-app setup below):
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-<details>
-<summary><b>Use the Python module instead of the command</b></summary>
-
-If `llmscribe-mcp` is not on your `PATH`, point the client at the module:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "python",
-      "args": ["-m", "llmscribe.mcp"]
-    }
-  }
-}
-```
-</details>
-
-#### Per-app setup
-
-Each client reads a different configuration file. The blocks below were checked against each tool's official documentation.
-
-<details>
-<summary><b>Claude Desktop</b></summary>
-
-Edit `claude_desktop_config.json` (in the app: **Settings → Developer → Edit Config**):
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-Fully quit and reopen Claude Desktop after saving.
-
-</details>
-
-<details>
-<summary><b>Claude Code</b></summary>
+**Read part of a file.** `start_line` and `end_line` are 1-based and inclusive, so asking for lines 200–250 of a 5,000-line file returns 51 lines rather than 5,000:
 
 ```bash
-claude mcp add llmscribe -- llmscribe-mcp
+llmscribe read src/big.py --lines 200:250
+llmscribe read src/big.py --lines 498:      # from line 498 to the end
 ```
-
-Confirm with `claude mcp list`.
-
-Add `--scope user` to make it available in every project, or `--scope project` to share it with your team via `.mcp.json`.
-
-</details>
-
-<details>
-<summary><b>Cursor</b></summary>
-
-Create `.cursor/mcp.json` in your project (or `~/.cursor/mcp.json` for all projects):
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-Restart Cursor, then check **Customize → MCPs**.
-
-</details>
-
-<details>
-<summary><b>VS Code (GitHub Copilot)</b></summary>
-
-Create `.vscode/mcp.json` in your workspace. Note that VS Code uses `servers`, not `mcpServers`:
-
-```json
-{
-  "servers": {
-    "llmscribe": {
-      "type": "stdio",
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-Then open Copilot Chat in **Agent** mode and click the tools icon to start the server.
-
-</details>
-
-<details>
-<summary><b>Windsurf (Cascade)</b></summary>
-
-Edit `~/.codeium/mcp_config.json` (in the app: **Windsurf Settings → Cascade → MCP → View Raw Config**):
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-Press the refresh button after saving.
-
-</details>
-
-<details>
-<summary><b>Cline</b></summary>
-
-Open the Cline panel → **MCP Servers** → **Configure** → **Configure MCP Servers**, then add:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-
-</details>
-
-<details>
-<summary><b>Roo Code</b></summary>
-
-Edit the global `mcp_settings.json` (**Edit Global MCP**), or create `.roo/mcp.json` in your project (**Edit Project MCP**):
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-
-</details>
-
-<details>
-<summary><b>LM Studio</b></summary>
-
-In the app: **Program** tab → **Install → Edit mcp.json**.
-
-The file is `~/.lmstudio/mcp.json` on macOS/Linux, `%USERPROFILE%\.lmstudio\mcp.json` on Windows:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-LM Studio follows Cursor's `mcp.json` notation.
-
-</details>
-
-<details>
-<summary><b>Zed</b></summary>
-
-Add to your Zed settings (in the app: **Settings → AI → MCP Servers → Add Server**, or `zed: open settings file`):
-
-```json
-{
-  "context_servers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp",
-      "args": [],
-      "env": {}
-    }
-  }
-}
-```
-
-
-</details>
-
-<details>
-<summary><b>Continue</b></summary>
-
-Add to `~/.continue/config.yaml` (or a standalone file under `.continue/mcpServers/`):
-
-```yaml
-name: LLMScribe
-version: 1.0.0
-schema: v1
-mcpServers:
-  - name: LLMScribe
-    command: llmscribe-mcp
-```
-
-Continue also picks up Cursor/Claude/Cline JSON configs dropped into `.continue/mcpServers/`.
-
-</details>
-
-<details>
-<summary><b>JetBrains IDEs (IntelliJ, WebStorm, …)</b></summary>
-
-**Settings → Tools → AI Assistant → Model Context Protocol (MCP) → Add → As JSON**:
-
-```json
-{
-  "mcpServers": {
-    "llmscribe": {
-      "command": "llmscribe-mcp"
-    }
-  }
-}
-```
-
-You can also click **Import from Claude** to reuse an existing Claude Desktop configuration.
-
-</details>
-
-<details>
-<summary><b>Goose</b></summary>
-
-Add an extension to `~/.config/goose/config.yaml`:
-
-```yaml
-extensions:
-  llmscribe:
-    name: llmscribe
-    enabled: true
-    type: stdio
-    cmd: llmscribe-mcp
-    args: []
-    timeout: 300
-```
-
-
-</details>
-
-<details>
-<summary><b>OpenAI Codex CLI</b></summary>
-
-Add to `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.llmscribe]
-command = "llmscribe-mcp"
-```
-
-
-</details>
-
-**Available tools**
-
-```text
-project_map
-project_overview
-search
-read
-read_many
-project_dependencies
-project_diff
-```
-
----
-
-## More Tools
-
-### Read Many
-
-Retrieve multiple files in a single operation. Partial success is supported, so one problematic file does not invalidate the entire request.
 
 ```python
-read_many([
-    "src/auth/service.py",
-    "src/auth/models.py",
-    "src/api/login.py"
-])
+repo.read("src/big.py", start_line=200, end_line=250)
+```
+
+`line_count` still reports the whole file and `returned_lines` reports the slice, so an agent can always tell there is more. A range cannot be combined with `--compress`: compression rewrites the file, so line numbers would stop referring to what you asked for.
+
+### Read many
+
+Retrieves several files in one operation. Partial success is supported, so one problematic file does not invalidate the request.
+
+```python
+read_many(["src/auth/service.py", "src/auth/models.py", "src/api/login.py"])
 ```
 
 ```bash
@@ -774,19 +392,12 @@ llmscribe read-many src/auth/service.py src/api/login.py
 
 ### Dependencies
 
-Inspect the dependency relationships around a file.
-
-LLMScribe identifies local dependencies, external dependencies, unresolved dependencies, and the files that depend on this file.
-
-```python
-project_dependencies("src/auth/service.py")
-```
+Shows what a file depends on and what depends on it. Useful for estimating the impact of changing a file.
 
 ```bash
 llmscribe dependencies src/auth/service.py --json
 ```
 
-Output:
 ```text
 src/auth/service.py
 │
@@ -800,37 +411,40 @@ src/auth/service.py
     └── tests/test_auth.py
 ```
 
-This is particularly useful when determining the potential impact of modifying a file.
+Supported languages: Python, JavaScript/TypeScript, Java, Go, Rust and C/C++. Each reference is classified as:
+
+- `local`: resolved to a file or directory inside the project
+- `stdlib`: part of the language's standard library
+- `external`: not in the project, assumed third-party
+- `unresolved`: a relative or local-looking reference that matches nothing
+
+`used_by` lists the reverse dependencies.
 
 ### Diff
 
-Inspect repository changes using Git. Supports Git status, unstaged changes, staged changes, specific commits, and unified diffs.
+Reads repository changes from Git: status, unstaged changes, staged changes, specific commits and unified diffs. This lets an agent see not only the current state of the repository but **what changed**.
 
 ```bash
 llmscribe diff
 ```
 
-This lets applications and agents understand not only the current repository, but also **what changed**.
+Git runs with an argument list, a 30-second timeout, a minimal environment and without external diff or textconv drivers.
 
 ### Overview
 
-Generate a complete project snapshot containing the directory structure, supported text file contents, and structured project information.
+Produces a project snapshot: directory structure, supported text file contents and structured project information.
 
 ```bash
 llmscribe overview
-```
-
-Best for small and medium-sized projects. For large repositories, use the recommended workflow instead:
-
-```text
-map → search → read
+llmscribe overview --depth 3
+llmscribe overview --compress --max-tokens 20000
 ```
 
 ---
 
-## CLI
+## CLI reference
 
-Every command can return machine-readable JSON with `--json` (`-j`), which makes the CLI a building block for scripts, automation, and developer tools.
+Every command accepts `--json` (`-j`) for machine-readable output, which makes the CLI a building block for scripts, automation and developer tooling.
 
 ```bash
 llmscribe map
@@ -841,17 +455,10 @@ llmscribe read-many src/auth/service.py src/api/login.py
 llmscribe dependencies src/auth/service.py
 llmscribe diff
 
-# only the first two levels (like `tree -L 2`)
-llmscribe map --depth 2
-llmscribe overview --depth 3
-
-# fit a context budget: takes files in path order until it is spent
-llmscribe overview --max-tokens 20000
-
-# machine-readable output
-llmscribe map --json
-llmscribe search "auth" --json
-llmscribe dependencies src/auth/service.py --json
+llmscribe map --depth 2                  # first two levels
+llmscribe overview --max-tokens 20000    # fit a context budget
+llmscribe search "auth" --json           # machine-readable output
+llmscribe -V                             # print the version
 ```
 
 **Paths are flexible.** Every command takes an optional directory, so `--path` is never required:
@@ -859,44 +466,75 @@ llmscribe dependencies src/auth/service.py --json
 ```bash
 llmscribe .                       # map the current directory
 llmscribe ./src                   # map a specific directory
-llmscribe map ./src               # the same thing, spelled out
+llmscribe map ./src               # the same, spelled out
 llmscribe search "auth" ./src     # search inside a directory
 ```
 
-**Aliases** for the verbs you already type:
+**Aliases** for verbs you already type:
 
 | Alias | Command |
-|-------|---------|
+| --- | --- |
 | `ls` | `map` |
 | `tree` | `overview` |
 | `grep`, `find` | `search` |
 | `cat` | `read` |
 | `deps` | `dependencies` |
 
-`read` accepts several files and switches to a batch read automatically:
+`read` accepts several files and switches to a batch read automatically: `llmscribe cat src/main.py src/util.py`.
+
+---
+
+## Token budgets and compression
+
+Large repositories do not fit in a context window. LLMScribe gives you three predictable controls.
+
+| Control | Effect |
+| --- | --- |
+| `--depth N` | Limits the tree and file list to the first *N* path levels. Excluded files are never read. |
+| `--max-tokens N` | Stops once content reaches roughly *N* tokens, taking files in **path order**. |
+| `--compress` | Reduces Python files to imports, signatures, docstrings and class shape. |
 
 ```bash
-llmscribe cat src/main.py src/util.py
+llmscribe overview --compress
+llmscribe read src/service.py --compress
+llmscribe overview --compress --max-tokens 20000
 ```
 
-`llmscribe -V` prints the version.
+### Compression is a syntactic transform, not a summary
+
+`--compress` uses the standard library parser to read a Python file and re-serialise its API surface without function bodies. On a typical module that is roughly half the characters. Nothing is inferred or ranked, and the same file always produces the same bytes.
+
+- **Python only.** Supporting more languages would mean a compiled dependency in a pure-Python package.
+- **Formatting is normalised.** `"` may become `'` and blank lines collapse, so compressed output is for reading, not diffing.
+- **Files that do not parse are left exactly as they are.**
+
+### Budgets spend in a fixed order
+
+`--max-tokens` takes files in path order until the budget is gone. Choosing files by relevance would be ranking, which this project avoids on purpose. A predictable cut beats an unpredictable one: you can always raise the budget or read a specific file. Token counts are estimated at four characters each, because an exact count would depend on which model's vocabulary you meant.
+
+Any cut is reported through `truncated`, `truncation_note` and `omitted_files`, so truncation is never hidden.
 
 ---
 
-## Configuration
+## Secret redaction
 
-LLMScribe runs entirely on your machine and needs no configuration.
+LLMScribe exists to put code in front of a model, so every result is scrubbed first: file contents, search hits and diffs. The result tells you what it masked.
 
-Two optional environment variables restrict which directories the MCP server may read:
+```json
+{ "content": "API_KEY = \"[REDACTED:openai_key]\"", "metadata": { "redacted": ["openai_key"] } }
+```
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MCP_ALLOWED_ROOTS` | Directories (separated by `:` on POSIX, `;` on Windows) the tools may read | all paths |
-| `MCP_ALLOW_LOCAL_PATHS` | `0` disables local path access entirely | enabled |
+Detected shapes include AWS keys, GitHub and Slack tokens, Stripe and Google keys, JWTs, `Authorization: Bearer` headers, credentials inside connection strings, private-key blocks and `password = "..."` assignments.
+
+Matching is conservative: high-confidence token shapes with fixed replacements, so ordinary code is left alone and output stays repeatable.
+
+Redaction is **on by default everywhere**, including the MCP server. Use `--no-redact` (CLI) or `redact=False` (Python) when you need raw text. An agent cannot turn it off.
 
 ---
 
-## Python API
+## Python library and framework adapters
+
+Use LLMScribe as a library without running a server.
 
 ```python
 from llmscribe import Repository, LLMScribeError
@@ -918,92 +556,233 @@ print(deps.file_dependencies.local_dependencies)
 print(deps.used_by)                     # what imports it
 ```
 
-Two error conventions, and the difference matters:
+Two error conventions:
 
-- `read` and `read_many` **return** results carrying `ok` and `error_code`, so a batch
-  reports per-file failures instead of dying on the first one.
-- `dependencies` and `diff` **raise** `LLMScribeError`, whose `.code` is a stable
-  machine-readable string.
+- `read` and `read_many` **return** results carrying `ok` and `error_code`, so a batch reports per-file failures.
+- `dependencies` and `diff` **raise** `LLMScribeError`, whose `.code` is a stable machine-readable string.
 
-Every method returns the same dataclasses the CLI and MCP server produce, and each one
-has `.to_dict()` for JSON. `llmscribe.core` still exposes the underlying functions if you
-want to call them directly.
+Every method returns the same dataclasses the CLI and MCP server produce, each with `.to_dict()` for JSON.
 
-Runnable examples live in [`examples/`](examples/): chunking a repo for a RAG pipeline,
-reviewing what a change touches, and a repo summary.
+### Register the tools in any agent framework
+
+```python
+from llmscribe import Repository, tool_schemas
+
+schemas = tool_schemas("openai")        # or "anthropic", "mcp", "raw"
+run = Repository(".").handlers()        # tool name -> callable
+
+result = run["project_map"](depth=2)    # {'ok': True, 'data': {...}, ...}
+```
+
+`llmscribe schema --format openai` prints the same definitions from the CLI.
+
+### Ready-made adapters
+
+Adapters ship for **LangChain**, **PydanticAI**, **smolagents** and the **Anthropic Messages API** (no SDK needed):
+
+```python
+from llmscribe import Repository
+from llmscribe.adapters import as_langchain_tools, as_anthropic_tools
+
+tools = as_langchain_tools(Repository("."))           # StructuredTool objects
+defs, dispatch = as_anthropic_tools(Repository("."))  # Messages API shape
+```
+
+Each adapter imports its framework lazily and, if it is missing, tells you which `pip` command to run.
+
+### Guarantees that make it safe to depend on
+
+- **Handlers never raise.** A missing file returns `{"ok": False, "error": {...}}`, so an agent loop is not broken by a bad path.
+- **`path` is not a tool argument.** A bound tool set cannot be repointed at another directory by the model.
+- **`schema_version` is in every JSON envelope.** It changes only for a breaking change to the output contract.
+
+Runnable examples are in [`examples/`](https://github.com/AMRITO-KUNDU/llmscribe/tree/main/examples): chunking a repository for a RAG pipeline, reviewing what a change touches, and generating a repository summary.
+
+---
+
+## Configuration
+
+LLMScribe runs entirely on your machine and needs no configuration. Two optional environment variables restrict which directories the MCP server may read:
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `MCP_ALLOWED_ROOTS` | Directories the tools may read, separated by `:` on POSIX and `;` on Windows | All paths |
+| `MCP_ALLOW_LOCAL_PATHS` | `0` disables local path access entirely | Enabled |
+
+---
 
 ## Behavior reference
 
 ### Ignore rules
 
-Defaults (`.git`, `node_modules`, `venv`, `dist`, `build`, `.env`, `*.log`, …), the root `.gitignore` and nested `.gitignore` files are applied with real Git semantics: wildcards, directories, `!` negation, and root-anchored patterns.
-
-Hidden files are included unless ignored.
-
-Symlinks are never followed or listed.
+Defaults (`.git`, `node_modules`, `venv`, `dist`, `build`, `.env`, `*.log` and more), the root `.gitignore` and nested `.gitignore` files are applied with real Git semantics: wildcards, directories, `!` negation and root-anchored patterns. Hidden files are included unless ignored. Symlinks are never followed or listed.
 
 ### Supported text files
 
-Known source, config and doc extensions, plus names such as `Dockerfile`, `Makefile`, `LICENSE` and `.gitignore`.
-
-Other files appear in the tree, but cannot be read or searched.
+Known source, config and documentation extensions, plus names such as `Dockerfile`, `Makefile`, `LICENSE` and `.gitignore`. Other files appear in the tree but cannot be read or searched.
 
 ### Limits
 
-One source of truth: `llmscribe.core.limits`.
+Defined in one place, `llmscribe.core.limits`:
 
-- 400,000 content characters per `project_overview` / `read_many`
-- 50 files per `read_many`
-- 1,000 search matches
-- 20,000 map entries
-- 2 MiB per file
-- 200,000 diff characters
-- 100,000 scanned entries
+| Limit | Value |
+| --- | --- |
+| Content characters per `project_overview` / `read_many` | 400,000 |
+| Files per `read_many` | 50 |
+| Search matches | 1,000 |
+| Map entries | 20,000 |
+| Size per file | 2 MiB |
+| Diff characters | 200,000 |
+| Scanned entries | 100,000 |
 
-Anything cut is reported: `truncated`, `truncation_note`, `omitted_files`.
+Anything cut is reported through `truncated`, `truncation_note` and `omitted_files`.
 
-### Errors
+### Error codes
 
 Every failure has a stable, machine-readable code:
 
 `invalid_argument` · `invalid_path` · `file_not_found` · `unsupported_file_type` · `binary_file` · `file_too_large` · `read_error` · `not_a_repository` · `git_unavailable` · `unsupported_operation` · `internal_error`
 
-JSON errors look like this:
-
 ```json
 {"ok": false, "tool": "...", "error": {"code": "...", "message": "..."}}
 ```
 
-### Dependencies
+### Deterministic and cross-platform, verified in CI
 
-Supported languages: Python, JavaScript/TypeScript, Java, Go, Rust, and C/C++.
+[`scripts/cross_platform_check.py`](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/scripts/cross_platform_check.py) builds a fixed fixture project, runs `map`, `overview`, `search`, `read`, `read_many` and `dependencies`, scrubs the absolute path and digests each result. The [cross-platform workflow](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/.github/workflows/cross-platform.yml) runs it on Ubuntu, macOS and Windows and **fails the build if the digests differ**:
 
-Each reference is classified as one of:
+```text
+llmscribe <version>
+python 3.12
+map            <sha256>
+map_depth2     <sha256>
+overview       <sha256>
+search         <sha256>
+read           <sha256>
+read_many      <sha256>
+dependencies   <sha256>
+combined       <sha256>   <- must be identical on all three
+```
 
-- `local` — resolved to a file or directory inside the project
-- `stdlib` — part of the language's standard library
-- `external` — not in the project, assumed third-party
-- `unresolved` — a relative or local-looking reference that matches nothing
+The fixture is written as bytes, not text, so the files are byte-identical on every platform. Writing text would turn `\n` into `\r\n` on Windows and make the comparison meaningless.
 
-`used_by` lists the reverse dependencies.
+### Upgrading from older versions
 
-### Git diff
+- Legacy tool names (`project_get_file`, `project_get_files`, `project_search`, `project_list_files`) were replaced by `read`, `read_many` and `search`.
+- Error code `path_traversal` is now `invalid_path`. `not_text_file` is now `unsupported_file_type`.
+- In `project_dependencies` results, `all_local_files`, `all_external_deps` and `all_unresolved` were replaced by `used_by` and per-category lists. `stdlib_dependencies` was added.
+- `llmscribe.core` functions raise `LLMScribeError`, not `FileNotFoundError`, for a bad root.
+- **1.3.0:** online GitHub sources were removed, and LLMScribe is now local-only. The `repo` and `ref` arguments, the in-memory snapshot cache, the `llmscribe.github` package and the hosted HTTP transport are gone. Point the tools at a local `path`.
 
-Runs `git` with an argument list, a 30 s timeout, a minimal environment, and without external diff/textconv drivers.
+See the [changelog](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CHANGELOG.md) for full release notes.
 
-### Migration notes
+---
 
-- Legacy tool names (`project_get_file`, `project_get_files`, `project_search`, `project_list_files`) are gone; use `read`, `read_many`, `search`.
-- Error code `path_traversal` is now `invalid_path`; `not_text_file` is `unsupported_file_type`.
-- `project_dependencies` results: `all_local_files`/`all_external_deps`/`all_unresolved` were replaced by `used_by` and per-category lists (`stdlib_dependencies` added).
-- `llmscribe.core` functions raise `LLMScribeError` (not `FileNotFoundError`) for a bad root.
-- **1.3.0:** the online GitHub source was removed — LLMScribe is now local-only. The `repo` and `ref` arguments, the in-memory snapshot cache, the `llmscribe.github` package, and the hosted HTTP transport are gone. Point the tools at a local `path`.
+## Comparison
+
+### LLMScribe vs shell commands
+
+| What the agent needs | Linux / macOS | Windows | LLMScribe |
+| --- | --- | --- | --- |
+| List a directory | `ls -la` | `dir /a` | `map` |
+| Find files by name | `find . -name '*.py'` | `Get-ChildItem -Recurse -Filter *.py` | `search` |
+| Search inside files | `grep -rn 'auth' .` | `Select-String -Pattern auth` | `search` |
+| Read a file | `cat app.py` | `type app.py` | `read` |
+| Compare versions | `diff -ru old new` | `fc /r` (not recursive) | `diff` |
+
+Shell output is made for eyes (columns, colour, locale-dependent sort order, warnings mixed with results), is not portable between operating systems, and forces the agent to re-parse text. LLMScribe returns the same JSON and the same bytes everywhere.
+
+### LLMScribe vs the filesystem MCP server
+
+`@modelcontextprotocol/server-filesystem` is a good tool that does something LLMScribe deliberately does not: it **writes** (`write_file`, `edit_file`, `move_file`, `create_directory`). LLMScribe is the read half. Run both if your agent needs to change files as well as understand them.
+
+| | server-filesystem | LLMScribe |
+| --- | --- | --- |
+| Read / write / move / create | Yes | **Read only** |
+| Binary and media reads | Yes | Opt-in (`read --binary`) |
+| File size and mtime | `get_file_info` | On every read, plus `map --sizes` |
+| `.gitignore`-aware | No | Yes, real pathspec semantics |
+| Dependency graph (imports **and** `used_by`) | No | Yes |
+| Git diff and status | No | Yes |
+| Truncation reported | No | Yes, with `omitted_files` |
+| Secret redaction | No | Yes, on by default |
+
+An agent holding a write-capable server can delete your repository. One holding LLMScribe structurally cannot, which is a property of the design and not a missing feature.
+
+---
+
+## Use cases
+
+- Giving AI coding agents (Claude Code, Cursor, Codex, Copilot) reliable codebase context
+- Building MCP applications and local LLM tools
+- Code search and repository explorer interfaces
+- Impact analysis before changing a file
+- Chunking repositories for RAG and code analysis pipelines
+- Documentation generation and repository summaries
+- Automation scripts that need stable, parseable project data
+- Exploring unfamiliar open-source projects
+
+---
+
+## FAQ
+
+### What is LLMScribe?
+
+LLMScribe is an open-source, read-only MCP server, CLI and Python library that gives AI coding agents structured access to a local codebase: project map, literal search, file reads, dependency graph and Git diff, returned as deterministic JSON.
+
+### How do I install the LLMScribe MCP server?
+
+Run `pip install 'llmscribe[server]'`, then add `llmscribe-mcp` as a command in your client's MCP configuration. For Claude Code that is `claude mcp add llmscribe -- llmscribe-mcp`. See [MCP server setup](#mcp-server-setup) for other clients.
+
+### Which AI coding tools does LLMScribe work with?
+
+Any MCP client, including Claude Code, Claude Desktop, Cursor, OpenAI Codex CLI, VS Code with GitHub Copilot, Windsurf, Zed, Cline, Roo Code, Continue, JetBrains IDEs, Goose and LM Studio.
+
+### Does LLMScribe use AI or embeddings?
+
+No. There are no models, no embeddings and no semantic ranking. Search is literal, and compression is a fixed syntactic transform. The same input always produces the same bytes.
+
+### Does LLMScribe send my code anywhere?
+
+No. It runs entirely on your machine with no network access, account, hosted service or telemetry.
+
+### Can an agent modify my files through LLMScribe?
+
+No. LLMScribe is read-only by design. It has no write, edit, move or delete operations.
+
+### How do I fit a large repository into a context window?
+
+Start with `llmscribe map --depth 2`, then use `search` and `read --lines 200:250` to pull in only the part that matters. For overviews, combine `--depth`, `--compress` and `--max-tokens`. Anything omitted is reported in `omitted_files`.
+
+### Are secrets and API keys exposed to the model?
+
+High-confidence secret shapes (cloud keys, tokens, JWTs, private keys, connection-string credentials) are masked in file contents, search results and diffs by default, and the result lists what was redacted.
+
+### Which languages does dependency analysis support?
+
+Python, JavaScript/TypeScript, Java, Go, Rust and C/C++. Compression (`--compress`) supports Python only.
+
+### Does LLMScribe work on Windows?
+
+Yes. CI runs on Ubuntu, macOS and Windows and fails if the output differs between them.
+
+### How is LLMScribe different from the filesystem MCP server?
+
+The filesystem server reads and writes. LLMScribe only reads, but adds a dependency graph, Git diff, `.gitignore` semantics, secret redaction and explicit truncation reporting. See the [comparison](#comparison).
+
+### Can I use LLMScribe without MCP?
+
+Yes. Use the `llmscribe` CLI, the `Repository` Python class, or the LangChain, PydanticAI, smolagents and Anthropic adapters.
+
+### What license is LLMScribe under?
+
+Apache License 2.0.
 
 ---
 
 ## Architecture
 
-All interfaces share one core engine, so behavior stays consistent everywhere.
+All interfaces share one core engine, so behavior is consistent everywhere.
 
 ```text
                          Repository
@@ -1025,102 +804,47 @@ All interfaces share one core engine, so behavior stays consistent everywhere.
                    / JSON
 ```
 
----
+**In scope:** repository extraction, literal search, structured project data, file retrieval, dependency information, Git information and multiple interfaces.
 
-## Philosophy
-
-LLMScribe intentionally stays simple. The goal is not to make the repository "smarter." The goal is to make the repository **accessible to software**.
-
-One consequence is worth stating precisely: LLMScribe is **deterministic** — the same
-input produces the same bytes on every run. An agent can rely on what it learned last
-turn, and you can diff two runs of the same command and see only what actually changed.
-
-**We provide**
-
-- Repository extraction
-- Literal search
-- Structured project data
-- File retrieval
-- Dependency information
-- Git information
-- Multiple interfaces
-
-**We don't provide**
-
-- ❌ AI-generated answers
-- ❌ Embedding-based search
-- ❌ Semantic ranking
-- ❌ Autonomous coding
-- ❌ An AI coding agent
-- ❌ A generic Git client
-
----
-
-## Use Cases
-
-- AI coding agents
-- MCP applications
-- Developer tools
-- Code search interfaces
-- Repository explorers
-- Documentation systems
-- Code analysis pipelines
-- Automation scripts
-- Local LLM applications
-- Exploring unfamiliar open-source projects
-
----
-
-## Open Source
-
-LLMScribe is open source under the **Apache License 2.0**. Inspect the source, modify it, and build your own integrations.
-
-There is no hosted service and no telemetry. It reads your files, and nothing leaves your machine.
-
----
-
-## Resources
-
-- **Website:** https://llmscribe.vercel.app
-- **GitHub:** https://github.com/AMRITO-KUNDU/llmscribe
-- **PyPI:** https://pypi.org/project/llmscribe/
-- **Official MCP Registry:** https://registry.modelcontextprotocol.io/?q=llmscribe (`io.github.AMRITO-KUNDU/llmscribe`)
-- **Issues:** https://github.com/AMRITO-KUNDU/llmscribe/issues
-- **Changelog:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CHANGELOG.md
-- **Support:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SUPPORT.md
-- **Contributing:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md
-- **Vision:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md
-- **Governance:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md
-- **Code of Conduct:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CODE_OF_CONDUCT.md
-- **Accessibility:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/ACCESSIBILITY.md
-- **Security:** https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SECURITY.md
+**Out of scope:** AI-generated answers, embedding-based search, semantic ranking, autonomous coding, an AI coding agent and a general-purpose Git client. See [VISION.md](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md).
 
 ---
 
 ## Contributing
 
-Contributions are welcome — whether that is repository extraction, search, dependency analysis, interfaces, integrations or documentation.
+Contributions are welcome: repository extraction, search, dependency analysis, interfaces, integrations and documentation.
 
-Start with the [vision](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md), which sets out what is in scope and what deliberately is not, then the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md).
+Start with the [vision](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md), which sets out what is in scope, then the [contributing guide](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md).
 
-- A first response within about **7 days** — this is a part-time project, and pinging a quiet thread is welcome.
+- Expect a first response within about **7 days**. This is a part-time project, and pinging a quiet thread is welcome.
 - Issues labelled **`good first issue`** are scoped to be self-contained.
-- Questions are best asked in an [issue](https://github.com/AMRITO-KUNDU/llmscribe/issues), so the next person can find the answer.
-- LLMScribe is maintained by [@AMRITO-KUNDU](https://github.com/AMRITO-KUNDU); [GOVERNANCE.md](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md) describes how decisions are made.
+- Ask questions in an [issue](https://github.com/AMRITO-KUNDU/llmscribe/issues) so the next person can find the answer.
+- LLMScribe is maintained by [@AMRITO-KUNDU](https://github.com/AMRITO-KUNDU). [GOVERNANCE.md](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md) describes how decisions are made.
+
+Report vulnerabilities as described in [SECURITY.md](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SECURITY.md).
 
 <a href="https://github.com/AMRITO-KUNDU/llmscribe/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=AMRITO-KUNDU/llmscribe"/>
+  <img alt="LLMScribe contributors" src="https://contrib.rocks/image?repo=AMRITO-KUNDU/llmscribe"/>
 </a>
 
 ---
 
-## Star History
+## Resources
+
+- [Website and docs](https://llmscribe.vercel.app)
+- [PyPI package](https://pypi.org/project/llmscribe/)
+- [Official MCP Registry listing](https://registry.modelcontextprotocol.io/?q=llmscribe) (`io.github.AMRITO-KUNDU/llmscribe`)
+- [Issues](https://github.com/AMRITO-KUNDU/llmscribe/issues) · [Changelog](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CHANGELOG.md) · [Support](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SUPPORT.md)
+- [Contributing](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CONTRIBUTING.md) · [Vision](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISION.md) · [Governance](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/GOVERNANCE.md)
+- [Code of Conduct](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/CODE_OF_CONDUCT.md) · [Accessibility](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/ACCESSIBILITY.md) · [Security](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/SECURITY.md)
+
+### Star history
 
 <a href="https://www.star-history.com/?repos=amrito-kundu%2Fllmscribe&type=date&legend=top-left">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&theme=dark&legend=top-left" />
    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&legend=top-left" />
+   <img alt="LLMScribe GitHub star history chart" src="https://api.star-history.com/chart?repos=amrito-kundu/llmscribe&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -1128,13 +852,9 @@ Start with the [vision](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/VISI
 
 ## License
 
-LLMScribe is licensed under the **Apache License 2.0**.
-
-See the [LICENSE](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE) file for details.
+LLMScribe is licensed under the [Apache License 2.0](https://github.com/AMRITO-KUNDU/llmscribe/blob/main/LICENSE).
 
 <div align="center">
-
-*Repository data, structured.*
 
 <a href="#readme-top">↑ Back to top</a>
 
