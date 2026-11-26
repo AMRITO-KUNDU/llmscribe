@@ -7,6 +7,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-11-26
+
+**Behaviour change:** secrets are now masked by default in every result. If you diff
+LLMScribe output against 1.4.x you will see `[REDACTED:<kind>]` where a credential used
+to be. `--no-redact` restores the old output.
+
 ### Changed
 
 - Repositioned the project around the problem it actually solves: an agent's only
@@ -75,6 +81,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   was missing `source`, `command` and most of the `data` fields. It is now generated
   from an actual envelope.
 - The Python API section and feature card still described `llmscribe.core.writer`.
+- The cross-platform check compared the wrong paths on macOS: `/var` is a symlink to
+  `/private/var`, so the scrub replaced a path the tool never reported and the absolute
+  temp directory leaked into the digest. It also wrote its report with the platform
+  newline, so Windows produced CRLF and every line differed by one byte. Both were bugs
+  in the harness, not the tool — which is why `read` matched on all three OSes and
+  `map`/`overview`/`search` did not.
 
 ## [1.4.1] — 2026-11-17
 

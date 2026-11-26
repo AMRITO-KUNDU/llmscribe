@@ -1,6 +1,6 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "1.4.1",
+  version: "1.5.0",
   tagline: "The filesystem layer AI agents are missing.",
   description:
     "One structured interface to a local project for AI agents: tree, search, read, dependencies and diff. Same JSON on Linux, macOS and Windows.",

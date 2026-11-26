@@ -7,7 +7,7 @@
 - PyPI: https://pypi.org/project/llmscribe/
 - Official MCP Registry name: io.github.AMRITO-KUNDU/llmscribe
 - License: Apache-2.0
-- Latest version: 1.4.1
+- Latest version: 1.5.0
 - Requires: Python 3.10+ (runtime dependencies: mcp, pydantic, pathspec; GUI extras: customtkinter, Pillow)
 
 ## What it is
