@@ -7,10 +7,24 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-**Breaking, slated for 2.0.0:** `mcp` and `pydantic` moved out of the core dependencies
-into the `server` extra. `pip install llmscribe` now installs one dependency (`pathspec`)
-and no longer provides the `llmscribe-mcp` command until you add `[server]`. That command
-now prints the install line instead of failing with a bare ImportError.
+## [2.0.0] — 2026-11-26
+
+### Upgrading from 1.x — one command
+
+The MCP server moved behind an extra, so the core package stays at a single dependency.
+If you use the MCP server, reinstall with the extra:
+
+```bash
+pip install --upgrade 'llmscribe[server]'
+```
+
+If you only use the CLI or the Python API, `pip install --upgrade llmscribe` is enough
+and you get a faster, lighter install. Without the extra, `llmscribe-mcp` prints that
+install line and exits, rather than failing with an ImportError — so an MCP client will
+report that the server did not start until you add `[server]`.
+
+This is the only breaking change in 2.0. The JSON envelope gained a field; nothing was
+removed from it.
 
 ### Added
 
