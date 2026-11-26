@@ -25,19 +25,36 @@ classifiers = [
     "Topic :: Software Development :: Documentation",
     "Topic :: Utilities",
 ]
-# Runtime: every entry is imported by the package.
+# Core has exactly one dependency, so a framework can embed it without dragging in
+# an MCP server. `mcp` alone pulls 155 transitive packages; nothing in core, the CLI
+# or the Python API touches it. Install llmscribe[server] for the MCP server.
 dependencies = [
-    "mcp>=1.9,<3",       # MCP server (llmscribe.mcp)
-    "pydantic>=2.0",     # tool parameter schemas (llmscribe.mcp.tools)
     "pathspec>=0.11",    # gitignore semantics (llmscribe.core.tree_builder)
 ]
 
 [project.optional-dependencies]
+server = [
+    "mcp>=1.9,<3",       # MCP server (llmscribe.mcp)
+    "pydantic>=2.0",     # tool parameter schemas (llmscribe.mcp.tools)
+]
+all = [
+    "llmscribe[server]",
+]
+# Agent-framework adapters. Each is optional: importing llmscribe never needs one.
+langchain = ["langchain-core>=0.3"]
+pydantic-ai = ["pydantic-ai>=0.0.20"]
+smolagents = ["smolagents>=1.0"]
+adapters = [
+    "langchain-core>=0.3",
+    "pydantic-ai>=0.0.20",
+    "smolagents>=1.0",
+]
 gui = [
     "customtkinter>=5.2.0",
     "Pillow>=10.0.0",
 ]
 dev = [
+    "llmscribe[server]",  # tests cover the MCP surface too
     "pytest>=7.4",
     "ruff>=0.4",
     "build>=1.0",
@@ -52,7 +69,7 @@ Issues = "https://github.com/AMRITO-KUNDU/llmscribe/issues"
 [project.scripts]
 llmscribe = "llmscribe.cli.main:main"
 llmscribe-gui = "llmscribe.gui.app:main"
-llmscribe-mcp = "llmscribe.mcp.server:main"
+llmscribe-mcp = "llmscribe.mcp_entry:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

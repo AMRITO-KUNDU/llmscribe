@@ -12,7 +12,14 @@ from typing import TYPE_CHECKING, Any
 
 __version__ = "1.5.0"
 
-__all__ = ["LLMScribeError", "Repository", "__version__"]
+__all__ = [
+    "LLMScribeError",
+    "Repository",
+    "SCHEMA_VERSION",
+    "__version__",
+    "tool_names",
+    "tool_schemas",
+]
 
 if TYPE_CHECKING:  # pragma: no cover - for type checkers and IDEs only
     from .api import Repository
@@ -29,6 +36,10 @@ def __getattr__(name: str) -> Any:
         from .core.errors import LLMScribeError
 
         return LLMScribeError
+    if name in {"tool_schemas", "tool_names", "SCHEMA_VERSION"}:
+        from . import schema
+
+        return getattr(schema, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

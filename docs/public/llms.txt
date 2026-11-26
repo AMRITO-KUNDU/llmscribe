@@ -2,6 +2,11 @@
 
 > LLMScribe is the filesystem layer AI agents are missing. Agents normally drive the OS through `ls`, `find`, `grep` and `cat` — human-facing, OS-specific, unstructured. LLMScribe replaces that with one structured interface to a local project: directory tree, literal search, file reads, dependency analysis and Git diff. Same JSON on Linux, macOS and Windows. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
 
+- Install: `pip install llmscribe` (core, one dependency: pathspec). The MCP server is
+  `pip install 'llmscribe[server]'`; framework adapters are `pip install 'llmscribe[adapters]'`.
+- Library use: `from llmscribe import Repository, tool_schemas` then
+  `Repository(".").handlers()` for a name -> callable map. Every JSON envelope carries
+  `schema_version`.
 - Website: https://llmscribe.vercel.app
 - GitHub: https://github.com/AMRITO-KUNDU/llmscribe
 - PyPI: https://pypi.org/project/llmscribe/

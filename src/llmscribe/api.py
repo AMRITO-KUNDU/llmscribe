@@ -24,13 +24,15 @@ Two error conventions, both inherited from the core:
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
 from .core import (
     DependencyResult,
     DiffResult,
     FileReadResult,
+    LLMScribeError,
     ProjectMapResult,
     ProjectOverviewResult,
     ReadManyResult,
@@ -45,6 +47,9 @@ from .core import (
     redact_text,
     search_project,
 )
+from .schema import tool_names
+from .service import envelope
+from .service import execute as _execute
 
 __all__ = ["Repository"]
 
@@ -100,6 +105,40 @@ class Repository:
     def root(self) -> Path:
         """The project directory this repository reads from."""
         return self._root
+
+    def handlers(self) -> dict[str, Callable[..., dict[str, Any]]]:
+        """Map every tool name to a callable that accepts that tool's schema arguments.
+
+        Frameworks dispatch by name, so this is the other half of ``tool_schemas()``:
+
+            from llmscribe import Repository, tool_schemas
+            tools, run = tool_schemas("openai"), Repository(".").handlers()
+
+        Each callable returns a plain dict and **never raises** — a tool failure comes
+        back as ``{"ok": False, "error": {...}}`` so an agent loop is not broken by a
+        missing file. Redaction, budgets and depth apply exactly as on the CLI.
+        """
+        root = str(self._root)
+
+        def make(tool: str) -> Callable[..., dict[str, Any]]:
+            def call(**kwargs: Any) -> dict[str, Any]:
+                kwargs.pop("format", None)  # a rendering concern, not an argument
+                # `path` is not honoured: this repository is already bound to a root,
+                # and accepting another would let a model read any directory.
+                kwargs.pop("path", None)
+                if "depth" in kwargs:
+                    kwargs["max_depth"] = kwargs.pop("depth")
+                if "sizes" in kwargs:
+                    kwargs["include_sizes"] = kwargs.pop("sizes")
+                try:
+                    response = _execute(tool, path=root, **kwargs)
+                except LLMScribeError as exc:
+                    return {"ok": False, "tool": tool, "error": exc.to_dict()}
+                return envelope(response)
+
+            return call
+
+        return {name: make(name) for name in tool_names()}
 
     def map(self, *, max_depth: int | None = None, include_sizes: bool = False) -> ProjectMapResult:
         """The directory tree, without file contents.

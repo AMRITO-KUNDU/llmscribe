@@ -30,6 +30,7 @@ from llmscribe.core import (
 )
 from llmscribe.core.diff import DiffResult
 from llmscribe.core.limits import MAX_SEARCH_RESULTS
+from llmscribe.schema import SCHEMA_VERSION
 
 logger = logging.getLogger("llmscribe")
 
@@ -359,6 +360,7 @@ def envelope(response: ToolResponse) -> dict[str, Any]:
     """The JSON success envelope (identical shape for every tool)."""
     return {
         "ok": True,
+        "schema_version": SCHEMA_VERSION,
         "tool": response.tool,
         "source": response.source,
         "path": response.path,
@@ -369,7 +371,7 @@ def envelope(response: ToolResponse) -> dict[str, Any]:
 
 def error_envelope(tool: str, error: LLMScribeError) -> dict[str, Any]:
     """The JSON error envelope."""
-    return {"ok": False, "tool": tool, "error": error.to_dict()}
+    return {"ok": False, "schema_version": SCHEMA_VERSION, "tool": tool, "error": error.to_dict()}
 
 
 def render_json(response: ToolResponse) -> str:

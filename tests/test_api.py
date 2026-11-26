@@ -10,7 +10,14 @@ def test_public_api_is_importable():
     assert isinstance(llmscribe.__version__, str) and llmscribe.__version__
     assert Repository.__name__ == "Repository"
     assert issubclass(LLMScribeError, Exception)
-    assert set(llmscribe.__all__) == {"LLMScribeError", "Repository", "__version__"}
+    assert set(llmscribe.__all__) == {
+        "LLMScribeError",
+        "Repository",
+        "SCHEMA_VERSION",
+        "__version__",
+        "tool_names",
+        "tool_schemas",
+    }
     # the lazy module __getattr__ must reject unknown names properly
     with pytest.raises(AttributeError):
         llmscribe.does_not_exist  # noqa: B018

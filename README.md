@@ -209,6 +209,54 @@ On by default everywhere, including the MCP server. `--no-redact` (CLI) or
 `redact=False` (Python) turns it off when you need the raw text. An agent cannot: one
 that can see raw secrets will eventually read one.
 
+## Use it as a library, not just a server
+
+`pip install llmscribe` installs **one** dependency (`pathspec`). The MCP server lives
+behind an extra, because `mcp` alone pulls in 155 transitive packages and a framework
+author embedding a file reader should not pay for a protocol server they never call:
+
+```bash
+pip install llmscribe            # core: tree, search, read, dependencies, diff
+pip install 'llmscribe[server]'  # + the MCP server (llmscribe-mcp)
+pip install 'llmscribe[adapters]'# + LangChain, PydanticAI and smolagents adapters
+```
+
+Register the tools in a framework that has never heard of LLMScribe:
+
+```python
+from llmscribe import Repository, tool_schemas
+
+schemas = tool_schemas("openai")        # or "anthropic", "mcp", "raw"
+run = Repository(".").handlers()        # tool name -> callable
+
+result = run["project_map"](depth=2)    # {'ok': True, 'data': {...}, ...}
+```
+
+Or skip the plumbing entirely:
+
+```python
+from llmscribe import Repository
+from llmscribe.adapters import as_langchain_tools, as_anthropic_tools
+
+tools = as_langchain_tools(Repository("."))          # StructuredTool objects
+defs, dispatch = as_anthropic_tools(Repository(".")) # Messages API shape
+```
+
+Adapters ship for **LangChain**, **PydanticAI**, **smolagents** and the **Anthropic
+Messages API** (no SDK needed). Each imports its framework lazily and, if it is missing,
+tells you which pip command to run.
+
+Three promises that make it safe to depend on:
+
+- **Handlers never raise.** A missing file comes back as
+  `{"ok": False, "error": {...}}`, so an agent loop is not broken by a bad path.
+- **`path` is not a tool argument.** A bound tool set cannot be repointed at another
+  directory by the model.
+- **`schema_version` is in every JSON envelope.** It changes only for a breaking change
+  to the output contract.
+
+`llmscribe schema --format openai` prints the same definitions from the CLI.
+
 ## Where this fits
 
 There is already a filesystem MCP server — `@modelcontextprotocol/server-filesystem`.

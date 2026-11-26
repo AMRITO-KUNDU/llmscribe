@@ -127,6 +127,14 @@ def create_parser() -> argparse.ArgumentParser:
     _path_option(p)
 
     sub.add_parser("version", help="Show version")
+
+    sp = sub.add_parser("schema", help="Print tool schemas for an agent framework")
+    sp.add_argument(
+        "--format",
+        choices=["openai", "anthropic", "mcp", "raw"],
+        default="openai",
+        help="Which framework's shape to emit (default: openai)",
+    )
     return parser
 
 
@@ -162,6 +170,11 @@ def _main(argv: list[str] | None = None) -> None:
         return
     if args.command == "version":
         print(f"llmscribe version {__version__}")
+        return
+    if args.command == "schema":
+        from llmscribe.schema import tool_schemas
+
+        print(json.dumps(tool_schemas(args.format), indent=2, ensure_ascii=False))
         return
 
     common = {"path": args.path, "redact": not args.no_redact}

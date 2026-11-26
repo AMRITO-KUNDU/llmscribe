@@ -7,6 +7,28 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+**Breaking, slated for 2.0.0:** `mcp` and `pydantic` moved out of the core dependencies
+into the `server` extra. `pip install llmscribe` now installs one dependency (`pathspec`)
+and no longer provides the `llmscribe-mcp` command until you add `[server]`. That command
+now prints the install line instead of failing with a bare ImportError.
+
+### Added
+
+- **Use it as a library.** `tool_schemas("openai" | "anthropic" | "mcp" | "raw")` and
+  `Repository.handlers()` let a framework register LLMScribe's seven tools without
+  hand-writing definitions. `llmscribe schema --format openai` prints the same from the
+  CLI. Neither path imports pydantic or mcp.
+- Adapters for **LangChain**, **PydanticAI**, **smolagents** and the **Anthropic Messages
+  API**, in `llmscribe.adapters`. Each imports its framework lazily and raises a
+  ModuleNotFoundError naming the pip command.
+- `llmscribe.tools()` returns a neutral tool list (name, description, JSON Schema,
+  handler) that any framework can consume.
+- Every JSON envelope now carries `schema_version` (`"1.0"`), which changes only for a
+  breaking change to the output contract.
+- A bound tool set drops the `path` argument: a model must not be able to repoint the
+  reader at another directory. `handlers()` never raises — failures come back as
+  `{"ok": false, "error": {...}}` so an agent loop survives a bad path.
+
 ## [1.5.0] — 2026-11-26
 
 **Behaviour change:** secrets are now masked by default in every result. If you diff
