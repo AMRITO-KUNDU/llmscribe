@@ -23,9 +23,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -35,7 +35,7 @@ jobs:
       - name: Compute output digest
         run: python scripts/cross_platform_check.py --out "digest-${{ matrix.os }}.txt"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: digest-${{ matrix.os }}
           path: digest-${{ matrix.os }}.txt
@@ -46,7 +46,7 @@ jobs:
     needs: digest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: digests
           merge-multiple: true
