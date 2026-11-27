@@ -72,6 +72,8 @@ _ALIASES = {
     "cat": "read",
     "cat-many": "read-many",
     "deps": "dependencies",
+    "tee": "write",
+    "sed": "edit",
 }
 
 
@@ -163,6 +165,33 @@ def create_parser() -> argparse.ArgumentParser:
     p.add_argument("--commit", help="Compare the working tree with this revision")
     _path_option(p)
 
+    p = sub.add_parser("write", help="Create or replace a file", aliases=["tee"])
+    p.add_argument("file_path")
+    p.add_argument("--content", help="File contents. Use '-' or omit to read stdin.")
+    p.add_argument("--no-overwrite", action="store_true", help="Refuse to replace an existing file")
+    _path_option(p)
+
+    p = sub.add_parser("edit", help="Replace an exact substring in a file", aliases=["sed"])
+    p.add_argument("file_path")
+    p.add_argument("--old", required=True, help="Exact text to replace")
+    p.add_argument("--new", required=True, help="Replacement text (may be empty)")
+    p.add_argument("--all", action="store_true", help="Replace every occurrence")
+    _path_option(p)
+
+    p = sub.add_parser("mkdir", help="Create a directory")
+    p.add_argument("directory_path")
+    _path_option(p)
+
+    p = sub.add_parser("mv", help="Move or rename a file")
+    p.add_argument("source_path")
+    p.add_argument("destination_path")
+    p.add_argument("--overwrite", action="store_true", help="Replace the destination if it exists")
+    _path_option(p)
+
+    p = sub.add_parser("rm", help="Delete a file")
+    p.add_argument("file_path")
+    _path_option(p)
+
     sub.add_parser("version", help="Show version")
 
     sp = sub.add_parser("schema", help="Print tool schemas for an agent framework")
@@ -250,6 +279,44 @@ def _main(argv: list[str] | None = None) -> None:
             end_line=end_line,
             **common,
         )
+    elif args.command == "write":
+        content = args.content
+        if content is None or content == "-":
+            content = sys.stdin.read()
+        code = _emit(
+            "write_file",
+            "write",
+            as_json,
+            file_path=args.file_path,
+            content=content,
+            overwrite=not args.no_overwrite,
+            **common,
+        )
+    elif args.command == "edit":
+        code = _emit(
+            "edit_file",
+            "edit",
+            as_json,
+            file_path=args.file_path,
+            old_text=args.old,
+            new_text=args.new,
+            replace_all=args.all,
+            **common,
+        )
+    elif args.command == "mkdir":
+        code = _emit("create_directory", "mkdir", as_json, directory_path=args.directory_path, **common)
+    elif args.command == "mv":
+        code = _emit(
+            "move_file",
+            "mv",
+            as_json,
+            source_path=args.source_path,
+            destination_path=args.destination_path,
+            overwrite=args.overwrite,
+            **common,
+        )
+    elif args.command == "rm":
+        code = _emit("delete_file", "rm", as_json, file_path=args.file_path, **common)
     elif args.command == "dependencies":
         code = _emit("project_dependencies", "dependencies", as_json, file_path=args.file_path, **common)
     else:

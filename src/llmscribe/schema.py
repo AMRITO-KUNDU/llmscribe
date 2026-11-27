@@ -156,6 +156,67 @@ TOOLS: list[dict[str, Any]] = [
             "format": _FORMAT,
         },
     },
+    {
+        "name": "write_file",
+        "description": "Create or replace a file. Writes are atomic, so a crash leaves the original intact.",
+        "properties": {
+            "file_path": _STRING,
+            "content": {"type": "string", "description": "Full new contents of the file."},
+            "path": _PATH,
+            "format": _FORMAT,
+            "overwrite": {
+                "type": "boolean",
+                "description": "Replace the file if it already exists. Default true.",
+            },
+        },
+        "required": ["file_path", "content"],
+    },
+    {
+        "name": "edit_file",
+        "description": (
+            "Replace an exact substring in a file. Fails loudly when the text is not found "
+            "or appears more than once, rather than rewriting the wrong place."
+        ),
+        "properties": {
+            "file_path": _STRING,
+            "old_text": {"type": "string", "description": "Exact text to replace."},
+            "new_text": {"type": "string", "description": "Replacement text; empty deletes the match."},
+            "path": _PATH,
+            "format": _FORMAT,
+            "replace_all": {
+                "type": "boolean",
+                "description": "Replace every occurrence. Default false, which requires exactly one.",
+            },
+        },
+        "required": ["file_path", "old_text", "new_text"],
+    },
+    {
+        "name": "create_directory",
+        "description": "Create a directory, including any missing parents.",
+        "properties": {"directory_path": _STRING, "path": _PATH, "format": _FORMAT},
+        "required": ["directory_path"],
+    },
+    {
+        "name": "move_file",
+        "description": "Move or rename a file inside the project.",
+        "properties": {
+            "source_path": _STRING,
+            "destination_path": _STRING,
+            "path": _PATH,
+            "format": _FORMAT,
+            "overwrite": {
+                "type": "boolean",
+                "description": "Replace the destination if it exists. Default false.",
+            },
+        },
+        "required": ["source_path", "destination_path"],
+    },
+    {
+        "name": "delete_file",
+        "description": "Delete one file. Directories are refused.",
+        "properties": {"file_path": _STRING, "path": _PATH, "format": _FORMAT},
+        "required": ["file_path"],
+    },
 ]
 
 

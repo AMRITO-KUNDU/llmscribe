@@ -14,8 +14,15 @@ So the agent spends its budget re-parsing text, and what it learns on your lapto
 not transfer to CI or to a contributor's Windows machine.
 
 LLMScribe replaces that with one structured interface: a directory tree, a literal
-search that reports what it found, a dependency graph, a safe file reader, and a Git
-diff. Same seven operations, same JSON, same bytes, on every OS.
+search that reports what it found, a dependency graph, file reads with line ranges, a Git
+diff — and the write operations an agent needs to actually change code: create a file,
+replace an exact substring, make a directory, rename, delete. Same operations, same JSON,
+same bytes, on every OS.
+
+The goal is that a person building an agent never writes operating-system-specific file
+handling again. No `ls` on one platform and `dir` on another, no locale-dependent sort
+order, no re-parsing text to find out what a directory contains. One dependency, one
+interface, every platform.
 
 The same input always produces the same bytes. That is the whole point — an agent can
 rely on it, and a human can audit it.
@@ -23,6 +30,8 @@ rely on it, and a human can audit it.
 ## What is in scope
 
 - Repeatable extraction: trees, file contents, search, dependencies, diffs.
+- Writing: create, edit, move, delete and make directories, with the same path checks
+  the read side uses.
 - Masking secrets in everything it returns, by default.
 - Syntactic compression: reducing a Python file to signatures and docstrings.
 - A local-first design: your code is read from disk and never uploaded.
@@ -40,10 +49,25 @@ These come up often. They are not "not yet" — they are decisions:
   guess is not reproducible. Search here is exact and ordered.
 - **A hosted service or any network call.** No accounts, no telemetry, no cloud
   fetching of repositories.
-- **Autonomous coding.** LLMScribe is not an agent and does not edit your code.
 - **Being a general Git client.** `project_diff` reports status and diffs; it is not
   a replacement for `git`.
 - **Multi-repository or monorepo-wide orchestration.** One project directory per call.
+
+## Writing is part of the layer
+
+An earlier version of this document said LLMScribe would not edit code. That was wrong:
+it turned a filesystem layer into a file viewer. An agent asked to fix a bug has to change
+a file, and if the layer cannot do that, the person building the agent falls back to shell
+commands and the whole problem returns.
+
+So writing is in scope. What stays out is *deciding* what to write — the layer performs
+operations, it does not choose them. That is the agent's job, and the model's.
+
+Every write goes through the same guards as a read: no absolute paths, no `..` segments,
+no symlinks, nothing outside the project root. Writes are atomic, so an interrupted write
+leaves the original file intact rather than a half-written one. An edit is an exact string
+replacement, so it fails loudly when the file has moved on instead of silently changing
+the wrong place.
 
 ## Secrets are masked by default
 

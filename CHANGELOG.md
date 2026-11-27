@@ -7,6 +7,23 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+**Direction change:** LLMScribe is no longer read-only. An earlier VISION.md claimed it
+would never edit your code; that was a mistake and it is reversed. A filesystem layer an
+agent cannot write through is a file viewer, and it forces the person building the agent
+back to shell commands — the exact problem this project exists to remove.
+
+### Added
+
+- **Five write operations**: `write_file`, `edit_file`, `create_directory`, `move_file`,
+  `delete_file`, on every surface (MCP, CLI, Python API, adapters). Twelve tools now.
+- Every write is confined to the project root with the same traversal and symlink checks
+  the read side uses, is atomic (temporary file then `os.replace`, so an interrupted write
+  leaves the original intact), and reports what changed.
+- `edit_file` replaces an exact substring and fails with `no_match` or `ambiguous_match`
+  rather than guessing which occurrence was meant.
+- CLI: `write` (`tee`), `edit` (`sed`), `mkdir`, `mv`, `rm`. `write` reads stdin when no
+  `--content` is given, so it composes in a pipe.
+
 ### Added
 
 - **CLI aliases** for the commands agents reach for out of habit: `ls` (`map`), `tree`

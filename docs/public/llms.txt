@@ -41,6 +41,11 @@ pip install llmscribe
 - `read_many` — retrieve multiple files in one call, with per-file errors
 - `project_dependencies` — local, stdlib, external and unresolved dependencies, plus reverse dependencies
 - `project_diff` — Git status and unified diffs
+- `write_file` — create or replace a file (atomic; `overwrite=false` refuses to clobber)
+- `edit_file` — replace an exact substring; fails on no match or an ambiguous match
+- `create_directory` — create a directory including parents
+- `move_file` — move or rename a file
+- `delete_file` — delete one file (directories refused)
 
 ## Use with an MCP client
 

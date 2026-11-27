@@ -19,14 +19,19 @@ from llmscribe.core import (
     LocalRepository,
     RepositorySource,
     analyze_source_dependencies,
+    create_directory,
+    delete_file,
+    edit_file,
     get_git_diff,
     map_source,
+    move_file,
     overview_source,
     read_from_source,
     read_many_from_source,
     redact_text,
     redact_value,
     search_source,
+    write_file,
 )
 from llmscribe.core.diff import DiffResult
 from llmscribe.core.limits import MAX_SEARCH_RESULTS
@@ -42,6 +47,11 @@ TOOLS = (
     "read_many",
     "project_dependencies",
     "project_diff",
+    "write_file",
+    "edit_file",
+    "create_directory",
+    "move_file",
+    "delete_file",
 )
 
 _SEARCH_LINES_PER_FILE = 10
@@ -104,6 +114,14 @@ def execute(
     compress: bool = False,
     start_line: int | None = None,
     end_line: int | None = None,
+    content: str | None = None,
+    old_text: str | None = None,
+    new_text: str | None = None,
+    replace_all: bool = False,
+    overwrite: bool = True,
+    directory_path: str | None = None,
+    source_path: str | None = None,
+    destination_path: str | None = None,
     redact: bool = True,
 ) -> ToolResponse:
     """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
@@ -123,6 +141,14 @@ def execute(
         compress=compress,
         start_line=start_line,
         end_line=end_line,
+        content=content,
+        old_text=old_text,
+        new_text=new_text,
+        replace_all=replace_all,
+        overwrite=overwrite,
+        directory_path=directory_path,
+        source_path=source_path,
+        destination_path=destination_path,
     )
     return _apply_redaction(response) if redact else response
 
@@ -164,6 +190,14 @@ def _execute_tool(
     compress: bool = False,
     start_line: int | None = None,
     end_line: int | None = None,
+    content: str | None = None,
+    old_text: str | None = None,
+    new_text: str | None = None,
+    replace_all: bool = False,
+    overwrite: bool = True,
+    directory_path: str | None = None,
+    source_path: str | None = None,
+    destination_path: str | None = None,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -264,6 +298,25 @@ def _execute_tool(
             meta["truncation_note"] = rm.truncation_note
         return ToolResponse(tool, logical, kind, rm.to_dict(), meta, _md_read_many(rm))
 
+    if tool in _WRITE_TOOLS:
+        result = _run_write(
+            tool,
+            source=source,
+            file_path=file_path,
+            content=content,
+            old_text=old_text,
+            new_text=new_text,
+            replace_all=replace_all,
+            overwrite=overwrite,
+            directory_path=directory_path,
+            source_path=source_path,
+            destination_path=destination_path,
+        )
+        if not result.ok:
+            raise LLMScribeError(result.error_code, result.error_message)
+        meta = {"action": result.action, "byte_size": result.byte_size}
+        return ToolResponse(tool, logical, kind, result.to_dict(), meta, _md_write(result))
+
     dr = analyze_source_dependencies(source, file_path or "")
     fd = dr.file_dependencies
     meta = {
@@ -326,6 +379,54 @@ def _md_search(sr: Any) -> str:
     if sr.truncated:
         text += f"\n\n[Results limited to {sr.truncation_limit:,} matches]"
     return text
+
+
+_WRITE_TOOLS = ("write_file", "edit_file", "create_directory", "move_file", "delete_file")
+
+
+def _run_write(
+    tool: str,
+    *,
+    source: Any,
+    file_path: str | None,
+    content: str | None,
+    old_text: str | None,
+    new_text: str | None,
+    replace_all: bool,
+    overwrite: bool,
+    directory_path: str | None,
+    source_path: str | None,
+    destination_path: str | None,
+) -> Any:
+    root = source.root
+    if tool == "write_file":
+        return write_file(file_path or "", content or "", root, overwrite=overwrite)
+    if tool == "edit_file":
+        return edit_file(file_path or "", old_text or "", new_text or "", root, replace_all=replace_all)
+    if tool == "create_directory":
+        return create_directory(directory_path or "", root)
+    if tool == "move_file":
+        return move_file(source_path or "", destination_path or "", root, overwrite=overwrite)
+    return delete_file(file_path or "", root)
+
+
+def _md_write(result: Any) -> str:
+    verb = {
+        "created": "Created",
+        "overwritten": "Overwrote",
+        "edited": "Edited",
+        "directory_created": "Created directory",
+        "directory_exists": "Directory already exists",
+        "moved": "Moved",
+        "deleted": "Deleted",
+    }.get(result.action, result.action or "Done")
+    if result.action == "moved":
+        return f"{verb} {result.path} -> {result.destination}"
+    if result.action == "edited":
+        return f"{verb} {result.path} ({result.replacements} replacement(s), {result.byte_size:,} bytes)"
+    if result.action.startswith("directory"):
+        return f"{verb} {result.path}"
+    return f"{verb} {result.path} ({result.byte_size:,} bytes)"
 
 
 def _md_read_many(rm: Any) -> str:

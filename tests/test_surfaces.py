@@ -10,7 +10,20 @@ import llmscribe
 from llmscribe import service
 from llmscribe.mcp import tools
 
-EXPECTED = ["project_dependencies", "project_diff", "project_map", "project_overview", "read", "read_many", "search"]
+EXPECTED = [
+    "create_directory",
+    "delete_file",
+    "edit_file",
+    "move_file",
+    "project_dependencies",
+    "project_diff",
+    "project_map",
+    "project_overview",
+    "read",
+    "read_many",
+    "search",
+    "write_file",
+]
 
 
 def cli(*args, cwd=None):

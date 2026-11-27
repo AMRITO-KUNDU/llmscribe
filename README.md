@@ -5,7 +5,7 @@
   <img
     src="https://raw.githubusercontent.com/AMRITO-KUNDU/llmscribe/main/docs/public/favicon.svg"
     height="120"
-    alt="LLMScribe logo: read-only MCP server for AI coding agents"
+    alt="LLMScribe logo: filesystem MCP server for AI coding agents"
   >
 </p>
 
@@ -60,17 +60,18 @@ No AI, no embeddings, no ranking, no network access, no account. Licensed under 
 
 An AI coding agent that wants to understand your repository normally has one interface: the shell. `ls`, `find`, `grep` and `cat` were built for a person reading a terminal, not for a program building a model of a codebase. Their output is formatted for eyes, differs between operating systems, and has to be re-parsed by the agent every time.
 
-LLMScribe replaces that with seven structured operations that behave the same everywhere:
+LLMScribe replaces that with twelve structured operations that behave the same everywhere:
 
 1. **Map** the project tree without reading any file.
 2. **Search** paths and contents literally.
-3. **Read** one file or many.
+3. **Read** one file or many, whole or by line range.
 4. **Trace dependencies** in both directions.
 5. **Diff** against Git.
 6. **Overview** a whole small project in one call.
-7. **Return everything as JSON**, with truncation always reported.
+7. **Write**: create, edit, move, delete and make directories.
+8. **Return everything as JSON**, with truncation always reported.
 
-It is deliberately **read-only**. An agent holding LLMScribe can understand your repository but structurally cannot change or delete it.
+It reads **and** writes, so an agent can fix the bug it just found instead of switching to shell commands. Every write goes through the same path guards as a read: no absolute paths, no `..`, no symlinks, nothing outside the project. Writes are atomic, and an edit is an exact string replacement that fails loudly rather than changing the wrong place.
 
 **Why this matters in practice.** On a 1.4-million-line codebase, one benchmark agent burned 6,000 seconds and produced nothing — no analysis, no output. The same model, given structured code search instead of free-form file reading, finished the same task in **89 seconds** and scored 0.90. Across another benchmark, Codex CLI completed its whole turn sequence without ever reaching the file that would have solved the task in **27–29% of runs**. The bottleneck is not the model. It is what goes into the context window.
 
@@ -143,7 +144,7 @@ print(repo.search("auth").match_count)
 
 ## Tools
 
-Seven tools, identical across the MCP server, CLI and Python library.
+Twelve tools, identical across the MCP server, CLI and Python library.
 
 | MCP tool | CLI command | What it does |
 | --- | --- | --- |
@@ -154,6 +155,11 @@ Seven tools, identical across the MCP server, CLI and Python library.
 | `read_many` | `llmscribe read-many` (alias `cat-many`) | Up to 50 files in one call, with per-file errors. `--lines START:END` applies to every file. |
 | `project_dependencies` | `llmscribe dependencies` (alias `deps`) | What a file imports and what imports it. |
 | `project_diff` | `llmscribe diff` | Git status and unified diffs. |
+| `write_file` | `llmscribe write` (alias `tee`) | Create or replace a file. Atomic. `--no-overwrite` refuses to clobber. |
+| `edit_file` | `llmscribe edit` (alias `sed`) | Replace an exact substring. Fails on no match, or on more than one unless `--all`. |
+| `create_directory` | `llmscribe mkdir` | Create a directory, including missing parents. |
+| `move_file` | `llmscribe mv` | Move or rename. Refuses to overwrite unless `--overwrite`. |
+| `delete_file` | `llmscribe rm` | Delete one file. Directories are refused. |
 
 ---
 
@@ -484,6 +490,36 @@ llmscribe search "auth" ./src     # search inside a directory
 
 ---
 
+## Writing
+
+An agent asked to fix a bug has to change a file. If the layer cannot do that, the person
+building the agent falls back to shell commands and the problem comes back.
+
+```bash
+llmscribe write src/new.py --content 'def f(): ...'
+echo 'x = 1' | llmscribe write src/piped.py      # stdin
+llmscribe edit src/main.py --old 'retries = 3' --new 'retries = 5'
+llmscribe mkdir src/generated
+llmscribe mv src/old.py src/new.py
+llmscribe rm src/dead.py
+```
+
+Four properties hold for every write:
+
+- **Confined to the project.** Absolute paths, `..` segments (including encoded and
+  backslash forms) and symlinks are refused, using the same checks the read side uses.
+  A write that would land outside the root fails; it is not silently sanitised.
+- **Atomic.** Content goes to a temporary file in the same directory and is then
+  replaced, so an interrupted write leaves the original intact rather than a
+  half-written file.
+- **Exact, not clever.** `edit_file` replaces a literal substring. If it is absent you
+  get `no_match`; if it appears more than once you get `ambiguous_match` and nothing is
+  written. It will not guess which one you meant.
+- **Reported.** Every result says what happened — `created`, `overwritten`, `edited`
+  with a replacement count, `moved` with a destination, `deleted` with the bytes freed.
+
+Secrets are still masked in everything that leaves; what you *store* is written verbatim.
+
 ## Token budgets and compression
 
 Large repositories do not fit in a context window. LLMScribe gives you three predictable controls.
@@ -697,20 +733,22 @@ Shell output is made for eyes (columns, colour, locale-dependent sort order, war
 
 ### LLMScribe vs the filesystem MCP server
 
-`@modelcontextprotocol/server-filesystem` is a good tool that does something LLMScribe deliberately does not: it **writes** (`write_file`, `edit_file`, `move_file`, `create_directory`). LLMScribe is the read half. Run both if your agent needs to change files as well as understand them.
+`@modelcontextprotocol/server-filesystem` is a good tool and covers the same ground on the basics. Both read and write. The difference is what surrounds the operations.
 
 | | server-filesystem | LLMScribe |
 | --- | --- | --- |
-| Read / write / move / create | Yes | **Read only** |
+| Read / write / move / create | Yes | Yes |
 | Binary and media reads | Yes | Opt-in (`read --binary`) |
 | File size and mtime | `get_file_info` | On every read, plus `map --sizes` |
 | `.gitignore`-aware | No | Yes, real pathspec semantics |
 | Dependency graph (imports **and** `used_by`) | No | Yes |
 | Git diff and status | No | Yes |
 | Truncation reported | No | Yes, with `omitted_files` |
+| Atomic writes | No | Yes, temp file then replace |
+| Refuses writes outside the root or through a symlink | Partial | Yes |
 | Secret redaction | No | Yes, on by default |
 
-An agent holding a write-capable server can delete your repository. One holding LLMScribe structurally cannot, which is a property of the design and not a missing feature.
+Both can write. The difference is what happens around it: LLMScribe refuses to write outside the project root or through a symlink, writes atomically so an interrupted write leaves the original intact, and reports exactly what changed. Run whichever you prefer — or both.
 
 ---
 
@@ -731,7 +769,7 @@ An agent holding a write-capable server can delete your repository. One holding 
 
 ### What is LLMScribe?
 
-LLMScribe is an open-source, read-only MCP server, CLI and Python library that gives AI coding agents structured access to a local codebase: project map, literal search, file reads, dependency graph and Git diff, returned as deterministic JSON.
+LLMScribe is an open-source MCP server, CLI and Python library that gives AI coding agents structured access to a local codebase: project map, literal search, file reads with line ranges, dependency graph, Git diff, and the write operations — create, edit, move, delete — needed to change code. Everything is returned as deterministic JSON.
 
 ### How do I install the LLMScribe MCP server?
 
@@ -751,7 +789,7 @@ No. It runs entirely on your machine with no network access, account, hosted ser
 
 ### Can an agent modify my files through LLMScribe?
 
-No. LLMScribe is read-only by design. It has no write, edit, move or delete operations.
+Yes, through five explicit write tools: `write_file`, `edit_file`, `create_directory`, `move_file` and `delete_file`. Nothing is implicit. Every write is confined to the project root, refuses to follow symlinks, is atomic, and reports what changed. `edit_file` replaces an exact string, so it fails loudly rather than rewriting the wrong place.
 
 ### How do I fit a large repository into a context window?
 

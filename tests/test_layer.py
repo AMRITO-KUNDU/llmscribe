@@ -50,7 +50,7 @@ def test_mcp_entry_explains_a_missing_extra():
 
 # ---------------------------------------------------------------- schemas
 def test_every_tool_has_a_schema():
-    assert len(TOOLS) == 7
+    assert len(TOOLS) == 12
     assert tool_names() == [tool["name"] for tool in TOOLS]
 
 
@@ -65,7 +65,7 @@ def test_every_tool_has_a_schema():
 )
 def test_formats_have_the_right_shape(fmt, keys):
     schemas = tool_schemas(fmt)
-    assert len(schemas) == 7
+    assert len(schemas) == 12
     assert tuple(schemas[0]) == keys
 
 
@@ -126,7 +126,7 @@ def test_anthropic_adapter_needs_no_sdk(project):
     from llmscribe.adapters import as_anthropic_tools
 
     definitions, dispatch = as_anthropic_tools(Repository(project))
-    assert len(definitions) == 7
+    assert len(definitions) == 12
     assert set(definitions[0]) == {"name", "description", "input_schema"}
     assert dispatch["project_map"](depth=1)["data"]["files"] == ["a.py"]
 
@@ -136,7 +136,7 @@ def test_langchain_adapter(project):
     from llmscribe.adapters import as_langchain_tools
 
     built = as_langchain_tools(Repository(project))
-    assert len(built) == 7
+    assert len(built) == 12
     assert built[0].invoke({"depth": 1})["ok"] is True
 
 
@@ -144,7 +144,7 @@ def test_pydantic_ai_adapter(project):
     pytest.importorskip("pydantic_ai")
     from llmscribe.adapters import as_pydantic_ai_tools
 
-    assert len(as_pydantic_ai_tools(Repository(project))) == 7
+    assert len(as_pydantic_ai_tools(Repository(project))) == 12
 
 
 def test_smolagents_adapter(project):
@@ -152,7 +152,7 @@ def test_smolagents_adapter(project):
     from llmscribe.adapters import as_smolagents_tools
 
     built = as_smolagents_tools(Repository(project))
-    assert len(built) == 7
+    assert len(built) == 12
     assert built[0](depth=1)["ok"] is True
 
 
@@ -198,7 +198,7 @@ def test_llamaindex_adapter(project):
     from llmscribe.adapters import as_llamaindex_tools
 
     built = as_llamaindex_tools(Repository(project))
-    assert len(built) == 7
+    assert len(built) == 12
     assert built[0].metadata.name == "project_map"
     # the schema must come from the real signature, not an empty **kwargs
     assert "depth" in built[0].metadata.get_parameters_dict()["properties"]

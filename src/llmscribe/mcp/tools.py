@@ -209,6 +209,86 @@ def project_diff(
     return _run("project_diff", format, path=path, staged=staged, commit=commit)
 
 
+
+def write_file(
+    file_path: Annotated[str, Field(description="Path of the file relative to the project root.")],
+    content: Annotated[str, Field(description="Full new contents of the file.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    overwrite: Annotated[
+        bool, Field(description="Replace the file if it already exists. Default true.")
+    ] = True,
+) -> str:
+    """Create or replace a file. Writes are atomic: a crash leaves the original intact."""
+    return _run(
+        "write_file", format, path=path, file_path=file_path, content=content, overwrite=overwrite
+    )
+
+
+def edit_file(
+    file_path: Annotated[str, Field(description="Path of the file relative to the project root.")],
+    old_text: Annotated[str, Field(description="Exact text to replace. Must appear in the file.")],
+    new_text: Annotated[str, Field(description="Replacement text. May be empty to delete the match.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    replace_all: Annotated[
+        bool, Field(description="Replace every occurrence. Default false, which requires exactly one.")
+    ] = False,
+) -> str:
+    """Replace an exact substring.
+
+    Exact match rather than a regex or line range: unambiguous, and it fails loudly when
+    the file has moved on instead of rewriting the wrong place.
+    """
+    return _run(
+        "edit_file",
+        format,
+        path=path,
+        file_path=file_path,
+        old_text=old_text,
+        new_text=new_text,
+        replace_all=replace_all,
+    )
+
+
+def create_directory(
+    directory_path: Annotated[str, Field(description="Directory to create, relative to the project root.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+) -> str:
+    """Create a directory, including any missing parents."""
+    return _run("create_directory", format, path=path, directory_path=directory_path)
+
+
+def move_file(
+    source_path: Annotated[str, Field(description="Existing file to move, relative to the project root.")],
+    destination_path: Annotated[str, Field(description="New path, relative to the project root.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    overwrite: Annotated[
+        bool, Field(description="Replace the destination if it exists. Default false.")
+    ] = False,
+) -> str:
+    """Move or rename a file inside the project."""
+    return _run(
+        "move_file",
+        format,
+        path=path,
+        source_path=source_path,
+        destination_path=destination_path,
+        overwrite=overwrite,
+    )
+
+
+def delete_file(
+    file_path: Annotated[str, Field(description="File to delete, relative to the project root.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+) -> str:
+    """Delete one file. Directories are refused."""
+    return _run("delete_file", format, path=path, file_path=file_path)
+
+
 TOOL_FUNCTIONS = {
     "project_map": project_map,
     "project_overview": project_overview,
@@ -217,4 +297,9 @@ TOOL_FUNCTIONS = {
     "read_many": read_many,
     "project_dependencies": project_dependencies,
     "project_diff": project_diff,
+    "write_file": write_file,
+    "edit_file": edit_file,
+    "create_directory": create_directory,
+    "move_file": move_file,
+    "delete_file": delete_file,
 }

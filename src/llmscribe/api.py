@@ -37,15 +37,21 @@ from .core import (
     ProjectOverviewResult,
     ReadManyResult,
     SearchResult,
+    WriteResult,
     analyze_dependencies,
+    create_directory,
+    delete_file,
+    edit_file,
     get_git_diff,
     limits,
+    move_file,
     project_map,
     project_overview,
     read_file,
     read_files,
     redact_text,
     search_project,
+    write_file,
 )
 from .schema import tool_names
 from .service import envelope
@@ -105,6 +111,36 @@ class Repository:
     def root(self) -> Path:
         """The project directory this repository reads from."""
         return self._root
+
+    # ------------------------------------------------------------------ writes
+    def write_file(self, file_path: str | Path, content: str, *, overwrite: bool = True) -> WriteResult:
+        """Create or replace a file. Atomic: a crash leaves the original intact."""
+        return write_file(str(file_path), content, self._root, overwrite=overwrite)
+
+    def edit_file(
+        self,
+        file_path: str | Path,
+        old_text: str,
+        new_text: str,
+        *,
+        replace_all: bool = False,
+    ) -> WriteResult:
+        """Replace an exact substring. Fails when it is absent or ambiguous."""
+        return edit_file(str(file_path), old_text, new_text, self._root, replace_all=replace_all)
+
+    def create_directory(self, directory_path: str | Path) -> WriteResult:
+        """Create a directory, including missing parents."""
+        return create_directory(str(directory_path), self._root)
+
+    def move_file(
+        self, source_path: str | Path, destination_path: str | Path, *, overwrite: bool = False
+    ) -> WriteResult:
+        """Move or rename a file inside the project."""
+        return move_file(str(source_path), str(destination_path), self._root, overwrite=overwrite)
+
+    def delete_file(self, file_path: str | Path) -> WriteResult:
+        """Delete one file. Directories are refused."""
+        return delete_file(str(file_path), self._root)
 
     def handlers(self) -> dict[str, Callable[..., dict[str, Any]]]:
         """Map every tool name to a callable that accepts that tool's schema arguments.
