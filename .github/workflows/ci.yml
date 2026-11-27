@@ -7,6 +7,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -32,6 +33,7 @@ jobs:
   # Python version is enough to catch a broken Windows assumption.
   test-windows:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

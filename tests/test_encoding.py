@@ -6,6 +6,7 @@ something about a file that is not true.
 """
 
 import codecs
+import os
 import subprocess
 
 import pytest
@@ -53,7 +54,15 @@ def test_overview_lists_lossy_files_only(project):
 # ---------------------------------------------------------------- diff
 def test_diff_decodes_a_cp1252_file(project):
     """Git does not transcode; decoding its output as UTF-8 turned café into U+FFFD."""
-    env = {"GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@b", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@b"}
+    # Inherit the environment and add an identity. Replacing it outright leaves Windows
+    # without SystemRoot, and CreateProcess hangs rather than failing.
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "a",
+        "GIT_AUTHOR_EMAIL": "a@b",
+        "GIT_COMMITTER_NAME": "a",
+        "GIT_COMMITTER_EMAIL": "a@b",
+    }
     subprocess.run(["git", "init", "-q"], cwd=project, check=True, env=env)
     (project / "a.py").write_bytes("# café\nx = 1\n".encode("cp1252"))
     subprocess.run(["git", "add", "-A"], cwd=project, check=True, env=env)
