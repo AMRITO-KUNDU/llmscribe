@@ -1,6 +1,6 @@
 export const SITE = {
   name: "LLMScribe",
-  version: "2.0.0",
+  version: "3.0.0",
   tagline: "The filesystem layer for AI agents.",
   description:
     "Read, search, trace and change a codebase through one interface, with identical output on Linux, macOS and Windows. Runs entirely on your machine.",

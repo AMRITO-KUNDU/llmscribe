@@ -7,48 +7,58 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-**Direction change:** LLMScribe is no longer read-only. An earlier VISION.md claimed it
-would never edit your code; that was a mistake and it is reversed. A filesystem layer an
-agent cannot write through is a file viewer, and it forces the person building the agent
-back to shell commands — the exact problem this project exists to remove.
+## [3.0.0] — 2026-11-27
+
+**This release changes what LLMScribe is allowed to do: it writes.**
+
+If you pointed it at a repository because it could only read, that guarantee is gone.
+An agent holding this can now create, edit, move and delete files. Nothing about the
+install changes, but the decision does — if you want the old behaviour, pin
+`llmscribe<3`.
+
+The reversal is deliberate. An earlier VISION.md said LLMScribe would never edit your
+code; that was wrong. A filesystem layer an agent cannot write through is a file viewer,
+and it forces whoever is building the agent back to shell commands — the exact problem
+this project exists to remove. What stays out of scope is *deciding* what to write: the
+layer performs operations, it does not choose them.
 
 ### Added
 
-- **Five write operations**: `write_file`, `edit_file`, `create_directory`, `move_file`,
-  `delete_file`, on every surface (MCP, CLI, Python API, adapters). Twelve tools now.
+- **Five write operations** — `write_file`, `edit_file`, `create_directory`, `move_file`,
+  `delete_file` — on every surface: MCP, CLI, Python API and the framework adapters.
+  Twelve tools now.
 - Every write is confined to the project root with the same traversal and symlink checks
-  the read side uses, is atomic (temporary file then `os.replace`, so an interrupted write
-  leaves the original intact), and reports what changed.
+  the read side uses, and is atomic (temporary file then `os.replace`), so an interrupted
+  write leaves the original intact rather than a half-written file.
 - `edit_file` replaces an exact substring and fails with `no_match` or `ambiguous_match`
   rather than guessing which occurrence was meant.
 - CLI: `write` (`tee`), `edit` (`sed`), `mkdir`, `mv`, `rm`. `write` reads stdin when no
   `--content` is given, so it composes in a pipe.
-
-### Added
-
-- **CLI aliases** for the commands agents reach for out of habit: `ls` (`map`), `tree`
-  (`overview`), `grep` and `find` (`search`), `cat` (`read`), `cat-many` (`read-many`) and
-  `deps` (`dependencies`). An alias is normalised to its canonical command before dispatch,
+- **Line ranges on `read`**: `--lines 200:250` returns 51 lines of a 5,000-line file
+  instead of all 5,000. `line_count` still reports the whole file and `returned_lines`
+  reports the slice. Cannot be combined with `--compress`, since compression rewrites the
+  file and line numbers would stop meaning what was asked for.
+- **`read_many` accepts `start_line`/`end_line`**, applied to every file in the batch.
+- **CLI aliases** for the commands agents reach for out of habit: `ls`, `tree`, `grep`,
+  `find`, `cat`, `cat-many`, `deps`. Normalised to the canonical command before dispatch,
   so behaviour is identical — a test compares the JSON output of both.
-- **`read_many` accepts `start_line`/`end_line`**, applied to every file in the batch. The
-  useful shape when you want the top of several large files rather than all of them.
-- A **LlamaIndex adapter** (`as_llamaindex_tools`), completing the set. It builds a
-  callable with a real signature from the tool schema, because LlamaIndex derives its
-  parameters from the signature and a `**kwargs` wrapper would produce a tool that takes
-  nothing.
-- A **CI job that installs every adapter and fails if an adapter test skips**. They were
-  previously skipped silently via `importorskip`, so a framework changing its API would
-  have broken users while CI stayed green.
+- **LlamaIndex adapter** (`as_llamaindex_tools`), completing the set of five. It builds a
+  callable with a real signature, because LlamaIndex derives tool parameters from the
+  signature and a `**kwargs` wrapper would produce a tool that takes nothing.
 
-### Added
+### Fixed
 
-- **Line ranges on `read`.** `--lines 200:250` (or `start_line=` / `end_line=` in Python and
-  MCP) returns 51 lines of a 5,000-line file instead of all 5,000 — the cheapest way to keep
-  a large file out of a context window. 1-based and inclusive; `end_line` may be omitted to
-  read to the end. `line_count` still reports the whole file and `returned_lines` reports the
-  slice, so a caller can tell there is more. Ranges cannot be combined with `--compress`,
-  because compression rewrites the file and line numbers would stop meaning what was asked
-  for — that combination is rejected as `invalid_argument`.
+- The CI smoke test imported `llmscribe.mcp` from a core-only wheel, which fails now that
+  the server lives behind an extra. It tests both installs.
+- Adapter tests were skipping silently in CI — `importorskip` plus a `dev` extra that does
+  not include the frameworks. A job now installs every adapter and fails if a test skips.
+- The README claimed six CLI aliases that did not exist. They exist now.
+
+### Changed
+
+- Brand copy rewritten in plain language across the README, the site, the PyPI summary,
+  the MCP registry entry and the GitHub description. The old tagline was a list of search
+  terms; the new one is a statement.
 
 ## [2.0.0] — 2026-11-26
 
