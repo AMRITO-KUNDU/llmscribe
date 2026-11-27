@@ -29,11 +29,10 @@ export function Hero() {
           </h1>
 
           <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
-            An agent's only interface to your code is the shell — ls, find, grep, cat. Built
-            for a human reading a terminal, different on every OS, and text it has to re-parse.
-            LLMScribe gives it one structured interface instead: an exact directory map, search
-            that reports what it found, a dependency graph and a safe file reader — the same JSON
-            on Linux, macOS and Windows.
+            An agent's only interface to your code is the shell — built for a human reading a
+            terminal, different on every OS, and text it has to re-parse. LLMScribe gives it one
+            interface instead: map, search, read, dependencies, diff and write, with the same JSON
+            everywhere.
           </p>
 
           <div className="mt-8 flex max-w-md items-center gap-2 rounded-lg border border-border bg-surface p-1.5 pl-4">

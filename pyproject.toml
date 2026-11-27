@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "llmscribe"
 dynamic = ["version"]
-description = "Structured filesystem access for AI agents - one interface across Linux, macOS and Windows."
+description = "A filesystem layer for AI agents: read, search and change a codebase, identical on every OS."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }

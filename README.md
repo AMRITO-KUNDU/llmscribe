@@ -9,7 +9,7 @@
   >
 </p>
 
-# LLMScribe: Read-Only MCP Server and Python Library for AI Coding Agents
+# LLMScribe
 
 <p align="center">
   <a href="https://pypi.org/project/llmscribe/"><img src="https://img.shields.io/pypi/v/llmscribe" alt="PyPI version"></a>
@@ -20,11 +20,13 @@
   <a href="https://github.com/AMRITO-KUNDU/llmscribe/stargazers"><img src="https://img.shields.io/github/stars/AMRITO-KUNDU/llmscribe?style=social" alt="GitHub stars"></a>
 </p>
 
-**LLMScribe gives AI coding agents structured, deterministic access to a local codebase.** It is a [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server, command-line tool and Python library that returns a project map, literal code search, file contents, a dependency graph and Git diffs as stable JSON, with secrets masked and identical output on Linux, macOS and Windows.
+**The filesystem layer for AI agents.**
 
-No AI, no embeddings, no ranking, no network access, no account. Licensed under Apache-2.0.
+An agent uses LLMScribe to read a project, search it, trace its dependencies and change it — with the same operations and the same JSON on Linux, macOS and Windows. An MCP server, a command line tool and a Python library, from one core.
 
-**Works with:** Claude Code, Claude Desktop, Cursor, OpenAI Codex CLI, VS Code (GitHub Copilot), Windsurf, Zed, Cline, Roo Code, Continue, JetBrains IDEs, Goose, LM Studio and any other MCP client. Also available through `pip install`, LangChain, PydanticAI, smolagents, the Anthropic Messages API and a standalone Windows EXE.
+No AI, no embeddings, no ranking, no network access, no account. Apache-2.0.
+
+Works with any MCP client — Claude Code, Cursor, VS Code, Zed and the rest — plus `pip install` and a desktop app for Windows.
 
 [Install](#install) · [Quick start](#quick-start) · [MCP setup](#mcp-server-setup) · [CLI](#cli-reference) · [Python API](#python-library-and-framework-adapters) · [FAQ](#faq) · [Website](https://llmscribe.vercel.app)
 

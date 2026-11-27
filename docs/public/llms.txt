@@ -1,6 +1,6 @@
 # LLMScribe
 
-> LLMScribe is the filesystem layer AI agents are missing. Agents normally drive the OS through `ls`, `find`, `grep` and `cat` — human-facing, OS-specific, unstructured. LLMScribe replaces that with one structured interface to a local project: directory tree, literal search, file reads, dependency analysis and Git diff. Same JSON on Linux, macOS and Windows. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
+> LLMScribe is the filesystem layer for AI agents. Instead of driving the OS through `ls`, `find`, `grep` and `cat` — human-facing, OS-specific and unstructured — an agent gets one interface to a project: map, search, read, dependencies, diff, and writes. The same JSON on Linux, macOS and Windows. No AI, no embeddings, no hidden ranking. Apache-2.0, runs entirely on your machine.
 
 - Install: `pip install llmscribe` (core, one dependency: pathspec). The MCP server is
   `pip install 'llmscribe[server]'`; framework adapters are `pip install 'llmscribe[adapters]'`.
