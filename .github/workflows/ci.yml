@@ -27,6 +27,22 @@ jobs:
       - name: Test
         run: python -m pytest
 
+  # The suite has Windows-specific code in it - winerror mapping, path-length limits,
+  # chmod semantics - and none of it is exercised by a Linux runner. One job on one
+  # Python version is enough to catch a broken Windows assumption.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Test
+        run: python -m pytest
+
   wheel:
     runs-on: ubuntu-latest
     steps:
