@@ -12,12 +12,14 @@ changed. A write that would land outside the project is refused, not sanitised.
 
 from __future__ import annotations
 
+import codecs
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .errors import LLMScribeError
+from .file_reader import decode_text
 from .limits import MAX_FILE_SIZE
 from .source import LocalRepository, normalize_rel_path
 
@@ -101,6 +103,24 @@ def _target(source: LocalRepository, raw: str, *, must_exist: bool) -> tuple[str
     return rel, current
 
 
+def _encode_as(text: str, encoding: str, rel: str, original: bytes) -> bytes:
+    """Encode in the file's own encoding, preserving any byte-order mark."""
+    if encoding == "utf-16":
+        if original.startswith(codecs.BOM_UTF16_BE):
+            return codecs.BOM_UTF16_BE + text.encode("utf-16-be")
+        return codecs.BOM_UTF16_LE + text.encode("utf-16-le")
+    if encoding == "utf-8" and original.startswith(codecs.BOM_UTF8):
+        return codecs.BOM_UTF8 + text.encode("utf-8")
+    try:
+        return text.encode(encoding)
+    except UnicodeEncodeError as exc:
+        raise LLMScribeError(
+            "encoding_error",
+            f"'{rel}' is {encoding}; the new text contains characters it cannot represent "
+            f"({exc.reason}). Rewrite the file with write_file to convert it to UTF-8.",
+        ) from None
+
+
 def _atomic_write(target: Path, data: bytes) -> None:
     """Write via a temporary file in the same directory, then replace.
 
@@ -170,7 +190,10 @@ def edit_file(
         original = target.read_bytes()
         if len(original) > MAX_FILE_SIZE:
             raise LLMScribeError("file_too_large", f"File exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
-        text = original.decode("utf-8", errors="replace")
+        # Decode with the same detector the read side uses, so an edit does not silently
+        # re-encode the file. Editing one line of a cp1252 source file must not rewrite
+        # every non-ASCII byte in it.
+        text, encoding = decode_text(original, rel)
         found = text.count(old_text)
         if found == 0:
             raise LLMScribeError("no_match", f"old_text was not found in '{rel}'.")
@@ -180,7 +203,7 @@ def edit_file(
                 f"old_text appears {found} times in '{rel}'. Include more context, or pass replace_all.",
             )
         updated = text.replace(old_text, new_text) if replace_all else text.replace(old_text, new_text, 1)
-        data = updated.encode("utf-8")
+        data = _encode_as(updated, encoding, rel, original)
         if len(data) > MAX_FILE_SIZE:
             raise LLMScribeError("file_too_large", f"Result exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
         _atomic_write(target, data)

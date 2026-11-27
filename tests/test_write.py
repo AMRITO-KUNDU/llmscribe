@@ -196,3 +196,42 @@ def test_mcp_exposes_the_write_tools(project):
 def test_handlers_can_write(project):
     handler = Repository(project).handlers()["write_file"]
     assert handler(file_path="h.py", content="h = 1\n")["data"]["action"] == "created"
+
+
+# ---------------------------------------------------------------- encodings
+def test_edit_preserves_a_cp1252_file(tmp_path):
+    """Editing one line must not re-encode every other byte in the file."""
+    path = tmp_path / "latin.py"
+    path.write_bytes("# caf\xe9\nx = 1\n".encode("cp1252"))
+    result = Repository(tmp_path).edit_file("latin.py", "x = 1", "x = 2")
+    assert result.ok
+    assert path.read_bytes() == "# caf\xe9\nx = 2\n".encode("cp1252")
+
+
+def test_edit_preserves_a_utf8_bom(tmp_path):
+    import codecs
+
+    path = tmp_path / "bom.py"
+    path.write_bytes(codecs.BOM_UTF8 + "# café\nx = 1\n".encode("utf-8"))
+    Repository(tmp_path).edit_file("bom.py", "x = 1", "x = 2")
+    assert path.read_bytes().startswith(codecs.BOM_UTF8)
+
+
+def test_edit_preserves_utf16(tmp_path):
+    import codecs
+
+    path = tmp_path / "wide.py"
+    path.write_bytes("# café\nx = 1\n".encode("utf-16"))
+    Repository(tmp_path).edit_file("wide.py", "x = 1", "x = 2")
+    data = path.read_bytes()
+    assert data.startswith(codecs.BOM_UTF16_LE)
+    assert data.decode("utf-16") == "# café\nx = 2\n"
+
+
+def test_edit_refuses_text_the_encoding_cannot_represent(tmp_path):
+    path = tmp_path / "latin.py"
+    original = "# caf\xe9\nx = 1\n".encode("cp1252")
+    path.write_bytes(original)
+    result = Repository(tmp_path).edit_file("latin.py", "x = 1", "x = \U0001f600")
+    assert result.ok is False and result.error_code == "encoding_error"
+    assert path.read_bytes() == original, "a refused edit must leave the file untouched"

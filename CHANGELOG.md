@@ -7,6 +7,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`edit_file` corrupted non-UTF-8 files.** It decoded with a permissive UTF-8 read and
+  wrote back as UTF-8, so editing one line of a cp1252 source file silently re-encoded
+  every other byte and destroyed non-ASCII characters (`é` became `\ufffd`). It now
+  decodes with the same detector the read side uses, writes back in the file's own
+  encoding, preserves a UTF-8 or UTF-16 byte-order mark, and refuses with
+  `encoding_error` when the new text cannot be represented — leaving the file untouched.
+  Four regression tests cover cp1252, UTF-8, UTF-8-with-BOM and UTF-16.
+
 ## [3.0.0] — 2026-11-27
 
 **This release changes what LLMScribe is allowed to do: it writes.**
