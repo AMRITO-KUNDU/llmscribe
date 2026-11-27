@@ -9,6 +9,23 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Encoding, across the whole surface.** Five defects, all of the same kind: the tool
+  believed something about a file's bytes that was not true.
+  - `edit_file` decoded with a permissive UTF-8 read and wrote back as UTF-8, so editing
+    one line of a cp1252 file re-encoded every other byte and destroyed non-ASCII
+    characters (`é` became `\ufffd`).
+  - `write_file` did the same when replacing an existing file. It now keeps the file's
+    encoding and byte-order mark; `encoding="utf-8"` (or `--encoding`) converts on
+    request.
+  - A string containing a lone surrogate raised `UnicodeEncodeError` straight through the
+    service layer. It is now a clean `encoding_error`.
+  - `read` showed `\ufffd` for bytes its encoding could not map and said nothing. It now
+    reports `lossy: true` and `replaced_bytes`; `overview` lists them in `lossy_files`.
+  - `diff` decoded Git's output as UTF-8 with replacement, so a cp1252 file's diff was
+    mojibake. It uses the same detector as everything else.
+
+### Fixed
+
 - **`edit_file` corrupted non-UTF-8 files.** It decoded with a permissive UTF-8 read and
   wrote back as UTF-8, so editing one line of a cp1252 source file silently re-encoded
   every other byte and destroyed non-ASCII characters (`é` became `\ufffd`). It now

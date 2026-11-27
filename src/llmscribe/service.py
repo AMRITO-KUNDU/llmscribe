@@ -122,6 +122,7 @@ def execute(
     directory_path: str | None = None,
     source_path: str | None = None,
     destination_path: str | None = None,
+    encoding: str | None = None,
     redact: bool = True,
 ) -> ToolResponse:
     """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
@@ -149,6 +150,7 @@ def execute(
         directory_path=directory_path,
         source_path=source_path,
         destination_path=destination_path,
+        encoding=encoding,
     )
     return _apply_redaction(response) if redact else response
 
@@ -198,6 +200,7 @@ def _execute_tool(
     directory_path: str | None = None,
     source_path: str | None = None,
     destination_path: str | None = None,
+    encoding: str | None = None,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -258,6 +261,9 @@ def _execute_tool(
         }
         if fr.compressed:
             meta["compressed"] = True
+        if fr.replaced_bytes:
+            meta["lossy"] = True
+            meta["replaced_bytes"] = fr.replaced_bytes
         if fr.line_start:
             meta["line_start"] = fr.line_start
             meta["line_end"] = fr.line_end
@@ -311,6 +317,7 @@ def _execute_tool(
             directory_path=directory_path,
             source_path=source_path,
             destination_path=destination_path,
+            encoding=encoding,
         )
         if not result.ok:
             raise LLMScribeError(result.error_code, result.error_message)
@@ -397,10 +404,11 @@ def _run_write(
     directory_path: str | None,
     source_path: str | None,
     destination_path: str | None,
+    encoding: str | None = None,
 ) -> Any:
     root = source.root
     if tool == "write_file":
-        return write_file(file_path or "", content or "", root, overwrite=overwrite)
+        return write_file(file_path or "", content or "", root, overwrite=overwrite, encoding=encoding)
     if tool == "edit_file":
         return edit_file(file_path or "", old_text or "", new_text or "", root, replace_all=replace_all)
     if tool == "create_directory":

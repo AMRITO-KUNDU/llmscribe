@@ -105,19 +105,24 @@ def _target(source: LocalRepository, raw: str, *, must_exist: bool) -> tuple[str
 
 def _encode_as(text: str, encoding: str, rel: str, original: bytes) -> bytes:
     """Encode in the file's own encoding, preserving any byte-order mark."""
-    if encoding == "utf-16":
-        if original.startswith(codecs.BOM_UTF16_BE):
-            return codecs.BOM_UTF16_BE + text.encode("utf-16-be")
-        return codecs.BOM_UTF16_LE + text.encode("utf-16-le")
-    if encoding == "utf-8" and original.startswith(codecs.BOM_UTF8):
-        return codecs.BOM_UTF8 + text.encode("utf-8")
+    try:
+        if encoding == "utf-16":
+            if original.startswith(codecs.BOM_UTF16_BE):
+                return codecs.BOM_UTF16_BE + text.encode("utf-16-be")
+            return codecs.BOM_UTF16_LE + text.encode("utf-16-le")
+        if encoding == "utf-8" and original.startswith(codecs.BOM_UTF8):
+            return codecs.BOM_UTF8 + text.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise LLMScribeError(
+            "encoding_error", f"'{rel}' cannot be written as {encoding}: {exc.reason}."
+        ) from None
     try:
         return text.encode(encoding)
     except UnicodeEncodeError as exc:
         raise LLMScribeError(
             "encoding_error",
-            f"'{rel}' is {encoding}; the new text contains characters it cannot represent "
-            f"({exc.reason}). Rewrite the file with write_file to convert it to UTF-8.",
+            f"'{rel}' cannot be written as {encoding}: the text contains characters it "
+            f"cannot represent ({exc.reason}). Pass encoding='utf-8' to convert the file.",
         ) from None
 
 
@@ -142,15 +147,43 @@ def write_file(
     root: Path | str | None = None,
     *,
     overwrite: bool = True,
+    encoding: str | None = None,
 ) -> WriteResult:
-    """Create or replace a file. ``overwrite=False`` refuses to clobber an existing one."""
+    """Create or replace a file.
+
+    ``overwrite=False`` refuses to clobber an existing one. Replacing an existing file
+    keeps its encoding and byte-order mark, so writing to a cp1252 source file does not
+    silently convert it to UTF-8. Pass ``encoding`` to convert deliberately.
+    """
     try:
         source = _open_source(root)
         rel, target = _target(source, file_path, must_exist=False)
         existed = target.exists()
         if existed and not overwrite:
             raise LLMScribeError("file_exists", f"File already exists: '{rel}'. Pass overwrite to replace it.")
-        data = content.encode("utf-8")
+
+        original = b""
+        if existed:
+            try:
+                original = target.read_bytes()
+            except OSError as exc:
+                raise LLMScribeError(
+                    "write_error", f"Could not read '{rel}' before replacing it: {exc.strerror or 'error'}."
+                ) from exc
+
+        if encoding is not None:
+            target_encoding = encoding
+        elif existed:
+            try:
+                target_encoding = decode_text(original, rel)[1]
+            except LLMScribeError:
+                # a binary or undecodable file being replaced with text: UTF-8 is the only
+                # sensible choice, and it is what the caller implicitly asked for
+                target_encoding = "utf-8"
+        else:
+            target_encoding = "utf-8"
+
+        data = _encode_as(content, target_encoding, rel, original)
         if len(data) > MAX_FILE_SIZE:
             raise LLMScribeError(
                 "file_too_large", f"Content exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'."

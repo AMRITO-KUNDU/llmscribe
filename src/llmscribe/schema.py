@@ -168,6 +168,13 @@ TOOLS: list[dict[str, Any]] = [
                 "type": "boolean",
                 "description": "Replace the file if it already exists. Default true.",
             },
+            "encoding": {
+                "type": "string",
+                "description": (
+                    "Force an output encoding, e.g. 'utf-8' to convert a cp1252 file. "
+                    "Omit to keep the existing file's encoding."
+                ),
+            },
         },
         "required": ["file_path", "content"],
     },

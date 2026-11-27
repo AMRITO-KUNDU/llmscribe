@@ -65,6 +65,7 @@ class ProjectOverviewResult:
     skipped_count: int = 0
     warnings: list[str] = field(default_factory=list)
     compressed_files: list[str] = field(default_factory=list)
+    lossy_files: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         payload = {
@@ -83,6 +84,8 @@ class ProjectOverviewResult:
         }
         if self.compressed_files:
             payload["compressed_files"] = self.compressed_files
+        if self.lossy_files:
+            payload["lossy_files"] = self.lossy_files
         return payload
 
 
@@ -171,6 +174,7 @@ def overview_source(
     remaining = max_content_chars
     total = 0
     exhausted = False
+    lossy_files: list[str] = []
     for path in project.files:
         if not exhausted and remaining <= 0:
             exhausted = True
@@ -189,6 +193,8 @@ def overview_source(
             if squeezed is not None:
                 text = squeezed
                 result.compressed_files.append(rel)
+        if _encoding == "cp1252" and "\ufffd" in text:
+            lossy_files.append(path)
         if len(text) > remaining:
             text = text[:remaining] + TRUNCATION_MARKER
             exhausted = True
@@ -203,6 +209,7 @@ def overview_source(
         result.truncation_note = " ".join(filter(None, [result.truncation_note, note + "."]))
     result.file_count = len(result.files)
     result.character_count = len(project.tree) + total
+    result.lossy_files = lossy_files
     return result
 
 

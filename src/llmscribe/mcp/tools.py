@@ -218,10 +218,25 @@ def write_file(
     overwrite: Annotated[
         bool, Field(description="Replace the file if it already exists. Default true.")
     ] = True,
+    encoding: Annotated[
+        str | None,
+        Field(
+            description=(
+                "Force an output encoding, e.g. 'utf-8' to convert a cp1252 file. "
+                "Omit to keep the existing file's encoding."
+            )
+        ),
+    ] = None,
 ) -> str:
     """Create or replace a file. Writes are atomic: a crash leaves the original intact."""
     return _run(
-        "write_file", format, path=path, file_path=file_path, content=content, overwrite=overwrite
+        "write_file",
+        format,
+        path=path,
+        file_path=file_path,
+        content=content,
+        overwrite=overwrite,
+        encoding=encoding,
     )
 
 

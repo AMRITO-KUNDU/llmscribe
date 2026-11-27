@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import LLMScribeError
+from .file_reader import decode_text
 from .limits import GIT_TIMEOUT, MAX_DIFF_CHARS
 
 _REF_RE = re.compile(r"^[\w][\w./~^@{}:+\-]*$")
@@ -214,7 +215,12 @@ def get_git_diff(
         raise LLMScribeError("git_unavailable", f"git status failed: {err.strip()[:200] or 'unknown error'}")
     changes = parse_status_z(out)
 
-    diff_text = b"".join(chunks).decode("utf-8", errors="replace")
+    # Git does not transcode: a cp1252 file's diff arrives as cp1252 bytes. Decoding it
+    # as UTF-8 with replacement turns every accented character into U+FFFD.
+    try:
+        diff_text, _encoding = decode_text(b"".join(chunks), "diff")
+    except LLMScribeError:
+        diff_text = b"".join(chunks).decode("utf-8", errors="replace")
     truncated = byte_truncated or len(diff_text) > max_diff_chars
     if truncated:
         diff_text = diff_text[:max_diff_chars] + f"\n\n[Diff truncated after {max_diff_chars:,} characters]"

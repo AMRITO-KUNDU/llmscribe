@@ -235,3 +235,56 @@ def test_edit_refuses_text_the_encoding_cannot_represent(tmp_path):
     result = Repository(tmp_path).edit_file("latin.py", "x = 1", "x = \U0001f600")
     assert result.ok is False and result.error_code == "encoding_error"
     assert path.read_bytes() == original, "a refused edit must leave the file untouched"
+
+
+def test_write_preserves_the_existing_encoding(tmp_path):
+    """Replacing a file must not silently convert it to UTF-8."""
+    path = tmp_path / "latin.py"
+    path.write_bytes("# caf\xe9\nx = 1\n".encode("cp1252"))
+    assert Repository(tmp_path).write_file("latin.py", "# café\nx = 2\n").action == "overwritten"
+    assert path.read_bytes() == "# caf\xe9\nx = 2\n".encode("cp1252")
+
+
+def test_write_preserves_a_utf8_bom(tmp_path):
+    import codecs
+
+    path = tmp_path / "bom.py"
+    path.write_bytes(codecs.BOM_UTF8 + b"x = 1\n")
+    Repository(tmp_path).write_file("bom.py", "x = 2\n")
+    assert path.read_bytes().startswith(codecs.BOM_UTF8)
+
+
+def test_write_can_convert_encoding_deliberately(tmp_path):
+    path = tmp_path / "latin.py"
+    path.write_bytes("# caf\xe9\n".encode("cp1252"))
+    Repository(tmp_path).write_file("latin.py", "# café\n", encoding="utf-8")
+    assert path.read_bytes() == "# café\n".encode("utf-8")
+
+
+def test_new_files_are_utf8(tmp_path):
+    Repository(tmp_path).write_file("new.py", "é\n")
+    assert (tmp_path / "new.py").read_bytes() == "é\n".encode("utf-8")
+
+
+def test_write_refuses_text_the_encoding_cannot_represent(tmp_path):
+    path = tmp_path / "latin.py"
+    original = "# caf\xe9\n".encode("cp1252")
+    path.write_bytes(original)
+    result = Repository(tmp_path).write_file("latin.py", "# \U0001f600\n")
+    assert result.ok is False and result.error_code == "encoding_error"
+    assert path.read_bytes() == original
+
+
+def test_a_lone_surrogate_is_a_clean_error_not_a_crash(tmp_path):
+    """It used to raise UnicodeEncodeError straight through the service layer."""
+    result = Repository(tmp_path).write_file("s.py", "x = '\ud800'")
+    assert result.ok is False and result.error_code == "encoding_error"
+    assert not (tmp_path / "s.py").exists()
+
+
+def test_cli_encoding_flag_converts(tmp_path):
+    path = tmp_path / "latin.py"
+    path.write_bytes("# caf\xe9\n".encode("cp1252"))
+    proc = run_cli("write", "latin.py", "--content", "# café\n", "--encoding", "utf-8", "--path", str(tmp_path))
+    assert proc.returncode == 0, proc.stderr
+    assert path.read_bytes() == "# café\n".encode("utf-8")

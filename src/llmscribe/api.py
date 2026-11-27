@@ -113,9 +113,20 @@ class Repository:
         return self._root
 
     # ------------------------------------------------------------------ writes
-    def write_file(self, file_path: str | Path, content: str, *, overwrite: bool = True) -> WriteResult:
-        """Create or replace a file. Atomic: a crash leaves the original intact."""
-        return write_file(str(file_path), content, self._root, overwrite=overwrite)
+    def write_file(
+        self,
+        file_path: str | Path,
+        content: str,
+        *,
+        overwrite: bool = True,
+        encoding: str | None = None,
+    ) -> WriteResult:
+        """Create or replace a file. Atomic: a crash leaves the original intact.
+
+        Replacing an existing file keeps its encoding and BOM; pass ``encoding="utf-8"``
+        to convert it deliberately.
+        """
+        return write_file(str(file_path), content, self._root, overwrite=overwrite, encoding=encoding)
 
     def edit_file(
         self,

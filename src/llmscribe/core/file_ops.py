@@ -38,6 +38,7 @@ class FileReadResult:
     line_start: int = 0
     line_end: int = 0
     returned_lines: int = 0
+    replaced_bytes: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"file_path": self.file_path, "ok": self.ok}
@@ -49,6 +50,10 @@ class FileReadResult:
             result["modified"] = self.modified
             if self.compressed:
                 result["compressed"] = True
+            if self.replaced_bytes:
+                # the file has bytes its encoding does not define; they were shown as U+FFFD
+                result["lossy"] = True
+                result["replaced_bytes"] = self.replaced_bytes
             if self.line_start:
                 # present only for a ranged read, so the default shape is unchanged
                 result["line_start"] = self.line_start
@@ -195,12 +200,17 @@ def read_from_source(
 
     content, truncated = _clip(text, max_content_chars)
     entry = source.info(rel)
+    # cp1252 is the only decoder that substitutes, so a U+FFFD in its output means a
+    # byte in the file has no mapping. Say so rather than showing a replacement char
+    # and letting the reader believe that is the file's content.
+    replaced = text.count("\ufffd") if encoding == "cp1252" else 0
     return FileReadResult(
         rel,
         content,
         len(content),
         True,
         encoding=encoding,
+        replaced_bytes=replaced,
         truncated=truncated,
         byte_size=entry.size,
         line_count=line_count,

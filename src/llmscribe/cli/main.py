@@ -169,6 +169,7 @@ def create_parser() -> argparse.ArgumentParser:
     p.add_argument("file_path")
     p.add_argument("--content", help="File contents. Use '-' or omit to read stdin.")
     p.add_argument("--no-overwrite", action="store_true", help="Refuse to replace an existing file")
+    p.add_argument("--encoding", help="Force an output encoding, e.g. utf-8 to convert a cp1252 file")
     _path_option(p)
 
     p = sub.add_parser("edit", help="Replace an exact substring in a file", aliases=["sed"])
@@ -290,6 +291,7 @@ def _main(argv: list[str] | None = None) -> None:
             file_path=args.file_path,
             content=content,
             overwrite=not args.no_overwrite,
+            encoding=args.encoding,
             **common,
         )
     elif args.command == "edit":
