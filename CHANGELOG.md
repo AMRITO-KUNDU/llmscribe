@@ -7,32 +7,43 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
+## [3.0.1] — 2026-11-27
 
-- **Encoding, across the whole surface.** Five defects, all of the same kind: the tool
-  believed something about a file's bytes that was not true.
-  - `edit_file` decoded with a permissive UTF-8 read and wrote back as UTF-8, so editing
-    one line of a cp1252 file re-encoded every other byte and destroyed non-ASCII
-    characters (`é` became `\ufffd`).
-  - `write_file` did the same when replacing an existing file. It now keeps the file's
-    encoding and byte-order mark; `encoding="utf-8"` (or `--encoding`) converts on
-    request.
-  - A string containing a lone surrogate raised `UnicodeEncodeError` straight through the
-    service layer. It is now a clean `encoding_error`.
-  - `read` showed `\ufffd` for bytes its encoding could not map and said nothing. It now
-    reports `lossy: true` and `replaced_bytes`; `overview` lists them in `lossy_files`.
-  - `diff` decoded Git's output as UTF-8 with replacement, so a cp1252 file's diff was
-    mojibake. It uses the same detector as everything else.
+**If you edit files with LLMScribe, take this update.** 3.0.0 shipped an hour earlier with
+a bug that silently damaged non-UTF-8 files. Everything below is a fix; nothing changed in
+the API.
+
+```bash
+pip install --upgrade 'llmscribe[server]'
+```
 
 ### Fixed
+
+Five encoding defects, all the same shape: the tool believed something about a file's
+bytes that was not true.
 
 - **`edit_file` corrupted non-UTF-8 files.** It decoded with a permissive UTF-8 read and
-  wrote back as UTF-8, so editing one line of a cp1252 source file silently re-encoded
-  every other byte and destroyed non-ASCII characters (`é` became `\ufffd`). It now
-  decodes with the same detector the read side uses, writes back in the file's own
-  encoding, preserves a UTF-8 or UTF-16 byte-order mark, and refuses with
-  `encoding_error` when the new text cannot be represented — leaving the file untouched.
-  Four regression tests cover cp1252, UTF-8, UTF-8-with-BOM and UTF-16.
+  wrote back as UTF-8, so editing one line of a cp1252 source file re-encoded every other
+  byte and destroyed the non-ASCII ones — `é` became `\ufffd`, and the edit reported
+  success. It now decodes with the same detector the read side uses, writes back in the
+  file's own encoding, and preserves a UTF-8 or UTF-16 byte-order mark.
+- **`write_file` did the same** when replacing an existing file. It now keeps the file's
+  encoding and BOM; `encoding="utf-8"` (or `--encoding utf-8`) converts deliberately.
+- **A lone surrogate raised `UnicodeEncodeError`** straight through the service layer — a
+  traceback rather than an error. It is now `encoding_error`, and nothing is written.
+- **`read` showed `\ufffd` for bytes its encoding could not map and said nothing**, so an
+  agent could not tell a file with an odd byte from a corrupted one. It now reports
+  `lossy: true` and `replaced_bytes`; `overview` lists them in `lossy_files`.
+- **`diff` decoded Git's output as UTF-8 with replacement.** Git does not transcode, so a
+  cp1252 file's diff was mojibake. It uses the same detector as everything else now.
+
+A text that cannot be represented in the file's encoding is refused with
+`encoding_error` and the file is left byte-identical — an emoji written into a cp1252 file
+fails rather than writing `?`.
+
+18 encoding tests cover cp1252, UTF-8, UTF-8-with-BOM and UTF-16 in both directions: a
+read-then-write round trip changes no bytes, and a refused conversion leaves the file
+untouched.
 
 ## [3.0.0] — 2026-11-27
 
