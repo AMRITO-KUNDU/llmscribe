@@ -123,6 +123,7 @@ def execute(
     source_path: str | None = None,
     destination_path: str | None = None,
     encoding: str | None = None,
+    expect_revision: str | None = None,
     redact: bool = True,
 ) -> ToolResponse:
     """Run ``tool`` and return its result, masking secrets unless ``redact=False``."""
@@ -151,6 +152,7 @@ def execute(
         source_path=source_path,
         destination_path=destination_path,
         encoding=encoding,
+        expect_revision=expect_revision,
     )
     return _apply_redaction(response) if redact else response
 
@@ -201,6 +203,7 @@ def _execute_tool(
     source_path: str | None = None,
     destination_path: str | None = None,
     encoding: str | None = None,
+    expect_revision: str | None = None,
 ) -> ToolResponse:
     """Run ``tool`` and return its result; raises ``LLMScribeError`` on any expected failure."""
     if tool not in TOOLS:
@@ -318,6 +321,7 @@ def _execute_tool(
             source_path=source_path,
             destination_path=destination_path,
             encoding=encoding,
+            expect_revision=expect_revision,
         )
         if not result.ok:
             raise LLMScribeError(result.error_code, result.error_message)
@@ -405,12 +409,27 @@ def _run_write(
     source_path: str | None,
     destination_path: str | None,
     encoding: str | None = None,
+    expect_revision: str | None = None,
 ) -> Any:
     root = source.root
     if tool == "write_file":
-        return write_file(file_path or "", content or "", root, overwrite=overwrite, encoding=encoding)
+        return write_file(
+            file_path or "",
+            content or "",
+            root,
+            overwrite=overwrite,
+            encoding=encoding,
+            expect_revision=expect_revision,
+        )
     if tool == "edit_file":
-        return edit_file(file_path or "", old_text or "", new_text or "", root, replace_all=replace_all)
+        return edit_file(
+            file_path or "",
+            old_text or "",
+            new_text or "",
+            root,
+            replace_all=replace_all,
+            expect_revision=expect_revision,
+        )
     if tool == "create_directory":
         return create_directory(directory_path or "", root)
     if tool == "move_file":

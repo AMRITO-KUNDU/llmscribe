@@ -13,12 +13,15 @@ changed. A write that would land outside the project is refused, not sanitised.
 from __future__ import annotations
 
 import codecs
+import errno
 import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from .errors import LLMScribeError
+from .file_ops import revision_of
 from .file_reader import decode_text
 from .limits import MAX_FILE_SIZE
 from .source import LocalRepository, normalize_rel_path
@@ -126,19 +129,93 @@ def _encode_as(text: str, encoding: str, rel: str, original: bytes) -> bytes:
         ) from None
 
 
-def _atomic_write(target: Path, data: bytes) -> None:
+# Windows raises these when a path exceeds MAX_PATH without long-path support enabled.
+_LONG_PATH_ERRNOS = {errno.ENAMETOOLONG}
+_WINDOWS_LONG_PATH = 206
+
+
+def _explain_oserror(exc: OSError, rel: str, doing: str) -> LLMScribeError:
+    """Turn a filesystem errno into an error a caller can act on."""
+    code = exc.errno
+    winerror = getattr(exc, "winerror", None)
+
+    if code in _LONG_PATH_ERRNOS or winerror == _WINDOWS_LONG_PATH:
+        return LLMScribeError(
+            "path_too_long",
+            f"Path is too long to {doing} on this system: '{rel}'. Windows limits paths to "
+            "260 characters unless long-path support is enabled.",
+        )
+    if code == errno.ENOSPC or winerror == 112:
+        return LLMScribeError(
+            "no_space",
+            f"Not enough space on the device to {doing} '{rel}'. The original file was not changed.",
+        )
+    if code in {errno.EACCES, errno.EPERM, errno.EROFS} or winerror == 5:
+        return LLMScribeError(
+            "permission_denied",
+            f"Permission denied trying to {doing} '{rel}'. The file or its directory may be "
+            "read-only, or held open by another process.",
+        )
+    if code == errno.EXDEV:
+        return LLMScribeError(
+            "write_error",
+            f"Cannot {doing} '{rel}': the temporary file landed on a different filesystem. "
+            "This should not happen; please report it.",
+        )
+    if code == errno.EISDIR:
+        return LLMScribeError("invalid_path", f"Path is a directory, not a file: '{rel}'.")
+    return LLMScribeError(
+        "write_error", f"Could not {doing} '{rel}': {exc.strerror or type(exc).__name__}."
+    )
+
+
+def _require_writable(target: Path, rel: str) -> None:
+    """Refuse to overwrite a file the user has made read-only.
+
+    On POSIX, replacing a file depends on write permission on the *directory*, not the
+    file, so an atomic replace would happily overwrite a chmod 444 file. That is not what
+    a person who made a file read-only expects.
+    """
+    if target.exists() and not os.access(target, os.W_OK):
+        raise LLMScribeError(
+            "permission_denied",
+            f"'{rel}' is read-only. Change its permissions first, or write a different path.",
+        )
+    parent = target.parent
+    if not os.access(parent, os.W_OK):
+        raise LLMScribeError(
+            "permission_denied",
+            f"The directory containing '{rel}' is not writable.",
+        )
+
+
+def _atomic_write(target: Path, data: bytes, rel: str = "") -> None:
     """Write via a temporary file in the same directory, then replace.
 
     A crash mid-write leaves the original intact rather than a half-written file, which
     matters when an agent is rewriting source it cannot easily recover.
+
+    The temporary file is created with ``mkstemp`` so two concurrent writers cannot pick
+    the same name, and it lives in the target's own directory so the final ``os.replace``
+    is a rename within one filesystem rather than a cross-device copy.
     """
-    temp = target.with_name(f".{target.name}.llmscribe-tmp")
+    label = rel or target.name
+    _require_writable(target, label)
+
+    handle, temp_name = tempfile.mkstemp(
+        dir=str(target.parent), prefix=f".{target.name}.", suffix=".llmscribe-tmp"
+    )
+    temp = Path(temp_name)
     try:
-        temp.write_bytes(data)
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temp, target)
+    except OSError as exc:
+        raise _explain_oserror(exc, label, "write") from None
     finally:
-        if temp.exists():
-            temp.unlink(missing_ok=True)
+        temp.unlink(missing_ok=True)
 
 
 def write_file(
@@ -148,6 +225,7 @@ def write_file(
     *,
     overwrite: bool = True,
     encoding: str | None = None,
+    expect_revision: str | None = None,
 ) -> WriteResult:
     """Create or replace a file.
 
@@ -171,6 +249,16 @@ def write_file(
                     "write_error", f"Could not read '{rel}' before replacing it: {exc.strerror or 'error'}."
                 ) from exc
 
+        if expect_revision is not None:
+            current = revision_of(original) if existed else ""
+            if current != expect_revision:
+                raise LLMScribeError(
+                    "conflict",
+                    f"'{rel}' changed since it was read (expected revision "
+                    f"{expect_revision}, found {current or 'no file'}). Read it again before "
+                    "writing.",
+                )
+
         if encoding is not None:
             target_encoding = encoding
         elif existed:
@@ -188,7 +276,7 @@ def write_file(
             raise LLMScribeError(
                 "file_too_large", f"Content exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'."
             )
-        _atomic_write(target, data)
+        _atomic_write(target, data, rel)
         return WriteResult(
             rel,
             action="overwritten" if existed else "created",
@@ -209,6 +297,7 @@ def edit_file(
     root: Path | str | None = None,
     *,
     replace_all: bool = False,
+    expect_revision: str | None = None,
 ) -> WriteResult:
     """Replace an exact substring.
 
@@ -221,6 +310,12 @@ def edit_file(
         if not old_text:
             raise LLMScribeError("invalid_argument", "old_text must not be empty.")
         original = target.read_bytes()
+        if expect_revision is not None and revision_of(original) != expect_revision:
+            raise LLMScribeError(
+                "conflict",
+                f"'{rel}' changed since it was read (expected revision {expect_revision}, "
+                f"found {revision_of(original)}). Read it again before editing.",
+            )
         if len(original) > MAX_FILE_SIZE:
             raise LLMScribeError("file_too_large", f"File exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
         # Decode with the same detector the read side uses, so an edit does not silently
@@ -239,7 +334,7 @@ def edit_file(
         data = _encode_as(updated, encoding, rel, original)
         if len(data) > MAX_FILE_SIZE:
             raise LLMScribeError("file_too_large", f"Result exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
-        _atomic_write(target, data)
+        _atomic_write(target, data, rel)
         return WriteResult(
             rel,
             action="edited",

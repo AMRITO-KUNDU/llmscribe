@@ -7,6 +7,28 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `read` returns a `revision` — a short fingerprint of the file's bytes — and `edit_file`
+  and `write_file` accept `expect_revision`. If the file changed since it was read, the
+  write is refused with `conflict` instead of overwriting someone else's change. This is
+  the lost-update case: an agent reads a file, a human edits it, the agent writes, and the
+  human's work disappears.
+
+### Fixed
+
+- The atomic write now uses `mkstemp` for its temporary file, so two concurrent writers
+  cannot pick the same name, and it calls `fsync` before the replace.
+- **Read-only files are no longer overwritten.** On POSIX, replacing a file depends on
+  write permission on the directory, not the file, so an atomic replace would happily
+  clobber a `chmod 444` file. Both the file and its directory are now checked, and the
+  result is `permission_denied`.
+- Filesystem failures now map to codes a caller can act on: `no_space` (and the message
+  says the original is untouched), `path_too_long` (naming the 260-character Windows
+  limit), `permission_denied`, and `invalid_path` for a directory target. Windows
+  `winerror` values are mapped alongside POSIX errno.
+- No temporary file survives a failed write.
+
 ## [3.0.1] — 2026-11-27
 
 **If you edit files with LLMScribe, take this update.** 3.0.0 shipped an hour earlier with

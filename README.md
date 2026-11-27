@@ -506,7 +506,14 @@ llmscribe mv src/old.py src/new.py
 llmscribe rm src/dead.py
 ```
 
-Four properties hold for every write:
+Editing safely when someone else might be working in the same tree:
+
+```bash
+REV=$(llmscribe read src/main.py --json | jq -r .data.revision)
+llmscribe edit src/main.py --old 'retries = 3' --new 'retries = 5' --expect "$REV"
+```
+
+Six properties hold for every write:
 
 - **Confined to the project.** Absolute paths, `..` segments (including encoded and
   backslash forms) and symlinks are refused, using the same checks the read side uses.
@@ -519,6 +526,13 @@ Four properties hold for every write:
   written. It will not guess which one you meant.
 - **Reported.** Every result says what happened — `created`, `overwritten`, `edited`
   with a replacement count, `moved` with a destination, `deleted` with the bytes freed.
+- **No lost updates.** `read` returns a `revision`, a short fingerprint of the file's
+  bytes. Pass it back as `expect_revision` and the write is refused with `conflict` if
+  the file changed in between, instead of overwriting a change someone else made.
+- **Honest failures.** A read-only file or directory is `permission_denied` rather than a
+  silent replace; a full disk is `no_space` and says the original is untouched; a path
+  past the Windows limit is `path_too_long` and names the limit. Nothing is left half
+  written, and no temporary file survives a failure.
 
 Secrets are still masked in everything that leaves; what you *store* is written verbatim.
 

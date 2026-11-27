@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import mimetypes
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -39,6 +40,7 @@ class FileReadResult:
     line_end: int = 0
     returned_lines: int = 0
     replaced_bytes: int = 0
+    revision: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {"file_path": self.file_path, "ok": self.ok}
@@ -48,6 +50,8 @@ class FileReadResult:
             result["byte_size"] = self.byte_size
             result["line_count"] = self.line_count
             result["modified"] = self.modified
+            if self.revision:
+                result["revision"] = self.revision
             if self.compressed:
                 result["compressed"] = True
             if self.replaced_bytes:
@@ -106,6 +110,11 @@ class ReadManyResult:
             data["ok"] = False
             data["error"] = {"code": self.error_code, "message": self.error_message}
         return data
+
+
+def revision_of(data: bytes) -> str:
+    """Short content fingerprint used to detect a file changing between read and write."""
+    return hashlib.sha256(data).hexdigest()[:16]
 
 
 def _failure(file_path: str, error: LLMScribeError) -> FileReadResult:
@@ -204,6 +213,9 @@ def read_from_source(
     # byte in the file has no mapping. Say so rather than showing a replacement char
     # and letting the reader believe that is the file's content.
     replaced = text.count("\ufffd") if encoding == "cp1252" else 0
+    # A fingerprint of the bytes, so a later edit can prove the file is still the one the
+    # caller read. Cheap insurance against the lost update.
+    revision = revision_of(source.read_bytes(rel))
     return FileReadResult(
         rel,
         content,
@@ -211,6 +223,7 @@ def read_from_source(
         True,
         encoding=encoding,
         replaced_bytes=replaced,
+        revision=revision,
         truncated=truncated,
         byte_size=entry.size,
         line_count=line_count,

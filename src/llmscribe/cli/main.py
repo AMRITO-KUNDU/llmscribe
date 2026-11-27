@@ -170,6 +170,7 @@ def create_parser() -> argparse.ArgumentParser:
     p.add_argument("--content", help="File contents. Use '-' or omit to read stdin.")
     p.add_argument("--no-overwrite", action="store_true", help="Refuse to replace an existing file")
     p.add_argument("--encoding", help="Force an output encoding, e.g. utf-8 to convert a cp1252 file")
+    p.add_argument("--expect", metavar="REVISION", help="Refuse if the file changed since this revision")
     _path_option(p)
 
     p = sub.add_parser("edit", help="Replace an exact substring in a file", aliases=["sed"])
@@ -177,6 +178,7 @@ def create_parser() -> argparse.ArgumentParser:
     p.add_argument("--old", required=True, help="Exact text to replace")
     p.add_argument("--new", required=True, help="Replacement text (may be empty)")
     p.add_argument("--all", action="store_true", help="Replace every occurrence")
+    p.add_argument("--expect", metavar="REVISION", help="Refuse if the file changed since this revision")
     _path_option(p)
 
     p = sub.add_parser("mkdir", help="Create a directory")
@@ -292,6 +294,7 @@ def _main(argv: list[str] | None = None) -> None:
             content=content,
             overwrite=not args.no_overwrite,
             encoding=args.encoding,
+            expect_revision=args.expect,
             **common,
         )
     elif args.command == "edit":
@@ -303,6 +306,7 @@ def _main(argv: list[str] | None = None) -> None:
             old_text=args.old,
             new_text=args.new,
             replace_all=args.all,
+            expect_revision=args.expect,
             **common,
         )
     elif args.command == "mkdir":

@@ -175,6 +175,13 @@ TOOLS: list[dict[str, Any]] = [
                     "Omit to keep the existing file's encoding."
                 ),
             },
+            "expect_revision": {
+                "type": "string",
+                "description": (
+                    "The revision reported by read. If the file changed since then the write "
+                    "is refused with 'conflict' rather than overwriting someone else's change."
+                ),
+            },
         },
         "required": ["file_path", "content"],
     },
@@ -193,6 +200,13 @@ TOOLS: list[dict[str, Any]] = [
             "replace_all": {
                 "type": "boolean",
                 "description": "Replace every occurrence. Default false, which requires exactly one.",
+            },
+            "expect_revision": {
+                "type": "string",
+                "description": (
+                    "The revision reported by read. If the file changed since then the write "
+                    "is refused with 'conflict' rather than overwriting someone else's change."
+                ),
             },
         },
         "required": ["file_path", "old_text", "new_text"],

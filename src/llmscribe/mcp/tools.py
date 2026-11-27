@@ -227,6 +227,15 @@ def write_file(
             )
         ),
     ] = None,
+    expect_revision: Annotated[
+        str | None,
+        Field(
+            description=(
+                "The revision reported by read. If the file changed since then, the write "
+                "is refused with conflict instead of overwriting someone else's change."
+            )
+        ),
+    ] = None,
 ) -> str:
     """Create or replace a file. Writes are atomic: a crash leaves the original intact."""
     return _run(
@@ -237,6 +246,7 @@ def write_file(
         content=content,
         overwrite=overwrite,
         encoding=encoding,
+        expect_revision=expect_revision,
     )
 
 
@@ -249,6 +259,15 @@ def edit_file(
     replace_all: Annotated[
         bool, Field(description="Replace every occurrence. Default false, which requires exactly one.")
     ] = False,
+    expect_revision: Annotated[
+        str | None,
+        Field(
+            description=(
+                "The revision reported by read. If the file changed since then, the write "
+                "is refused with conflict instead of overwriting someone else's change."
+            )
+        ),
+    ] = None,
 ) -> str:
     """Replace an exact substring.
 
@@ -263,6 +282,7 @@ def edit_file(
         old_text=old_text,
         new_text=new_text,
         replace_all=replace_all,
+        expect_revision=expect_revision,
     )
 
 

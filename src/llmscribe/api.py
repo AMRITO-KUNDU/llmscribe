@@ -120,13 +120,21 @@ class Repository:
         *,
         overwrite: bool = True,
         encoding: str | None = None,
+        expect_revision: str | None = None,
     ) -> WriteResult:
         """Create or replace a file. Atomic: a crash leaves the original intact.
 
         Replacing an existing file keeps its encoding and BOM; pass ``encoding="utf-8"``
         to convert it deliberately.
         """
-        return write_file(str(file_path), content, self._root, overwrite=overwrite, encoding=encoding)
+        return write_file(
+            str(file_path),
+            content,
+            self._root,
+            overwrite=overwrite,
+            encoding=encoding,
+            expect_revision=expect_revision,
+        )
 
     def edit_file(
         self,
@@ -135,9 +143,17 @@ class Repository:
         new_text: str,
         *,
         replace_all: bool = False,
+        expect_revision: str | None = None,
     ) -> WriteResult:
         """Replace an exact substring. Fails when it is absent or ambiguous."""
-        return edit_file(str(file_path), old_text, new_text, self._root, replace_all=replace_all)
+        return edit_file(
+            str(file_path),
+            old_text,
+            new_text,
+            self._root,
+            replace_all=replace_all,
+            expect_revision=expect_revision,
+        )
 
     def create_directory(self, directory_path: str | Path) -> WriteResult:
         """Create a directory, including missing parents."""
