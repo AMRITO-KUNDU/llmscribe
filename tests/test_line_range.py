@@ -17,7 +17,9 @@ from llmscribe.mcp import tools
 
 @pytest.fixture
 def big(tmp_path):
-    (tmp_path / "big.py").write_text("".join(f"line{i}\n" for i in range(1, 501)), encoding="utf-8")
+    # Bytes, not text: write_text turns \n into \r\n on Windows and the assertions below
+    # are about line content, not about the platform's newline convention.
+    (tmp_path / "big.py").write_bytes("".join(f"line{i}\n" for i in range(1, 501)).encode("utf-8"))
     return tmp_path
 
 
