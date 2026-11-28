@@ -46,6 +46,10 @@ pip install llmscribe
 - `create_directory` — create a directory including parents
 - `move_file` — move or rename a file
 - `delete_file` — delete one file (directories refused)
+- `append_file` — add to the end of a file, creating it if needed
+- `copy_file` — copy a file byte for byte
+- `llmscribe-mcp --read-only` serves only the seven read tools; the write tools are
+  not registered at all in that mode.
 
 ## Use with an MCP client
 

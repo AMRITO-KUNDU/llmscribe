@@ -288,3 +288,46 @@ def test_cli_encoding_flag_converts(tmp_path):
     proc = run_cli("write", "latin.py", "--content", "# café\n", "--encoding", "utf-8", "--path", str(tmp_path))
     assert proc.returncode == 0, proc.stderr
     assert path.read_bytes() == "# café\n".encode("utf-8")
+
+
+# ---------------------------------------------------------------- append / copy
+def test_append_adds_to_an_existing_file(project):
+    result = Repository(project).append_file("a.py", "z = 3\n")
+    assert result.action == "appended"
+    assert (project / "a.py").read_text(encoding="utf-8") == "x = 1\ny = 2\nz = 3\n"
+
+
+def test_append_creates_a_missing_file(project):
+    assert Repository(project).append_file("new.py", "v = 1\n").action == "created"
+    assert (project / "new.py").read_text(encoding="utf-8") == "v = 1\n"
+
+
+def test_append_keeps_the_existing_encoding(project):
+    path = project / "latin.py"
+    path.write_bytes("# caf\xe9\n".encode("cp1252"))
+    Repository(project).append_file("latin.py", "x = 1\n")
+    assert path.read_bytes() == "# caf\xe9\nx = 1\n".encode("cp1252")
+
+
+def test_copy_is_byte_identical_for_binary(project):
+    (project / "bin.dat").write_bytes(b"\x00\x01\x02\xff\xfe")
+    Repository(project).copy_file("bin.dat", "copy.dat")
+    assert (project / "copy.dat").read_bytes() == b"\x00\x01\x02\xff\xfe"
+
+
+def test_copy_refuses_to_clobber(project):
+    (project / "b.py").write_text("keep\n", encoding="utf-8")
+    result = Repository(project).copy_file("a.py", "b.py")
+    assert result.ok is False and result.error_code == "file_exists"
+    assert (project / "b.py").read_text(encoding="utf-8") == "keep\n"
+
+
+def test_copy_cannot_escape_the_root(project):
+    assert Repository(project).copy_file("a.py", "../out.py").error_code in {"invalid_path", "invalid_argument"}
+
+
+def test_cli_append_and_copy(project):
+    assert run_cli("append", "a.py", "--content", "z = 3", "--path", str(project)).returncode == 0
+    assert "z = 3" in (project / "a.py").read_text(encoding="utf-8")
+    assert run_cli("cp", "a.py", "d.py", "--path", str(project)).returncode == 0
+    assert (project / "d.py").exists()

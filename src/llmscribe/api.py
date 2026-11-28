@@ -39,6 +39,8 @@ from .core import (
     SearchResult,
     WriteResult,
     analyze_dependencies,
+    append_file,
+    copy_file,
     create_directory,
     delete_file,
     edit_file,
@@ -168,6 +170,18 @@ class Repository:
     def delete_file(self, file_path: str | Path) -> WriteResult:
         """Delete one file. Directories are refused."""
         return delete_file(str(file_path), self._root)
+
+    def append_file(
+        self, file_path: str | Path, content: str, *, encoding: str | None = None
+    ) -> WriteResult:
+        """Append to a file, creating it if it does not exist."""
+        return append_file(str(file_path), content, self._root, encoding=encoding)
+
+    def copy_file(
+        self, source_path: str | Path, destination_path: str | Path, *, overwrite: bool = False
+    ) -> WriteResult:
+        """Copy a file byte for byte."""
+        return copy_file(str(source_path), str(destination_path), self._root, overwrite=overwrite)
 
     def handlers(self) -> dict[str, Callable[..., dict[str, Any]]]:
         """Map every tool name to a callable that accepts that tool's schema arguments.

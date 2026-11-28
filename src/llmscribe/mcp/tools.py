@@ -324,6 +324,43 @@ def delete_file(
     return _run("delete_file", format, path=path, file_path=file_path)
 
 
+
+def append_file(
+    file_path: Annotated[str, Field(description="Path of the file relative to the project root.")],
+    content: Annotated[str, Field(description="Text to add to the end of the file.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    encoding: Annotated[
+        str | None,
+        Field(description="Force an output encoding. Omit to keep the existing file's encoding."),
+    ] = None,
+) -> str:
+    """Append to a file, creating it if it does not exist. Atomic, like every write."""
+    return _run(
+        "append_file", format, path=path, file_path=file_path, content=content, encoding=encoding
+    )
+
+
+def copy_file(
+    source_path: Annotated[str, Field(description="File to copy, relative to the project root.")],
+    destination_path: Annotated[str, Field(description="Where to copy it, relative to the project root.")],
+    path: PathArg = None,
+    format: FormatArg = "markdown",
+    overwrite: Annotated[
+        bool, Field(description="Replace the destination if it exists. Default false.")
+    ] = False,
+) -> str:
+    """Copy a file inside the project, byte for byte."""
+    return _run(
+        "copy_file",
+        format,
+        path=path,
+        source_path=source_path,
+        destination_path=destination_path,
+        overwrite=overwrite,
+    )
+
+
 TOOL_FUNCTIONS = {
     "project_map": project_map,
     "project_overview": project_overview,
@@ -337,4 +374,6 @@ TOOL_FUNCTIONS = {
     "create_directory": create_directory,
     "move_file": move_file,
     "delete_file": delete_file,
+    "append_file": append_file,
+    "copy_file": copy_file,
 }

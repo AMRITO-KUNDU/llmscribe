@@ -38,6 +38,8 @@ from .source import Entry, LocalRepository, RepositorySource, Scan, normalize_re
 from .tree_builder import DEFAULT_IGNORE, IgnoreMatcher, IgnoreRules, generate_tree, load_gitignore, should_ignore
 from .write_ops import (
     WriteResult,
+    append_file,
+    copy_file,
     create_directory,
     delete_file,
     edit_file,
@@ -87,6 +89,8 @@ __all__ = [
     "read_from_source",
     "read_many_from_source",
     "WriteResult",
+    "append_file",
+    "copy_file",
     "create_directory",
     "delete_file",
     "edit_file",

@@ -21,9 +21,20 @@ _STRING = {"type": "string"}
 _BOOL = {"type": "boolean"}
 _INT = {"type": "integer"}
 
+# A relative path that cannot escape the project root. This is the schema-level twin of
+# `normalize_rel_path`, which enforces the same rules at runtime: an absolute path, a
+# `..` segment (plain or percent-encoded, forward or back slash) or a NUL byte is
+# rejected before the call is ever made.
+_REL_PATH_PATTERN = r"^(?!/)(?![A-Za-z]:)(?!.*\\)(?!.*(?:^|/)\.\.(?:/|$))(?!.*\x00).+$"
+
 _PATH = {
     "type": "string",
     "description": "Project directory to read. Defaults to the server's working directory.",
+}
+_FILE_PATH = {
+    "type": "string",
+    "pattern": _REL_PATH_PATTERN,
+    "description": "Path relative to the project root. Cannot be absolute, contain '..', or use backslashes.",
 }
 _FORMAT = {
     "type": "string",
@@ -93,7 +104,7 @@ TOOLS: list[dict[str, Any]] = [
             "are masked."
         ),
         "properties": {
-            "file_path": _STRING,
+            "file_path": _FILE_PATH,
             "path": _PATH,
             "format": _FORMAT,
             "binary": {
@@ -144,7 +155,7 @@ TOOLS: list[dict[str, Any]] = [
             "Imports of a file, split into local, standard library and external, plus "
             "which files import it back (used_by)."
         ),
-        "properties": {"file_path": _STRING, "path": _PATH, "format": _FORMAT},
+        "properties": {"file_path": _FILE_PATH, "path": _PATH, "format": _FORMAT},
     },
     {
         "name": "project_diff",
@@ -160,7 +171,7 @@ TOOLS: list[dict[str, Any]] = [
         "name": "write_file",
         "description": "Create or replace a file. Writes are atomic, so a crash leaves the original intact.",
         "properties": {
-            "file_path": _STRING,
+            "file_path": _FILE_PATH,
             "content": {"type": "string", "description": "Full new contents of the file."},
             "path": _PATH,
             "format": _FORMAT,
@@ -192,7 +203,7 @@ TOOLS: list[dict[str, Any]] = [
             "or appears more than once, rather than rewriting the wrong place."
         ),
         "properties": {
-            "file_path": _STRING,
+            "file_path": _FILE_PATH,
             "old_text": {"type": "string", "description": "Exact text to replace."},
             "new_text": {"type": "string", "description": "Replacement text; empty deletes the match."},
             "path": _PATH,
@@ -214,15 +225,15 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "create_directory",
         "description": "Create a directory, including any missing parents.",
-        "properties": {"directory_path": _STRING, "path": _PATH, "format": _FORMAT},
+        "properties": {"directory_path": _FILE_PATH, "path": _PATH, "format": _FORMAT},
         "required": ["directory_path"],
     },
     {
         "name": "move_file",
         "description": "Move or rename a file inside the project.",
         "properties": {
-            "source_path": _STRING,
-            "destination_path": _STRING,
+            "source_path": _FILE_PATH,
+            "destination_path": _FILE_PATH,
             "path": _PATH,
             "format": _FORMAT,
             "overwrite": {
@@ -235,8 +246,38 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "delete_file",
         "description": "Delete one file. Directories are refused.",
-        "properties": {"file_path": _STRING, "path": _PATH, "format": _FORMAT},
+        "properties": {"file_path": _FILE_PATH, "path": _PATH, "format": _FORMAT},
         "required": ["file_path"],
+    },
+    {
+        "name": "append_file",
+        "description": "Append to a file, creating it if it does not exist. Atomic; keeps the existing encoding.",
+        "properties": {
+            "file_path": _FILE_PATH,
+            "content": {"type": "string", "description": "Text to add to the end of the file."},
+            "path": _PATH,
+            "format": _FORMAT,
+            "encoding": {
+                "type": "string",
+                "description": "Force an output encoding. Omit to keep the existing file's encoding.",
+            },
+        },
+        "required": ["file_path", "content"],
+    },
+    {
+        "name": "copy_file",
+        "description": "Copy a file inside the project, byte for byte.",
+        "properties": {
+            "source_path": _FILE_PATH,
+            "destination_path": _FILE_PATH,
+            "path": _PATH,
+            "format": _FORMAT,
+            "overwrite": {
+                "type": "boolean",
+                "description": "Replace the destination if it exists. Default false.",
+            },
+        },
+        "required": ["source_path", "destination_path"],
     },
 ]
 

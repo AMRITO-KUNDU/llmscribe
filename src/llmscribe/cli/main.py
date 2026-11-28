@@ -73,6 +73,7 @@ _ALIASES = {
     "cat-many": "read-many",
     "deps": "dependencies",
     "tee": "write",
+    "add": "append",
     "sed": "edit",
 }
 
@@ -186,6 +187,17 @@ def create_parser() -> argparse.ArgumentParser:
     _path_option(p)
 
     p = sub.add_parser("mv", help="Move or rename a file")
+    p.add_argument("source_path")
+    p.add_argument("destination_path")
+    p.add_argument("--overwrite", action="store_true", help="Replace the destination if it exists")
+    _path_option(p)
+
+    p = sub.add_parser("append", help="Append to a file", aliases=["add"])
+    p.add_argument("file_path")
+    p.add_argument("--content", help="Text to append. Use '-' or omit to read stdin.")
+    _path_option(p)
+
+    p = sub.add_parser("cp", help="Copy a file")
     p.add_argument("source_path")
     p.add_argument("destination_path")
     p.add_argument("--overwrite", action="store_true", help="Replace the destination if it exists")
@@ -315,6 +327,21 @@ def _main(argv: list[str] | None = None) -> None:
         code = _emit(
             "move_file",
             "mv",
+            as_json,
+            source_path=args.source_path,
+            destination_path=args.destination_path,
+            overwrite=args.overwrite,
+            **common,
+        )
+    elif args.command == "append":
+        content = args.content
+        if content is None or content == "-":
+            content = sys.stdin.read()
+        code = _emit("append_file", "append", as_json, file_path=args.file_path, content=content, **common)
+    elif args.command == "cp":
+        code = _emit(
+            "copy_file",
+            "cp",
             as_json,
             source_path=args.source_path,
             destination_path=args.destination_path,

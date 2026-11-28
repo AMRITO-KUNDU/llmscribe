@@ -19,6 +19,8 @@ from llmscribe.core import (
     LocalRepository,
     RepositorySource,
     analyze_source_dependencies,
+    append_file,
+    copy_file,
     create_directory,
     delete_file,
     edit_file,
@@ -52,6 +54,19 @@ TOOLS = (
     "create_directory",
     "move_file",
     "delete_file",
+    "append_file",
+    "copy_file",
+)
+
+# The tools that cannot change the filesystem. `--read-only` serves only these.
+READ_ONLY_TOOLS = (
+    "project_map",
+    "project_overview",
+    "search",
+    "read",
+    "read_many",
+    "project_dependencies",
+    "project_diff",
 )
 
 _SEARCH_LINES_PER_FILE = 10
@@ -392,7 +407,15 @@ def _md_search(sr: Any) -> str:
     return text
 
 
-_WRITE_TOOLS = ("write_file", "edit_file", "create_directory", "move_file", "delete_file")
+_WRITE_TOOLS = (
+    "write_file",
+    "edit_file",
+    "create_directory",
+    "move_file",
+    "delete_file",
+    "append_file",
+    "copy_file",
+)
 
 
 def _run_write(
@@ -434,6 +457,10 @@ def _run_write(
         return create_directory(directory_path or "", root)
     if tool == "move_file":
         return move_file(source_path or "", destination_path or "", root, overwrite=overwrite)
+    if tool == "append_file":
+        return append_file(file_path or "", content or "", root, encoding=encoding)
+    if tool == "copy_file":
+        return copy_file(source_path or "", destination_path or "", root, overwrite=overwrite)
     return delete_file(file_path or "", root)
 
 
@@ -445,9 +472,11 @@ def _md_write(result: Any) -> str:
         "directory_created": "Created directory",
         "directory_exists": "Directory already exists",
         "moved": "Moved",
+        "appended": "Appended to",
+        "copied": "Copied",
         "deleted": "Deleted",
     }.get(result.action, result.action or "Done")
-    if result.action == "moved":
+    if result.action in {"moved", "copied"}:
         return f"{verb} {result.path} -> {result.destination}"
     if result.action == "edited":
         return f"{verb} {result.path} ({result.replacements} replacement(s), {result.byte_size:,} bytes)"

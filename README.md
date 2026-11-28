@@ -62,7 +62,7 @@ Works with any MCP client — Claude Code, Cursor, VS Code, Zed and the rest —
 
 An AI coding agent that wants to understand your repository normally has one interface: the shell. `ls`, `find`, `grep` and `cat` were built for a person reading a terminal, not for a program building a model of a codebase. Their output is formatted for eyes, differs between operating systems, and has to be re-parsed by the agent every time.
 
-LLMScribe replaces that with twelve structured operations that behave the same everywhere:
+LLMScribe replaces that with fourteen structured operations that behave the same everywhere:
 
 1. **Map** the project tree without reading any file.
 2. **Search** paths and contents literally.
@@ -146,7 +146,7 @@ print(repo.search("auth").match_count)
 
 ## Tools
 
-Twelve tools, identical across the MCP server, CLI and Python library.
+Fourteen tools, identical across the MCP server, CLI and Python library.
 
 | MCP tool | CLI command | What it does |
 | --- | --- | --- |
@@ -162,6 +162,8 @@ Twelve tools, identical across the MCP server, CLI and Python library.
 | `create_directory` | `llmscribe mkdir` | Create a directory, including missing parents. |
 | `move_file` | `llmscribe mv` | Move or rename. Refuses to overwrite unless `--overwrite`. |
 | `delete_file` | `llmscribe rm` | Delete one file. Directories are refused. |
+| `append_file` | `llmscribe append` (alias `add`) | Add to the end of a file, creating it if needed. Keeps the encoding. |
+| `copy_file` | `llmscribe cp` | Copy a file byte for byte. |
 
 ---
 
@@ -504,6 +506,8 @@ llmscribe edit src/main.py --old 'retries = 3' --new 'retries = 5'
 llmscribe mkdir src/generated
 llmscribe mv src/old.py src/new.py
 llmscribe rm src/dead.py
+llmscribe append CHANGELOG.md --content '- Fixed the thing'
+llmscribe cp src/main.py src/main.py.bak
 ```
 
 Editing safely when someone else might be working in the same tree:
@@ -517,7 +521,9 @@ Six properties hold for every write:
 
 - **Confined to the project.** Absolute paths, `..` segments (including encoded and
   backslash forms) and symlinks are refused, using the same checks the read side uses.
-  A write that would land outside the root fails; it is not silently sanitised.
+  A write that would land outside the root fails; it is not silently sanitised. The
+  restriction is in the tool schema too, as a `pattern` on every path parameter, so the
+  model sees the boundary instead of discovering it by failing.
 - **Atomic.** Content goes to a temporary file in the same directory and is then
   replaced, so an interrupted write leaves the original intact rather than a
   half-written file.
@@ -535,6 +541,20 @@ Six properties hold for every write:
   written, and no temporary file survives a failure.
 
 Secrets are still masked in everything that leaves; what you *store* is written verbatim.
+
+### Read-only mode
+
+To make it impossible for the agent to change anything, run the server read-only. The
+write tools are **never registered**, so a client does not list them and a call fails as
+an unknown tool — a model cannot ask for what it cannot see:
+
+```bash
+llmscribe-mcp --read-only
+# or, for clients configured with environment variables:
+LLMSCRIBE_READ_ONLY=1 llmscribe-mcp
+```
+
+Seven tools remain: map, overview, search, read, read_many, dependencies and diff.
 
 ## Token budgets and compression
 
@@ -567,6 +587,17 @@ llmscribe overview --compress --max-tokens 20000
 Any cut is reported through `truncated`, `truncation_note` and `omitted_files`, so truncation is never hidden.
 
 ---
+
+## The tool definitions cost about 3,300 tokens
+
+A client pays for your tool schemas on every request, whether it uses them or not.
+LLMScribe's fourteen definitions total roughly **3,346 tokens** in OpenAI format,
+and a little less in Anthropic and MCP shape. A 14-tool filesystem server was measured
+at ~7,000 tokens in a recent independent survey, so this is roughly half.
+
+That follows from keeping the surface small, the descriptions specific, and the path
+constraint in a `pattern` rather than a paragraph. If you pay per token, measure your
+own.
 
 ## Secret redaction
 

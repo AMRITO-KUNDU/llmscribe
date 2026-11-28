@@ -9,6 +9,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`--read-only` mode** for the MCP server (`LLMSCRIBE_READ_ONLY=1` also works). The seven
+  write tools are never registered, so a client does not list them and a call fails as an
+  unknown tool — stronger than refusing at call time, because a model cannot ask for what
+  it cannot see.
+- **`append_file`** and **`copy_file`**, bringing the surface to fourteen tools. Append is
+  atomic and keeps the file's encoding; copy is byte-for-byte and binary-safe. Both are
+  hidden in read-only mode.
+- Every path parameter now carries a `pattern` in the tool schema, so the boundary is
+  visible to the model rather than discovered by failing. It mirrors the runtime check: no
+  absolute paths, no `..` segments, no backslashes, no NUL bytes.
+
+### Added
+
 - `read` returns a `revision` — a short fingerprint of the file's bytes — and `edit_file`
   and `write_file` accept `expect_revision`. If the file changed since it was read, the
   write is refused with `conflict` instead of overwriting someone else's change. This is

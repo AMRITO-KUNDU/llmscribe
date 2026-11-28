@@ -11,6 +11,8 @@ from llmscribe import service
 from llmscribe.mcp import tools
 
 EXPECTED = [
+    "append_file",
+    "copy_file",
     "create_directory",
     "delete_file",
     "edit_file",

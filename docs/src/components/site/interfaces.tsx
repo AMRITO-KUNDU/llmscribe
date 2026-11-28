@@ -64,9 +64,9 @@ export function Interfaces() {
           <TabsContent value="mcp">
             <InterfaceCard
               title="llmscribe-mcp (For AI Agents)"
-              blurb="The MCP server. Twelve tools that read, search and change a project, with per-client setup in the Connect section."
+              blurb="The MCP server. Fourteen tools that read, search and change a project, with per-client setup in the Connect section."
               command={MCP_CONFIG}
-              extra="Read: project_map, project_overview, search, read, read_many, project_dependencies, project_diff. Write: write_file, edit_file, create_directory, move_file, delete_file."
+              extra="Read: project_map, project_overview, search, read, read_many, project_dependencies, project_diff. Write: write_file, append_file, edit_file, create_directory, move_file, copy_file, delete_file. --read-only hides the write tools entirely."
             />
           </TabsContent>
 

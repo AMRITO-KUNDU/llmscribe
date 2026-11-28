@@ -7,7 +7,13 @@ missing extra produces an instruction instead of a bare ImportError.
 
 from __future__ import annotations
 
+import os
 import sys
+
+USAGE = """usage: llmscribe-mcp [--read-only]
+
+  --read-only   serve only the tools that cannot change the filesystem
+"""
 
 INSTALL_HINT = (
     "The MCP server is not installed.\n"
@@ -18,6 +24,12 @@ INSTALL_HINT = (
 
 
 def main() -> int:
+    # The server registers its tools at import time, so the flag has to be in the
+    # environment before the import below - not after.
+    if "--read-only" in sys.argv[1:]:
+        os.environ["LLMSCRIBE_READ_ONLY"] = "1"
+        sys.argv = [arg for arg in sys.argv if arg != "--read-only"]
+
     try:
         from llmscribe.mcp.server import main as serve
     except ModuleNotFoundError as exc:

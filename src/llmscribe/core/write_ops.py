@@ -414,3 +414,87 @@ def delete_file(file_path: str, root: Path | str | None = None) -> WriteResult:
         return _failure(file_path, exc)
     except OSError as exc:
         return _failure(file_path, LLMScribeError("write_error", f"Could not delete '{file_path}': {exc.strerror or 'error'}."))
+
+
+def append_file(
+    file_path: str,
+    content: str,
+    root: Path | str | None = None,
+    *,
+    encoding: str | None = None,
+) -> WriteResult:
+    """Append to a file, creating it if it does not exist.
+
+    The result is written atomically like every other write, so a crash cannot leave the
+    original truncated. Appending keeps the existing file's encoding and byte-order mark.
+    """
+    try:
+        source = _open_source(root)
+        rel, target = _target(source, file_path, must_exist=False)
+
+        original = b""
+        existed = target.exists()
+        if existed:
+            original = target.read_bytes()
+            if len(original) > MAX_FILE_SIZE:
+                raise LLMScribeError("file_too_large", f"File exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
+
+        if encoding is not None:
+            target_encoding = encoding
+        elif existed:
+            try:
+                target_encoding = decode_text(original, rel)[1]
+            except LLMScribeError:
+                target_encoding = "utf-8"
+        else:
+            target_encoding = "utf-8"
+
+        # decode/re-encode the existing bytes so a BOM or a cp1252 file survives the append
+        prefix = decode_text(original, rel)[0] if existed else ""
+        combined = prefix + content
+        data = _encode_as(combined, target_encoding, rel, original)
+        if len(data) > MAX_FILE_SIZE:
+            raise LLMScribeError("file_too_large", f"Result exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
+
+        _atomic_write(target, data, rel)
+        return WriteResult(
+            rel,
+            action="appended" if existed else "created",
+            existed=existed,
+            byte_size=len(data),
+            bytes_written=len(data) - len(original),
+        )
+    except LLMScribeError as exc:
+        return _failure(file_path, exc)
+    except OSError as exc:
+        return _failure(file_path, _explain_oserror(exc, file_path, "append to"))
+
+
+def copy_file(
+    source_path: str,
+    destination_path: str,
+    root: Path | str | None = None,
+    *,
+    overwrite: bool = False,
+) -> WriteResult:
+    """Copy a file inside the project, byte for byte.
+
+    No decoding: the destination is identical to the source whatever it contains.
+    """
+    try:
+        source = _open_source(root)
+        rel, src = _target(source, source_path, must_exist=True)
+        dest_rel, destination = _target(source, destination_path, must_exist=False)
+        if destination.exists() and not overwrite:
+            raise LLMScribeError(
+                "file_exists", f"Destination already exists: '{dest_rel}'. Pass overwrite to replace it."
+            )
+        data = src.read_bytes()
+        if len(data) > MAX_FILE_SIZE:
+            raise LLMScribeError("file_too_large", f"File exceeds {MAX_FILE_SIZE:,} bytes: '{rel}'.")
+        _atomic_write(destination, data, dest_rel)
+        return WriteResult(rel, action="copied", byte_size=len(data), destination=dest_rel)
+    except LLMScribeError as exc:
+        return _failure(source_path, exc)
+    except OSError as exc:
+        return _failure(source_path, _explain_oserror(exc, source_path, "copy"))
